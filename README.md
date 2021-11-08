@@ -1,9 +1,3 @@
-
-Goals: 
-- [ ] Learn enough to shoot myself in the foot. 
-- [ ] Learn some more so I don't shoot myself in the foot as often. 
-- [ ] Learn enough to avoid aforemention foot shootings. 
-
 The ADD-SIGNER process:
 
 ```mermaid
