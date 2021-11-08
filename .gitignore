@@ -1,0 +1,8 @@
+music-cli/music-cli
+music-cli/.music-cli.yaml
+music-cli/.desectokens.yaml
+music-cli/.idea/
+etc/*
+sbin/*
+musicd/musicd
+*~

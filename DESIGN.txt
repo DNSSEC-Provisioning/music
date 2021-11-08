@@ -1,0 +1,65 @@
+Datastructures
+
+There are four principal datastructures: Zones, Signers, SignerGroups
+and FSMs. 
+
+A "signer" refers to a DNS operator capable of DNSSEC signing. The
+signer structure contains information about how to interact with this
+operator (via DDNS, via API, etc) and the authentication details for such
+interaction.
+
+A "signergroup" is simply a group of signers. Signergroups don't have
+to do anything by themselves, they only exist as the recipients for
+the various types of synching that are needed for zones that use a
+signergroup.
+
+A "zone" is a DNS zone, it has a name and potentially it has a
+signergroup that manages DNSSEC signing. During transitions of various
+types it also has an FSM reference, which is the description of the
+transition that the zone is currently undergoing.
+
+An "FSM" is a finite state machine that describes a sychronization
+process in a signergroup. There are several known FSMs, including:n
+
+* "AddGroup": add a signergroup to a zone. This will cause MuSiC to
+interact with all the signers in the group to get DNSKEY and NS RRsets
+in sync, get CDS records published and subsequently the parent DS RRset
+updated and likely also the parent NS RRset.
+
+* "ZskRollover": one of the signers in a signergroup decided to roll
+the ZSK for a zone. This causes MuSiC to pick up on the added ZSK and
+initiate synching the DNSKEY for the new ZSK over to the other signers
+in the signergroup.
+
+* "KskRollover": NYI.
+
+Command structure
+
+* "music-cli signer"": commands to manage signers
+
+-  "music-cli signer add -s {name}": add a new signer to the set of
+                                     signers known to MuSiC 
+
+- "music-cli signer delete -s {name}": delete a signer from MuSiC. Will
+                                       also remove the signer from all
+	                               signergroups that it was a member of.
+
+- "music-cli signer list": list all signers
+
+* "music-cli sgroup": commands to manage signergroups
+
+- "music-cli sgroup create -g {group}": create a new signergroup called {group}
+
+- "music-cli sgroup add -g {group} -s {signer}": add the signer {signer}
+                                                 to the signergroup {group}
+
+- "music-cli sgroup list": list all signer groups
+
+* "music-cli zone": commands to manage zones
+
+"music-cli zone add -z {zone}": add the zone {zone} to MuSiC
+
+"music-cli zone list": list all zones under MuSiC management
+
+"music-cli zone sgroup -z {zone} -g {group}": assign the signergroup {group}
+                                              to manage the zone {zone}

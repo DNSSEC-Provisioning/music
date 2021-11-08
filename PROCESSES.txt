@@ -1,0 +1,331 @@
+Description of the different processes that MuSiC will implement.
+-----------------------------------------------------------------
+
+The processes below are slightly adapted from
+draft-wisser-dnssec-automation-02 and different to the first
+implementation done (multi-signer-controller). There are several
+observations to be made regarding the adaptions:
+
+1. The draft is writter from the POV of a zone being under the control
+   of a "multi signer group" and then a signer typically joins the
+   group or leaves the group. Once the changes needed to deal with the
+   new set of signers is complete the process is done and an end state
+   is reached.
+
+   The model that MuSiC uses is slightly different. The assumption
+   here is that in the most common case the "signer group" is already
+   established and then one or more zones are attached to the signer
+   group. This triggers a set of state transitions to ensure that the
+   zones are correctly configured on all signers in the signer group
+   as well as in the parent zone.
+
+2. The draft has a primary focus on signers entering and leaving
+   signer groups, i.e. the use case is primarily dealing with zones
+   migrating from one DNSSEC signing operator to another, with the
+   state where there are two or more at the same time being a
+   transient phase.
+
+   While this is certainly a crucial use case it is not the only
+   one. Another is obviously the use case where the zone owner has
+   made the choice to have multiple DNSSEC signer operators in an
+   ongoing fashion for robustness reasons (much like having multiple
+   DNS operators for zone publication).
+
+   When operating in a permanent process there is no "end state" and
+   the MuSiC management of the zone DNSSEC signers has to have an
+   ongoing capability prepared to deal with future upcoming events (be
+   it changes to the signer group membership, key rollovers or what
+   not).
+
+3. In the draft there is no detailed treatment of the consequences of
+   new events occuring in the midst of an ongoing process. The most
+   obvious example is that during a synchronisation process (eg. due
+   to a new signer entering a group or a new zone attaching to a
+   signer group) a key rollover occurs for the zone in one of the
+   member signers.
+
+   It would obviously be convenient to simply prohibit such
+   events. But in reality, working with current software, it is clear
+   that the signers now operate under their own local signing policies
+   that are not subject to the needs of an external multi signer
+   controller.
+
+   Our current thinking is therefore that the possibility of such
+   events will transform the precesses from being a linear set of
+   state transitions to (unfortunately) have branches (i.e. forks) in
+   the state transition graphs. We are therefore modelling the
+   different processes as FSMs (Finite State Machines) where it is
+   possible to modify the FSM for a process by adding branches as the
+   understanding of the consequences of several events overlapping
+   with each other becomes better understood.
+
+4. The current implementation of a process has certain quirks.
+
+   A process is described by an FSM{} structure. The most important
+   part of the FSM{} is the States: field, which is a
+   map[string]FSMState{} allowing easy lookup of the current
+   FSMState{} for a zone by looking up the zone "state" from the DB in
+   the {FSM}.States map.
+
+   The FSMState{} is very simplisitc and the only part used at present
+   is the "Next" field which is a map[string]FSMTransition{} with each
+   possible "next" state as keys in the map.
+
+   The FSMTransistion has two func (z *Zone) bool, called "criteria"
+   and "action" as the most important parts. Criteria is executed when
+   stepping the FSM (automatically or manually). If "criteria" returns
+   true then the zone transitions to the next state and the "action"
+   is executed.
+
+   At present it would be possible to more or less collapse the
+   FSMState{} struct to nothing and only keep the FSMTransition{} as
+   that's where we do things. But I suggest that we keep it for the
+   moment until we know if we need to associate "actions" also to
+   "states" and not only to "transitions".
+
+5. In multi-signer-controller a few steps were swapped.
+
+   In joining a signer the first for multi-signer-controller were to
+   add ZSK for each signer to all signers, then proceed with the CDS/
+   CDNSKEY records.
+
+   In similar fashion, for leaving it would first remove ZSK of the
+   exiting signer from remaining signers and then proceed with the
+   CDS/CDNSKEY records.
+
+
+PROCESS #1: A Signer joins the Multi-Signer group. No ZSK rollovers occur.
+
+   1.   Confirm that the incoming Signer meets the prerequisites.
+
+   2.   Establish a trust mechanism between the Multi-Signer group and
+        the Signer.
+
+   For each zone already attached to the signer group {
+
+       Zone state: SIGNERS-UNSYNCHED  
+
+       3.  ACTION: Calculate CDS/CDNSKEY Records for all KSKs/CSKs
+           represented in the Multi-Signer group.
+
+       Zone state: CDS-KNOWN
+
+       4.  ACTION: Configure all Signers with the compiled CDS/CDNSKEY RRSET.
+
+       Zone state: CDS-SYNCHED
+
+       5.   ACTION: Add ZSK for each signer to all other Signers.
+
+       Zone state: ZSK-SYNCHED
+
+       6.   HOLD: Wait for Parent to publish the combined DS RRset.
+
+       Zone state: DS-SYNCHED
+
+       7.   ACTION: Remove CDS/CDNSKEY Records from all Signers. (optional)
+
+       Zone state: CDS-REMOVED
+
+       8.   HOLD: Wait maximum of DS-Wait-Time and DNSKEY-Wait-Time
+
+       9.   ACTION: Compile NS RRSET including all NS records from all Signers.
+
+       Zone state: NS-KNOWN
+
+       10.  ACTION: Configure all Signers with the compiled NS RRSET.
+
+       Zone state: NS-SYNCHED
+
+       11.  ACTION: Compare NS RRSET of the Signers to the Parent, if
+            there is a difference publish CSYNC record with NS and A
+            and AAAA bit set on all signers.
+
+       Zone state: CSYNC-PUBLISHED *OR* jump to SIGNERS-SYNCHED (below)  
+
+       12.  HOLD: Wait for Parent to publish NS.
+
+       Zone state: PARENT-SYNCHED
+
+       13.  Remove CSYNC record from all signers. (optional)
+
+       Zone state: SIGNERS-SYNCHED
+
+   }
+
+PROCESS #1: A Signer joins the Multi-Signer group. A ZSK rollover occurs.
+
+   1.   Confirm that the incoming Signer meets the prerequisites.
+
+   2.   Establish a trust mechanism between the Multi-Signer group and
+        the Signer.
+
+   For each zone already attached to the signer group {
+
+       Zone state: SIGNERS-UNSYNCHED
+
+       3.  ACTION: Calculate CDS/CDNSKEY Records for all KSKs/CSKs
+           represented in the Multi-Signer group.
+
+       Zone state: CDS-KNOWN
+
+       4.  ACTION: Configure all Signers with the compiled CDS/CDNSKEY RRSET.
+
+       Zone state: CDS-SYNCHED
+
+       5.   ACTION: Add ZSK for each signer to all other Signers.
+
+       Zone state: ZSK-SYNCHED
+
+       6.   HOLD: Wait for Parent to publish the combined DS RRset.
+
+       Zone state: DS-SYNCHED
+
+       7.   ACTION: Remove CDS/CDNSKEY Records from all Signers. (optional)
+
+       Zone state: CDS-REMOVED
+
+       8.   HOLD: Wait maximum of DS-Wait-Time and DNSKEY-Wait-Time
+
+       9.   ACTION: Compile NS RRSET including all NS records from all Signers.
+
+       Zone state: NS-KNOWN
+
+       10.  ACTION: Configure all Signers with the compiled NS RRSET.
+
+       Zone state: NS-SYNCHED
+
+       11.  ACTION: Compare NS RRSET of the Signers to the Parent, if
+            there is a difference publish CSYNC record with NS and A
+            and AAAA bit set on all signers.
+
+       Zone state: CSYNC-PUBLISHED *OR* jump to ZONE-SYNCHED (below)
+
+       12.  HOLD: Wait for Parent to publish NS.
+
+       Zone state: PARENT-SYNCHED 
+
+       13.  Remove CSYNC record from all signers. (optional)
+
+       Zone state: SIGNERS-SYNCHED
+
+   }
+
+
+PROCESS #2: A signer leaves the Multi-Signer group
+
+   For each zone already ttached to the signer group {
+
+       Zone state: SIGNERS-UNSYNCHED
+
+       0.5  ACTION: Compile NS RRSET excluding NS records unique to leaving Signer
+
+       Zone state: NS-KNOWN
+
+       1.   ACTION: Remove exiting Signer's NS records from remaining Signers
+
+       Zone state: NS-SYNCHED
+
+       2.   ACTION: Compare NS RRSET of the Signers to the Parent, if
+            there is a difference publish CSYNC record with NS and A
+            and AAAA bit set on remaining signers.
+
+       Zone state: CSYNC-PUBLISHED *OR* (unlikely) skip to DELEGATION-NS-SYNCHED (below)
+
+       3.   HOLD: Wait for Parent to publish NS RRSET.
+
+       Zone state: DELEGATION-NS-SYNCHED
+
+       4.   ACTION: Remove CSYNC record from all signers. (optional)
+
+       Zone state: DELEGATION-NS-SYNCHED-2
+
+       5.   HOLD: Wait NS-Wait-Time
+
+       Zone state: DELEGATION-NS-SYNCHED-3
+
+       6.   ACTION: Stop the exiting Signer from answering
+       	    queries. (This is out of scope of MUSIC)
+
+       7.   ACTION: Calculate CDS/CDNSKEY Records for KSKs/CSKs published by the
+            remaining Signers.
+
+       Zone state: CDS-KNOWN
+
+       8.   ACTION: Configure remaining Signers with the compiled CDS/CDNSKEY RRSET.
+
+       Zone state: CDS-SYNCHED
+
+       9.   ACTION: Remove ZSK of the exiting Signer from remaining Signers.
+
+       Zone state: ZSK-SYNCHED
+
+       10.  HOLD: Wait for Parent to publish the updated DS RRset.
+
+       Zone state: DS-SYNCHED
+
+       11.  ACTION: Remove CDS/CDNSKEY set from all signers.  (Optional)
+
+       Zone state: SIGNERS-SYNCHED
+
+   }
+
+PROCESS #3: A Signer performs a ZSK rollover
+
+   1.  The signer introduces the new ZSK in its own DNSKEY RRset.
+
+   2.  Update all signers with the new ZSK.
+
+   3.  Wait DNSKEY-Wait-Time
+
+   4.  Signer can start using the new ZSK.
+
+   5.  When the old ZSK is not used in any signatures by the signer, the
+       signer can remove the old ZSK from its DNSKEY RRset.
+
+   6.  Remove ZSK from DNSKEY RRset of all signers.
+
+PROCESS #4: A Signer performs a CSK or KSK rollover
+
+   1.  Signer publishes new CSK / KSK in its own DNSKEY RRset.
+
+   2.  Signer signs DNSKEY RRset with old and new CSK / KSK.
+
+   3.  Calculate new CDS/CDNSKEY RRset and publish on all signers,
+       containing both, the old and new CSK / KSK data.
+
+   4.  Wait for parent to pickup and publish new DS RR set.
+
+   5.  Wait DS-Wait-Time + DNSKEY-Wait-Time
+
+   6.  Signer removes old KSK from its DNSKEY RR set.  And removes all
+       signatures done with this key.
+
+   7.  Calculate new CDS/CDNSKEY RRset and publish on all signers,
+       containing only the new CSK / KSK data.
+
+   8.  Wait for parent to pickup and publish new DS RR set.
+
+   9.  Remove CDS/CDNSKEY RR sets from all signers.
+
+PROCESS #5: Algorithm rollover for the whole Multi-Signer group.
+
+   1.   All signers publish KSK and ZSK or CSK using the new algorithm.
+
+   2.   All signers sign all zone data with the new keys.
+
+   3.   Wait until all signers have signed all data with the new key(s).
+
+   4.   Calculate new CDS/CDNSKEY RRset and publish on all signers.
+
+   5.   Wait for parent to pickup and publish new DS RR set.
+
+   6.   Wait DS-Wait-Time + DNSKEY-Wait-Time
+
+   7.   Removes all keys and signatures which are using the old
+        algorithm.
+
+   8.   Calculate new CDS/CDNSKEY RRset and publish on all signers.
+
+   9.   Wait for parent to pickup and publish new DS RR set.
+
+   10.  Remove CDS/CDNSKEY RR sets from all signers.

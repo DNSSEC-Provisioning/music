@@ -1,0 +1,15 @@
+apiserver:
+   address:	127.0.0.1:8080
+   usetls:	false   
+   apikey:	you-have-stolen-my-frotzblinger
+
+signers:
+   desec:
+      email:       johan.stenstam@internetstiftelsen.se
+      password:    Blurg99,123
+      baseurl:     https://desec.io/api/v1
+
+common:
+   db:		/var/tmp/music.db
+   tokenfile:	../etc/musicd.tokens.yaml
+   command:	/usr/local/sbin/musicd

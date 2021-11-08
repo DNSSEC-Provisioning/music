@@ -1,0 +1,22 @@
+/*
+ *
+ */
+package cmd
+
+import (
+	"github.com/romu42/play_go/common"
+)
+
+type Config struct {
+     Login  	   music.DesecLPost
+     API   struct {
+     	   	  BaseUrl	string		`validate:"required"`
+                  }
+     Musicd	   MusicdConf
+}
+
+type MusicdConf struct {
+	BaseUrl	string		`validate:"required"`
+	ApiKey	string		`validate:"required"`
+}
+
