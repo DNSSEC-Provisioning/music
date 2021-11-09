@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 
-        "github.com/romu42/play_go/common"
+	"github.com/DNSSEC-Provisioning/music/common"
+
+	"github.com/go-playground/validator/v10"
 )
 
 var cfgFile string
@@ -31,7 +32,7 @@ type ApiServerConf struct {
 }
 
 type SignerConf struct {
-     	Name	string 
+     	Name	string
 	Address	string `validate:"host_port"`
 	BaseURL	string `validate:"url"`
 	Method	string	// ddns | desec | ...
@@ -48,7 +49,7 @@ type TsigConf struct {
 type CommonConf struct {
 	DB      string   `validate:"file"`
 	TokenFile	 string	`validate:"file,required"`
-	GormDB  string   `validate:"file"`
+//	GormDB  string   `validate:"file"`
 //	Command string   `validate:"file"`
 }
 

@@ -1,5 +1,5 @@
 /*
- * 
+ *
  */
 package cmd
 
@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/spf13/cobra"
 	"github.com/ryanuber/columnize"
-
-	"github.com/romu42/play_go/common"
 )
 
 const timefmt = "2006-01-02 15:04:05"
@@ -64,7 +64,7 @@ var desecZoneListCmd = &cobra.Command{
 		if len(zl) > 0 {
 		   var out = []string{ "Zone|Created|Published" }
 		   for _, v := range zl {
-		       out = append(out, fmt.Sprintf("%s|%s|%s", v.Name, 
+		       out = append(out, fmt.Sprintf("%s|%s|%s", v.Name,
 		       	     		 			 v.Created.Format(timefmt),
 								 v.Published.Format(timefmt)))
 		   }
@@ -78,4 +78,3 @@ func init() {
 	desecCmd.AddCommand(desecZoneCmd)
 	desecZoneCmd.AddCommand(desecZoneAddCmd, desecZoneDeleteCmd, desecZoneListCmd)
 }
-

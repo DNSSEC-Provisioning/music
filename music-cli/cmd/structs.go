@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"github.com/romu42/play_go/common"
+	"github.com/DNSSEC-Provisioning/music/common"
 )
 
 type Config struct {
@@ -19,4 +19,3 @@ type MusicdConf struct {
 	BaseUrl	string		`validate:"required"`
 	ApiKey	string		`validate:"required"`
 }
-

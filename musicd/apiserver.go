@@ -11,11 +11,12 @@ import (
 	"log"
 	"net/http"
 	"time"
-	
+
 	"github.com/miekg/dns"
 
+	"github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/gorilla/mux"
-	"github.com/romu42/play_go/common"
 	"github.com/spf13/viper"
 )
 
@@ -115,7 +116,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "join":
-			err, resp.Msg = mdb.ZoneJoinGroup(zp.Zone.Name, dbzone, exist, 
+			err, resp.Msg = mdb.ZoneJoinGroup(zp.Zone.Name, dbzone, exist,
 			     	      					zp.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from ZoneJoinGroup: %v", err)
@@ -124,7 +125,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "leave":
-			err, resp.Msg = mdb.ZoneLeaveGroup(zp.Zone.Name, dbzone, exist, 
+			err, resp.Msg = mdb.ZoneLeaveGroup(zp.Zone.Name, dbzone, exist,
 			     	      					 zp.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from ZoneLeaveGroup: %v", err)
@@ -142,7 +143,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "step-fsm":
 		        var zones map[string]music.Zone
-			err, resp.Msg, zones = mdb.ZoneStepFsm(zp.Zone.Name, dbzone, 
+			err, resp.Msg, zones = mdb.ZoneStepFsm(zp.Zone.Name, dbzone,
 			     	       	       		       exist, zp.FsmNextState)
 			if err != nil {
 				// log.Printf("Error from ZoneStepFsm: %v", err)
@@ -157,7 +158,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		case "get-rrsets":
 		        // fmt.Printf("APIzone: get-rrset: %s %s %s\n", zp.Zone.Name, zp.Owner, zp.RRtype)
 			var rrsets map[string][]dns.RR
-			err, resp.Msg, rrsets = mdb.ZoneGetRRsets(zp.Zone.Name, dbzone, 
+			err, resp.Msg, rrsets = mdb.ZoneGetRRsets(zp.Zone.Name, dbzone,
 			     	       	      	 		   exist, zp.Owner, zp.RRtype)
 			if err != nil {
 				// log.Printf("Error from ZoneGetRRset: %v", err)
@@ -196,7 +197,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		case "copy-rrset":
 		        fmt.Printf("APIzone: copy-rrset: %s %s %s\n", zp.Zone.Name, zp.Owner, zp.RRtype)
 			// var rrset []dns.RR
-			err, resp.Msg = mdb.ZoneCopyRRset(zp.Zone.Name, dbzone, 
+			err, resp.Msg = mdb.ZoneCopyRRset(zp.Zone.Name, dbzone,
 			     	       	      	 		   exist, zp.Owner, zp.RRtype,
 								   zp.FromSigner, zp.ToSigner)
 			if err != nil {

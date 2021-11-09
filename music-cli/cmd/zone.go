@@ -12,8 +12,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/miekg/dns"
-	"github.com/romu42/play_go/common"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -651,7 +652,7 @@ func PrintZones(zm map[string]music.Zone) {
 		if len(pnext) > 1 {
 		   pnext = pnext[1:]
 		}
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zone.Name, group, fsm, 
+		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zone.Name, group, fsm,
 		      		  	      zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
 					      pnext, zone.ZskState))
 	}

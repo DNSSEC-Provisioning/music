@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"log"
 
+    "github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/ryanuber/columnize"
-	"github.com/romu42/play_go/common"
 )
 
 var signername, signermethod, signerauth, signeraddress string
@@ -393,7 +394,7 @@ func ListSigners() error {
 	if cliconf.Verbose {
 	   out = append(out, "Signer|Method|SignerGroup")
 	}
-	
+
 	for _, v := range sr.Signers {
 	    group := "---"
 	    if v.SignerGroup != "" {

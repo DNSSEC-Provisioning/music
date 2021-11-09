@@ -17,10 +17,10 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	// "github.com/jinzhu/gorm"
+	// _ "github.com/jinzhu/gorm/dialects/sqlite"
 
-	"github.com/romu42/play_go/common"
+	"github.com/DNSSEC-Provisioning/music/common"
 )
 
 func usage() {
@@ -80,7 +80,7 @@ func mainloop(conf *Config, apistopper chan struct{}) {
 }
 
 func LoadConfig(conf *Config, safemode bool) error {
-	fmt.Printf("LoadConfig: reloading config from \"%s\". Safemode: %v\n", 
+	fmt.Printf("LoadConfig: reloading config from \"%s\". Safemode: %v\n",
 				DefaultCfgFile, safemode)
 	if safemode {
 		tmpviper := viper.New()
@@ -126,23 +126,23 @@ func LoadConfig(conf *Config, safemode bool) error {
 	return nil
 }
 
-func initialMigration() {
-	db, err := gorm.Open("sqlite3", viper.GetString("common.gormdb"))
-	if err != nil {
-		fmt.Println(err.Error())
-		panic("failed to connect to gorm database")
-	}
-	defer db.Close()
-
-	// Migrate the schema
-	// db.AutoMigrate(&music.Zone{})
-	db.AutoMigrate(&music.Signer{})
-	db.AutoMigrate(&music.GormSignerGroup{})
-	// Gorm barfs on FSMState, because that contains a func() which is unsupported in sqlite
-	// db.AutoMigrate(&music.FSMState{})
-	// Gorm barfs on FSMState, because that contains a map[] which is unsupported in sqlite
-	// db.AutoMigrate(&music.FSM{})
-}
+// func initialMigration() {
+// 	db, err := gorm.Open("sqlite3", viper.GetString("common.gormdb"))
+// 	if err != nil {
+// 		fmt.Println(err.Error())
+// 		panic("failed to connect to gorm database")
+// 	}
+// 	defer db.Close()
+//
+// 	// Migrate the schema
+// 	// db.AutoMigrate(&music.Zone{})
+// 	db.AutoMigrate(&music.Signer{})
+// 	db.AutoMigrate(&music.GormSignerGroup{})
+// 	// Gorm barfs on FSMState, because that contains a func() which is unsupported in sqlite
+// 	// db.AutoMigrate(&music.FSMState{})
+// 	// Gorm barfs on FSMState, because that contains a map[] which is unsupported in sqlite
+// 	// db.AutoMigrate(&music.FSM{})
+// }
 
 func main() {
 	var conf Config
@@ -155,13 +155,13 @@ func main() {
 	// initialise empty conf.Internal struct
 	conf.Internal = InternalConf{}
 
-	apistopper := make(chan struct{}) //
+	apistopper := make(chan struct{})
 
 	conf.Internal.MusicDB = music.NewDB(false) // Don't drop status tables if they exist
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 
-	initialMigration()
+	// initialMigration()
 	go APIdispatcher(&conf)
 	mainloop(&conf, apistopper)
 }

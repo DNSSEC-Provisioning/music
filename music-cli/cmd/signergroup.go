@@ -9,10 +9,11 @@ import (
 	"fmt"
 	"log"
 
+    "github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/ryanuber/columnize"
-	"github.com/romu42/play_go/common"
 )
 
 var sgroupname string
@@ -70,7 +71,7 @@ func init() {
 	signerGroupCmd.AddCommand(addSignerGroupCmd, deleteSignerGroupCmd, listSignerGroupsCmd)
 
 	// note that this is a root flag, to make it available to both "signer" and "signergroup"
-	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g", 
+	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g",
 								 "", "name of signer group")
 }
 
@@ -169,7 +170,7 @@ func ListSignerGroups() error {
 	if cliconf.Verbose {
 	   out = append(out, "Name of signergroup|Signers in group")
 	}
-	
+
 	for k, v := range sr.SignerGroups {
 	    var ss string
 	    for k1, _ := range v.SignerMap {

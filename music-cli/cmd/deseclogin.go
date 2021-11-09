@@ -6,8 +6,9 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/spf13/cobra"
-	"github.com/romu42/play_go/common"
 )
 
 var desecCmd = &cobra.Command{
@@ -37,7 +38,7 @@ var desecLoginCmd = &cobra.Command{
 
 		if  dlr.Token != "" {
 		   endtime := dlr.Created.Add(dlr.MaxUnused)
-		   fmt.Printf("New token received and stored. It is valid until %v\n", 
+		   fmt.Printf("New token received and stored. It is valid until %v\n",
 					endtime.Format("2006-01-02 15:04:05"))
 		}
 	},
@@ -63,5 +64,3 @@ func init() {
 	rootCmd.AddCommand(desecCmd)
 	desecCmd.AddCommand(desecLoginCmd, desecLogoutCmd)
 }
-
-

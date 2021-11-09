@@ -2,12 +2,12 @@ module music-cli
 
 go 1.17
 
-replace github.com/romu42/play_go/common => ../common
+replace github.com/DNSSEC-Provisioning/music/common => ../common
 
 require (
+	github.com/DNSSEC-Provisioning/music/common v0.0.0-00010101000000-000000000000
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/miekg/dns v1.1.26
-	github.com/romu42/play_go/common v0.0.0-00010101000000-000000000000
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0

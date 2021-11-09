@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/go-playground/validator/v10"
+	music "github.com/DNSSEC-Provisioning/music/common"
 
-	music "github.com/romu42/play_go/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/go-playground/validator/v10"
 )
 
 var cfgFile, zonename string

@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/romu42/play_go/common"
+	music "github.com/DNSSEC-Provisioning/music/common"
+
 	"github.com/spf13/cobra"
 )
 
