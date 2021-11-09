@@ -21,6 +21,7 @@ type DBUpdate struct {
 
 type Zone struct {
     Name       string
+    Exists     bool // true if zone is present in system
     State      string
     Statestamp time.Time
     NextState  map[string]bool

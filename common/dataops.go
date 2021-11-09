@@ -14,18 +14,17 @@ import (
     "github.com/miekg/dns"
 )
 
-func (mdb *MusicDB) ZoneGetRRsets(zonename string, dbzone *Zone, exist bool, owner,
+func (mdb *MusicDB) ZoneGetRRsets(dbzone *Zone, owner,
     rrtype string) (error, string, map[string][]dns.RR) {
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", zonename)),
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name),
             "", map[string][]dns.RR{}
     }
 
     sg := dbzone.SignerGroup()
 
     if sg.Name == "" || sg.Name == "---" {
-        return errors.New(fmt.Sprintf("Zone %s has no signer group assigned",
-                dbzone.Name)),
+        return fmt.Errorf("Zone %s has no signer group assigned", dbzone.Name),
             "", map[string][]dns.RR{}
     }
 
@@ -33,10 +32,10 @@ func (mdb *MusicDB) ZoneGetRRsets(zonename string, dbzone *Zone, exist bool, own
     return err, "", rrsets
 }
 
-func (mdb *MusicDB) ZoneCopyRRset(zonename string, dbzone *Zone, exist bool, owner,
+func (mdb *MusicDB) ZoneCopyRRset(dbzone *Zone, owner,
     rrtype, fromsigner, tosigner string) (error, string) {
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", zonename)), ""
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
     fs, err := mdb.GetSigner(fromsigner)
@@ -50,17 +49,17 @@ func (mdb *MusicDB) ZoneCopyRRset(zonename string, dbzone *Zone, exist bool, own
 
     err, rrs := fs.RetrieveRRset(dbzone.Name, owner, dns.StringToType[rrtype])
     if err != nil {
-        return errors.New(fmt.Sprintf("Error from RetrieveRRset: %v", err)), ""
+        return fmt.Errorf("Error from RetrieveRRset: %v", err), ""
     }
 
     if len(rrs) == 0 {
-        return errors.New(fmt.Sprintf("ZoneCopyRRset: No records returned in query to signer %s.")),
+        return fmt.Errorf("ZoneCopyRRset: No records returned in query to signer %s."),
             ""
     }
 
     err = ts.UpdateRRset(dbzone.Name, owner, dns.StringToType[rrtype], rrs)
     if err != nil {
-        return errors.New(fmt.Sprintf("Error from UpdateRRset: %v", err)), ""
+        return fmt.Errorf("Error from UpdateRRset: %v", err), ""
     }
     return err, ""
 }
@@ -221,7 +220,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner string,
 }
 
 // XXX: broken, should return a []dns.RR, not []string.
-func (mdb *MusicDB) ListRRset(zonename, signer, ownername, rrtype string) (error, string, []string) {
+func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (error, string, []string) {
     var rrs []string
     RRtype := dns.StringToType[rrtype]
 

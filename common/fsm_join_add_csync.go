@@ -112,7 +112,9 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
 }
 
 var FsmJoinAddCsync = FSMTransition{
-    Description: "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
-    Criteria:    fsmJoinAddCsyncCriteria,
-    Action:      fsmJoinAddCsyncAction,
+    Description:         "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
+    MermaidCriteriaDesc: "Wait for NS RRset to be consistent",
+    MermaidActionDesc:   "Generate and push CSYNC record",
+    Criteria:            fsmJoinAddCsyncCriteria,
+    Action:              fsmJoinAddCsyncAction,
 }

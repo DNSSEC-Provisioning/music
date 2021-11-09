@@ -26,13 +26,18 @@ type FSMState struct {
 }
 
 type FSMTransition struct {
-    Description string
-    Criteria    func(z *Zone) bool
-    Action      func(z *Zone) bool
+    Description         string // used by various things
+    Desc                string // used by music-cli process list
+    MermaidCriteriaDesc string
+    MermaidActionDesc   string
+    Criteria            func(z *Zone) bool
+    Action              func(z *Zone) bool
 }
 
 type FSM struct {
+    Name         string
     Type         string // "single-run" | "permanent"
+    Desc         string
     InitialState string // zones that enter this process start here
     States       map[string]FSMState
 }
@@ -102,8 +107,8 @@ var FSMT_RS_10 = FsmTransitionFactory("zsk-synced", "ds-synced")
 var FSMT_RS_11 = FsmTransitionFactory("ds-synced", "signers-synced")
 var FSMT_RS_12 = FsmTransitionFactory("signers-synced", FsmStateStop) // terminator signal
 var FSMT_RS_13 = FSMTransition{
-    Description: "FSMT_RS_13",
-    Criteria:    FsmCriteriaFactory(FsmStateStop, FsmStateStop),
+    Desc:     "FSMT_RS_13",
+    Criteria: FsmCriteriaFactory(FsmStateStop, FsmStateStop),
     Action: func(z *Zone) bool {
         fmt.Printf("Enter ACTION for <stop, stop>. zone state: %s\n", z.State)
         z.StateTransition(FsmStateStop, FsmStateStop)
@@ -152,8 +157,14 @@ var FSMlist = map[string]FSM{
 
     // PROCESS: ADD-SIGNER: This is a real process, from the draft doc.
     "add-signer": FSM{
+        Name:         "add-signer",
         Type:         "single-run",
         InitialState: FsmStateSignerUnsynced,
+        Desc: `
+ADD-SIGNER is the process that all zones attached to a signer group
+must execute when a new signer is added to the group. It contains
+steps for synching DNSKEYs among signers as well as updating the
+DS and NS RRsets in the parent.`,
         States: map[string]FSMState{
             FsmStateSignerUnsynced: FSMState{
                 Next: map[string]FSMTransition{FsmStateDnskeysSynced: FsmJoinSyncDnskeys},
@@ -183,8 +194,16 @@ var FSMlist = map[string]FSM{
     },
 
     "remove-signer": FSM{
+        Name:         "remove-signer",
         Type:         "single-run",
         InitialState: FsmStateSignerUnsynced,
+        Desc: `
+REMOVE-SIGNER is the process that all zones attached to a signer group
+must execute when an existing signer is removed from the group. It contains
+steps for synching DNSKEYs among signers as well as updating the
+DS and NS RRsets in the parent.
+
+Note that it is not possible to remove the last signer in a group, as that would cause the attached zones to have to go unsigned.`,
         States: map[string]FSMState{
             FsmStateSignerUnsynced: FSMState{
                 Next: map[string]FSMTransition{FsmStateNsesSynced: FsmLeaveSyncNses},
@@ -270,6 +289,7 @@ var FSMlist = map[string]FSM{
 
     // PROCESS: ZSK-ROLLOVER: This is a real process
     "zsk-rollover": FSM{
+        Name:         "zsk-rollover",
         Type:         "single-run",
         InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{
@@ -292,6 +312,7 @@ var FSMlist = map[string]FSM{
     },
 
     "ksk-rollover": FSM{
+        Name:         "ksk-rollover",
         Type:         "permanent",
         InitialState: "serene-happiness",
         States:       map[string]FSMState{},

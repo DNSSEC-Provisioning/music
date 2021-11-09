@@ -155,12 +155,18 @@ func init() {
         zoneLeaveGroupCmd, zoneFsmCmd, zoneStepFsmCmd,
         zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd)
 
-    zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "", "name of finite state machine to attach zone to")
-    zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "", "name of next state in on-going FSM process")
-    zoneCopyRRsetCmd.Flags().StringVarP(&fromsigner, "from", "", "", "name of signer to copy from")
-    zoneCopyRRsetCmd.Flags().StringVarP(&tosigner, "to", "", "", "name of signer to copy to")
-    zoneCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "", "DNS owner name of RRset")
-    zoneCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "", "RRtype of RRset")
+    zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
+        "name of finite state machine to attach zone to")
+    zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",
+        "name of next state in on-going FSM process")
+    zoneCopyRRsetCmd.Flags().StringVarP(&fromsigner, "from", "", "",
+        "name of signer to copy from")
+    zoneCopyRRsetCmd.Flags().StringVarP(&tosigner, "to", "", "",
+        "name of signer to copy to")
+    zoneCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "",
+        "DNS owner name (FQDN) of RRset")
+    zoneCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "",
+        "RRtype of RRset")
 }
 
 func AddZone(zonename, sgroup string) error {

@@ -193,7 +193,7 @@ func (mdb *MusicDB) SignerJoinGroup(s Signer, g string) (error, string) {
         // XXX: this is inefficient, but I don't think we will have enough
         //      zones in the system for that to be an issue
         for _, z := range zones {
-            mdb.ZoneAttachFsm(z.Name, z, true, SignerJoinGroupProcess) // we know that z exist
+            mdb.ZoneAttachFsm(z, SignerJoinGroupProcess) // we know that z exist
         }
         return nil, fmt.Sprintf(
             "Signer %s has joined signer group %s and %d zones have entered the 'add-signer' process.",
@@ -246,7 +246,7 @@ func (mdb *MusicDB) SignerLeaveGroup(s Signer, g string) (error, string) {
     // XXX: this is inefficient, but I don't think we will have enough
     //      zones in the system for that to be an issue
     for _, z := range zones {
-        mdb.ZoneAttachFsm(z.Name, z, true, SignerLeaveGroupProcess) // we know that z exist
+        mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess) // we know that z exist
     }
     return nil, fmt.Sprintf(
         "Signer %s has left signer group % and therefore %d zones entered the 'remove-signer' process.",

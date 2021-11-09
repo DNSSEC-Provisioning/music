@@ -94,5 +94,5 @@ func initConfig() {
 }
 
 func initApi() {
-    api = music.NewClient(cliconf.Debug)
+    api = music.NewClient(cliconf.Verbose, cliconf.Debug)
 }

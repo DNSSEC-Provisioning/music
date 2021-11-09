@@ -110,7 +110,9 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 }
 
 var FsmJoinParentDsSynced = FSMTransition{
-    Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
-    Criteria:    fsmJoinParentDsSyncedCriteria,
-    Action:      fsmJoinParentDsSyncedAction,
+    Description:         "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
+    MermaidCriteriaDesc: "Wait for parent to update DS RRset",
+    MermaidActionDesc:   "Remove all CDS/CDNSKEYs",
+    Criteria:            fsmJoinParentDsSyncedCriteria,
+    Action:              fsmJoinParentDsSyncedAction,
 }
