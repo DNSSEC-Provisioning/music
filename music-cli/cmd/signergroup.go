@@ -20,18 +20,14 @@ var sgroupname string
 
 var signerGroupCmd = &cobra.Command{
     Use:   "signergroup",
-    Short: "A brief description of your command",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Signer group commands",
     Run: func(cmd *cobra.Command, args []string) {
     },
 }
 
 var addSignerGroupCmd = &cobra.Command{
     Use:   "add",
-    Short: "add a new signer group to MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Add a new signer group to MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         err := AddSignerGroup()
         if err != nil {
@@ -42,9 +38,7 @@ to quickly create a Cobra application.`,
 
 var deleteSignerGroupCmd = &cobra.Command{
     Use:   "delete",
-    Short: "delete a signer group from MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Delete a signer group from MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         err := DeleteSignerGroup()
         if err != nil {
@@ -55,9 +49,7 @@ to quickly create a Cobra application.`,
 
 var listSignerGroupsCmd = &cobra.Command{
     Use:   "list",
-    Short: "list all signer groups known to MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "List all signer groups known to MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         err := ListSignerGroups()
         if err != nil {

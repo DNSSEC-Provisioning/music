@@ -283,6 +283,14 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 resp.ErrorMsg = err.Error()
             }
 
+        case "update":
+            err, resp.Msg = mdb.UpdateSigner(sp.Signer)
+            if err != nil {
+                // log.Printf("Error from AddSigner: %v", err)
+                resp.Error = true
+                resp.ErrorMsg = err.Error()
+            }
+
         case "delete":
             err, resp.Msg = mdb.DeleteSigner(dbsigner)
             if err != nil {

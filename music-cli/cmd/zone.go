@@ -24,22 +24,14 @@ var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner string
 
 var zoneCmd = &cobra.Command{
     Use:   "zone",
-    Short: "A brief description of your command",
-    Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+    Short: "Zone commands",
     Run: func(cmd *cobra.Command, args []string) {
     },
 }
 
 var addZoneCmd = &cobra.Command{
     Use:   "add",
-    Short: "add a new zone to MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Add a new zone to MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         err := AddZone(dns.Fqdn(zonename), sgroupname) // for addzone it is ok if sgroupname==""
         if err != nil {
@@ -50,9 +42,7 @@ to quickly create a Cobra application.`,
 
 var zoneJoinGroupCmd = &cobra.Command{
     Use:   "join",
-    Short: "join a zone to a signer group",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Join a zone to a signer group",
     Run: func(cmd *cobra.Command, args []string) {
         _, _ = ZoneJoinGroup(dns.Fqdn(zonename), sgroupname)
     },
@@ -60,9 +50,7 @@ to quickly create a Cobra application.`,
 
 var zoneLeaveGroupCmd = &cobra.Command{
     Use:   "leave",
-    Short: "remove a zone from a signer group",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Remove a zone from a signer group",
     Run: func(cmd *cobra.Command, args []string) {
         _, _ = ZoneLeaveGroup(dns.Fqdn(zonename), sgroupname)
     },
@@ -70,9 +58,7 @@ to quickly create a Cobra application.`,
 
 var deleteZoneCmd = &cobra.Command{
     Use:   "delete",
-    Short: "delete a zone from MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Delete a zone from MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         err := DeleteZone()
         if err != nil {
@@ -83,12 +69,12 @@ to quickly create a Cobra application.`,
 
 var zoneFsmCmd = &cobra.Command{
     Use:   "fsm",
-    Short: "insert zone into an FSM",
-    Long: `Inserting a zone into a FSM will cause it to start
-a set of transitions from one state to the next under
-control of specific criteria for each transition. At each stage
-the current state is presented and manual transition may be
-initiated with the 'music-cli zone step -z {zone}' command.`,
+    Short: "Insert zone into an FSM",
+    Long: `Inserting a zone into a FSM will cause it to start a set of transitions
+from one state to the next under control of specific criteria for each
+transition. At each stage the current state is presented and manual
+transition may be initiated with the 'music-cli zone step -z {zone}'
+command.`,
     Run: func(cmd *cobra.Command, args []string) {
         failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
         if failure {
@@ -99,8 +85,7 @@ initiated with the 'music-cli zone step -z {zone}' command.`,
 
 var zoneStepFsmCmd = &cobra.Command{
     Use:   "step-fsm",
-    Short: "try to make the zone transition from one state to the next in the FSM",
-    Long:  `May or may not work, depending on the transition criteria.`,
+    Short: "Try to make the zone transition from one state to the next in the FSM",
     Run: func(cmd *cobra.Command, args []string) {
         failure, _, zm := ZoneStepFsm(dns.Fqdn(zonename))
         if failure {
@@ -113,8 +98,7 @@ var zoneStepFsmCmd = &cobra.Command{
 
 var zoneGetRRsetsCmd = &cobra.Command{
     Use:   "get-rrsets",
-    Short: "retrieve an rrset from the signers in the signer group for this zone",
-    Long:  `May or may not work, depending on the transition criteria.`,
+    Short: "Retrieve an rrset from the signers in the signer group for this zone",
     Run: func(cmd *cobra.Command, args []string) {
         failure, errmsg, rrsets := ZoneGetRRsets(dns.Fqdn(zonename), dns.Fqdn(ownername), rrtype)
         if failure {
@@ -127,8 +111,7 @@ var zoneGetRRsetsCmd = &cobra.Command{
 
 var zoneListRRsetCmd = &cobra.Command{
     Use:   "list-rrset",
-    Short: "retrieve an rrset from the db for one signer in the signer group for this zone (debug)",
-    Long:  `Tjoffa tjoffa.`,
+    Short: "Retrieve an rrset from the db for one signer in the signer group for this zone (debug)",
     Run: func(cmd *cobra.Command, args []string) {
         failure, errmsg, rrset := ZoneListRRset(dns.Fqdn(zonename),
             dns.Fqdn(ownername), rrtype, signername)
@@ -142,8 +125,7 @@ var zoneListRRsetCmd = &cobra.Command{
 
 var zoneCopyRRsetCmd = &cobra.Command{
     Use:   "copy-rrset",
-    Short: "copy an rrset from one signer in the signer group to another",
-    Long:  `Tjoffa tjoffa.`,
+    Short: "Copy an rrset from one signer in the signer group to another",
     Run: func(cmd *cobra.Command, args []string) {
         failure, errmsg, rrset := ZoneCopyRRset(dns.Fqdn(zonename),
             dns.Fqdn(ownername), rrtype, signername)
@@ -157,9 +139,7 @@ var zoneCopyRRsetCmd = &cobra.Command{
 
 var listZonesCmd = &cobra.Command{
     Use:   "list",
-    Short: "list all zones known to MuSiC",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "List all zones known to MuSiC",
     Run: func(cmd *cobra.Command, args []string) {
         zr, err := ListZones()
         if err != nil {

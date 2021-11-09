@@ -19,9 +19,7 @@ var pings int
 // pingCmd represents the ping command
 var pingCmd = &cobra.Command{
     Use:   "ping",
-    Short: "send a ping request to the musicd server, used for debugging",
-    Long: `A longer description that spans multiple lines and likely contains examples
-to quickly create a Cobra application.`,
+    Short: "Send a ping request to the musicd server, used for debugging",
     Run: func(cmd *cobra.Command, args []string) {
         PingMusicdServer()
     },
