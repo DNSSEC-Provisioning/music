@@ -16,32 +16,36 @@ import (
 
 var DefaultTables = map[string]string{
     "zones": `CREATE TABLE IF NOT EXISTS 'zones' (
-id        INTEGER PRIMARY KEY,
-name      VARCHAR(128),
-state     VARCHAR(32),
-statestamp DATETIME,
-fsm       VARCHAR(32),
-sgroup    VARCHAR(32))`,
+id          INTEGER PRIMARY KEY,
+name        TEXT,
+state       TEXT,
+statestamp  DATETIME,
+fsm         TEXT,
+sgroup      TEXT
+)`,
 
     "signers": `CREATE TABLE IF NOT EXISTS 'signers' (
-id        INTEGER PRIMARY KEY,
-name      VARCHAR(128),
-method    VARCHAR(32),
-auth      VARCHAR(32),
-addr      VARCHAR(32),
-status      VARCHAR(32),
-sgroup      VARCHAR(32))`,
+id          INTEGER PRIMARY KEY,
+name        TEXT,
+method      TEXT,
+auth        TEXT,
+addr        TEXT,
+status      TEXT,
+sgroup      TEXT
+)`,
 
     "signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
-id        INTEGER PRIMARY KEY,
-name      VARCHAR(32))`,
+id          INTEGER PRIMARY KEY,
+name        TEXT
+)`,
 
     "records": `CREATE TABLE IF NOT EXISTS 'records' (
-id        INTEGER PRIMARY KEY,
-owner     VARCHAR(64),
-signer      VARCHAR(32),
+id          INTEGER PRIMARY KEY,
+owner       TEXT,
+signer      TEXT,
 rrtype      INTEGER,
-rdata      VARCHAR(128))`,
+rdata       TEXT
+)`,
 }
 
 func dbSetupTables(db *sql.DB) bool {
