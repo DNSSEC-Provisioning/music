@@ -80,6 +80,41 @@ func (mdb *MusicDB) AddSigner(s Signer) (error, string) {
     return nil, fmt.Sprintf("New signer %s successfully added.", s.Name)
 }
 
+func (mdb *MusicDB) UpdateSigner(s Signer) (error, string) {
+    var err error
+    if _, err = mdb.GetSigner(s.Name); err != nil {
+        return errors.New(fmt.Sprintf("Signer %s not present in MuSiC system.", s.Name)), ""
+    }
+
+    s.Method = strings.ToLower(s.Method)
+    ok := false
+
+    switch s.Method {
+    case "ddns", "desec-api":
+        ok = true
+    }
+
+    if !ok {
+        return errors.New(fmt.Sprintf(
+            "Unknown signer method: %s. Known methods are: 'ddns' and 'desec-api'", s.Method)), ""
+    }
+
+    stmt, err := mdb.db.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
+    if err != nil {
+        fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
+    }
+
+    mdb.mu.Lock()
+    _, err = stmt.Exec(s.Method, s.Auth, s.Address, s.Name)
+    mdb.mu.Unlock()
+    if CheckSQLError("UpdateSigner", "", err, false) {
+        return err, ""
+    }
+
+    fmt.Printf("UpdateSigner: success: %s, %s, %s, %s\n", s.Name, s.Method, s.Auth, s.Address)
+    return nil, fmt.Sprintf("Signer %s successfully updated.", s.Name)
+}
+
 func (mdb *MusicDB) GetSigner(s string) (Signer, error) {
     sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
     stmt, err := mdb.db.Prepare(sqlcmd)

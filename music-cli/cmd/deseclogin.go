@@ -29,7 +29,6 @@ and data in deSEC without further complicating musicd.`,
 var desecLoginCmd = &cobra.Command{
     Use:   "login",
     Short: fmt.Sprintf("Login to the deSEC API. Store the received token on disk, in %s", DefaultTokenFile),
-    Long:  `Yab.`,
     Run: func(cmd *cobra.Command, args []string) {
         dlr, err := music.DesecLogin(&cliconf, tokvip) // DesecLogin() will only return on success
         if err != nil {
@@ -47,7 +46,6 @@ var desecLoginCmd = &cobra.Command{
 var desecLogoutCmd = &cobra.Command{
     Use:   "logout",
     Short: "Logout from the deSEC API and delete stored tokens",
-    Long:  `Yabba dabba doo.`,
     Run: func(cmd *cobra.Command, args []string) {
 
         tok := tokvip.GetString("token")

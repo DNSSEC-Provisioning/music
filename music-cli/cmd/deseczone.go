@@ -19,7 +19,6 @@ const timefmt = "2006-01-02 15:04:05"
 var desecZoneCmd = &cobra.Command{
     Use:   "zone",
     Short: "Manipulate zones stored in the deSEC service via their API",
-    Long:  `Yabba dabba doo.`,
     Run: func(cmd *cobra.Command, args []string) {
         fmt.Println("zone called")
     },
@@ -29,7 +28,6 @@ var desecZoneCmd = &cobra.Command{
 var desecZoneAddCmd = &cobra.Command{
     Use:   "add",
     Short: "Add a zone to be served by deSEC (note that the zone will be initially empty)",
-    Long:  `Yabba dabba doo.`,
     Run: func(cmd *cobra.Command, args []string) {
         if zonename == "" {
             fmt.Printf("Cannot add a zone without a name. Use '-z'\n")
@@ -43,7 +41,6 @@ var desecZoneAddCmd = &cobra.Command{
 var desecZoneDeleteCmd = &cobra.Command{
     Use:   "delete",
     Short: "Delete a zone from the deSEC service",
-    Long:  `Yabba dabba doo.`,
     Run: func(cmd *cobra.Command, args []string) {
         if zonename == "" {
             fmt.Printf("Cannot delete a zone without a name. Use '-z'\n")
@@ -57,7 +54,6 @@ var desecZoneDeleteCmd = &cobra.Command{
 var desecZoneListCmd = &cobra.Command{
     Use:   "list",
     Short: "List one or all zones served by deSEC",
-    Long:  `Yabba dabba doo.`,
     Run: func(cmd *cobra.Command, args []string) {
         zl, _ := music.DesecListZone(&cliconf, zonename, tokvip)
 
