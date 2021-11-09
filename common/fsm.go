@@ -8,14 +8,23 @@ import (
     "time"
 )
 
+const (
+    FsmStateSignerUnsynced = "signers-unsynced"
+    FsmStateSyncDnskeys    = "sync-dnskeys"
+    FsmStateAddCdscdnskeys = "add-cdscdnskeys"
+    FsmStateParentDsSynced = "parent-ds-synced"
+    FsmStateWaitDs         = "wait-ds"
+    FsmStateAddCsync       = "add-csync"
+    FsmStateParentNsSynced = "parent-ns-synced"
+    FsmStateStop           = "stop"
+)
+
 type FSMState struct {
-    Name string
     Next map[string]FSMTransition
 }
 
 type FSMTransition struct {
     Description string
-    Dest        string
     Criteria    func(z *Zone) bool
     Action      func(z *Zone) bool
 }
@@ -43,7 +52,6 @@ func FsmActionFactory(from, to string) func(z *Zone) bool {
 
 func FsmTransitionFactory(from, to string) FSMTransition {
     return FSMTransition{
-        Dest:     to,
         Criteria: FsmCriteriaFactory(from, to),
         Action:   FsmActionFactory(from, to),
     }
@@ -60,51 +68,43 @@ func PrintStateDuration(z *Zone, state string) {
         z.Name, state, z.Statestamp.Format(layout), dur)
 }
 
-// PROCESS: ADD-SIGNER
-var FSMT_AS_1 = FsmTransitionFactory("signers-unsynched", "cds-known")
-var FSMT_AS_2 = FsmTransitionFactory("cds-known", "cds-synched")
-var FSMT_AS_3 = FsmTransitionFactory("cds-synched", "zsk-synched")
-var FSMT_AS_4 = FsmTransitionFactory("zsk-synched", "ds-synched")
-var FSMT_AS_5 = FsmTransitionFactory("ds-synched", "cds-removed")
-var FSMT_AS_6 = FsmTransitionFactory("cds-removed", "ns-known")
-var FSMT_AS_7 = FsmTransitionFactory("ns-known", "ns-synched")
-var FSMT_AS_8 = FsmTransitionFactory("ns-synched", "csync-published")
-var FSMT_AS_9 = FsmTransitionFactory("csync-published", "parent-synched")
-var FSMT_AS_10 = FsmTransitionFactory("parent-synched", "signers-synched")
-var FSMT_AS_11 = FsmTransitionFactory("signers-synched", "stop")
-var FSMT_AS_12 = FSMTransition{
-    Description: "FSMT_AS_12",
-    Dest:        "stop",
-    Criteria:    FsmCriteriaFactory("stop", "stop"),
-    Action: func(z *Zone) bool {
-        fmt.Printf("Enter ACTION for <stop, stop>. zone state: %s\n", z.State)
-        z.StateTransition("stop", "stop")
-        fmt.Printf("FsmAction (stop): Exiting seems to have gone well. Yay!\n")
-        return true
-    },
+// Generic stop transistion
+func FsmTransitionStopFactory(from string) FSMTransition {
+    return FSMTransition{
+        Description: "Generic stop transition without criteria",
+        Criteria:    func(z *Zone) bool { return true },
+        Action: func(z *Zone) bool {
+            z.StateTransition(from, FsmStateStop)
+            return true
+        },
+    }
 }
 
+var FsmGenericStop = FsmTransitionStopFactory(FsmStateStop)
+
+// PROCESS: ADD-SIGNER
+// defined in fsm_join*.go
+
 // PROCESS: REMOVE-SIGNER
-var FSMT_RS_1 = FsmTransitionFactory("signers-unsynched", "ns-known")
-var FSMT_RS_2 = FsmTransitionFactory("ns-known", "ns-synched")
-var FSMT_RS_3 = FsmTransitionFactory("ns-synched", "csync-published")
-var FSMT_RS_3b = FsmTransitionFactory("ns-synched", "delegation-ns-synched")
-var FSMT_RS_4 = FsmTransitionFactory("csync-published", "delegation-ns-synched")
-var FSMT_RS_5 = FsmTransitionFactory("delegation-ns-synched", "delegation-ns-synched-2")
-var FSMT_RS_6 = FsmTransitionFactory("delegation-ns-synched-2", "delegation-ns-synched-3")
-var FSMT_RS_7 = FsmTransitionFactory("delegation-ns-synched-3", "cds-known")
-var FSMT_RS_8 = FsmTransitionFactory("cds-known", "cds-synched")
-var FSMT_RS_9 = FsmTransitionFactory("cds-synched", "zsk-synched")
-var FSMT_RS_10 = FsmTransitionFactory("zsk-synched", "ds-synched")
-var FSMT_RS_11 = FsmTransitionFactory("ds-synched", "signers-synched")
-var FSMT_RS_12 = FsmTransitionFactory("signers-synched", "stop") // terminator signal
+var FSMT_RS_1 = FsmTransitionFactory(FsmStateSignerUnsynced, "ns-known")
+var FSMT_RS_2 = FsmTransitionFactory("ns-known", "ns-synced")
+var FSMT_RS_3 = FsmTransitionFactory("ns-synced", "csync-published")
+var FSMT_RS_3b = FsmTransitionFactory("ns-synced", "delegation-ns-synced")
+var FSMT_RS_4 = FsmTransitionFactory("csync-published", "delegation-ns-synced")
+var FSMT_RS_5 = FsmTransitionFactory("delegation-ns-synced", "delegation-ns-synced-2")
+var FSMT_RS_6 = FsmTransitionFactory("delegation-ns-synced-2", "delegation-ns-synced-3")
+var FSMT_RS_7 = FsmTransitionFactory("delegation-ns-synced-3", "cds-known")
+var FSMT_RS_8 = FsmTransitionFactory("cds-known", "cds-synced")
+var FSMT_RS_9 = FsmTransitionFactory("cds-synced", "zsk-synced")
+var FSMT_RS_10 = FsmTransitionFactory("zsk-synced", "ds-synced")
+var FSMT_RS_11 = FsmTransitionFactory("ds-synced", "signers-synced")
+var FSMT_RS_12 = FsmTransitionFactory("signers-synced", FsmStateStop) // terminator signal
 var FSMT_RS_13 = FSMTransition{
     Description: "FSMT_RS_13",
-    Dest:        "stop",
-    Criteria:    FsmCriteriaFactory("stop", "stop"),
+    Criteria:    FsmCriteriaFactory(FsmStateStop, FsmStateStop),
     Action: func(z *Zone) bool {
         fmt.Printf("Enter ACTION for <stop, stop>. zone state: %s\n", z.State)
-        z.StateTransition("stop", "stop")
+        z.StateTransition(FsmStateStop, FsmStateStop)
         fmt.Printf("FsmAction (stop): Exiting the remove-signer process seems to have gone well. Yay!\n")
         return true
     },
@@ -112,17 +112,17 @@ var FSMT_RS_13 = FSMTransition{
 
 // PROCESS: ADD-ZONE (bogus process, only for testing)
 var FSMT_AZ_1 = FsmTransitionFactory("ready", "join-sync-cds")
-var FSMT_AZ_2 = FsmTransitionFactory("join-sync-cds", "join-cds-synched")
-var FSMT_AZ_3 = FsmTransitionFactory("join-cds-synched", "ready")
-var FSMT_AZ_3b = FsmTransitionFactory("join-cds-synched", "foobar")
+var FSMT_AZ_2 = FsmTransitionFactory("join-sync-cds", "join-cds-synced")
+var FSMT_AZ_3 = FsmTransitionFactory("join-cds-synced", "ready")
+var FSMT_AZ_3b = FsmTransitionFactory("join-cds-synced", "foobar")
 var FSMT_AZ_4 = FsmTransitionFactory("foobar", "ready")
 
 // PROCESS: ZSK-ROLLOVER
-var FSMT_ZR_1 = FsmTransitionFactory("signers-unsynched", "zsks-known")
-var FSMT_ZR_2 = FsmTransitionFactory("zsks-known", "zsks-synched")
-var FSMT_ZR_3 = FsmTransitionFactory("zsks-synched", "signers-synched")
-var FSMT_ZR_4 = FsmTransitionFactory("signers-synched", "stop")
-var FSMT_ZR_5 = FsmTransitionFactory("stop", "stop")
+var FSMT_ZR_1 = FsmTransitionFactory(FsmStateSignerUnsynced, "zsks-known")
+var FSMT_ZR_2 = FsmTransitionFactory("zsks-known", "zsks-synced")
+var FSMT_ZR_3 = FsmTransitionFactory("zsks-synced", "signers-synced")
+var FSMT_ZR_4 = FsmTransitionFactory("signers-synced", FsmStateStop)
+var FSMT_ZR_5 = FsmTransitionFactory(FsmStateStop, FsmStateStop)
 
 var FSMlist = map[string]FSM{
     // PROCESS: ADD-ZONE: This is a bogus process, only for testing.
@@ -131,22 +131,18 @@ var FSMlist = map[string]FSM{
         InitialState: "ready",
         States: map[string]FSMState{
             "ready": FSMState{
-                Name: "ready",
                 Next: map[string]FSMTransition{"join-sync-cds": FSMT_AZ_1},
             },
             "join-sync-cds": FSMState{
-                Name: "join-sync-cds",
-                Next: map[string]FSMTransition{"join-cds-synched": FSMT_AZ_2},
+                Next: map[string]FSMTransition{"join-cds-synced": FSMT_AZ_2},
             },
-            "join-cds-synched": FSMState{
-                Name: "join-cds-synched",
+            "join-cds-synced": FSMState{
                 Next: map[string]FSMTransition{
                     "ready":  FSMT_AZ_3,
                     "foobar": FSMT_AZ_3b,
                 },
             },
             "foobar": FSMState{
-                Name: "foobar",
                 Next: map[string]FSMTransition{"ready": FSMT_AZ_4},
             },
         },
@@ -155,55 +151,31 @@ var FSMlist = map[string]FSM{
     // PROCESS: ADD-SIGNER: This is a real process, from the draft doc.
     "add-signer": FSM{
         Type:         "single-run",
-        InitialState: "signers-unsynched",
+        InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{
-            "signers-unsynched": FSMState{
-                Name: "signers-unsynched",
-                Next: map[string]FSMTransition{"cds-known": FSMT_AS_1},
+            FsmStateSignerUnsynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateSyncDnskeys: FsmJoinSyncDnskeys},
             },
-            "cds-known": FSMState{
-                Name: "cds-known",
-                Next: map[string]FSMTransition{"cds-synched": FSMT_AS_2},
+            FsmStateSyncDnskeys: FSMState{
+                Next: map[string]FSMTransition{FsmStateAddCdscdnskeys: FsmJoinAddCdscdnskeys},
             },
-            "cds-synched": FSMState{
-                Name: "cds-synched",
-                Next: map[string]FSMTransition{"zsk-synched": FSMT_AS_3},
+            FsmStateAddCdscdnskeys: FSMState{
+                Next: map[string]FSMTransition{FsmStateParentDsSynced: FsmJoinParentDsSynced},
             },
-            "zsk-synched": FSMState{
-                Name: "zsk-synched",
-                Next: map[string]FSMTransition{"ds-synched": FSMT_AS_4},
+            FsmStateParentDsSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateWaitDs: FsmJoinWaitDs},
             },
-            "ds-synched": FSMState{
-                Name: "ds-synched",
-                Next: map[string]FSMTransition{"cds-removed": FSMT_AS_5},
+            FsmStateWaitDs: FSMState{
+                Next: map[string]FSMTransition{FsmStateAddCsync: FsmJoinAddCsync},
             },
-            "cds-removed": FSMState{
-                Name: "cds-removed",
-                Next: map[string]FSMTransition{"ns-known": FSMT_AS_6},
+            FsmStateAddCsync: FSMState{
+                Next: map[string]FSMTransition{FsmStateParentNsSynced: FsmJoinParentNsSynced},
             },
-            "ns-known": FSMState{
-                Name: "ns-known",
-                Next: map[string]FSMTransition{"ns-synched": FSMT_AS_7},
+            FsmStateParentNsSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FsmTransitionStopFactory(FsmStateParentNsSynced)},
             },
-            "ns-synched": FSMState{
-                Name: "ns-synched",
-                Next: map[string]FSMTransition{"csync-published": FSMT_AS_8},
-            },
-            "csync-published": FSMState{
-                Name: "csync-published",
-                Next: map[string]FSMTransition{"parent-synched": FSMT_AS_9},
-            },
-            "parent-synched": FSMState{
-                Name: "parent-synched",
-                Next: map[string]FSMTransition{"signers-synched": FSMT_AS_10},
-            },
-            "signers-synched": FSMState{
-                Name: "signers-synched",
-                Next: map[string]FSMTransition{"stop": FSMT_AS_11},
-            },
-            "stop": FSMState{
-                Name: "stop",
-                Next: map[string]FSMTransition{"stop": FSMT_AS_12},
+            FsmStateStop: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FsmGenericStop},
             },
         },
     },
@@ -211,64 +183,51 @@ var FSMlist = map[string]FSM{
     // PROCESS: REMOVE-SIGNER: This is a real process, from the draft doc.
     "remove-signer": FSM{
         Type:         "single-run",
-        InitialState: "signers-unsynched",
+        InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{
-            "signers-unsynched": FSMState{
-                Name: "signers-unsynched",
+            FsmStateSignerUnsynced: FSMState{
                 Next: map[string]FSMTransition{"ns-known": FSMT_RS_1},
             },
             "ns-known": FSMState{
-                Name: "ns-known",
-                Next: map[string]FSMTransition{"ns-synched": FSMT_RS_2},
+                Next: map[string]FSMTransition{"ns-synced": FSMT_RS_2},
             },
-            "ns-synched": FSMState{
-                Name: "ns-synched",
+            "ns-synced": FSMState{
                 Next: map[string]FSMTransition{
-                    "csync-published":       FSMT_RS_3,
-                    "delegation-ns-synched": FSMT_RS_3b,
+                    "csync-published":      FSMT_RS_3,
+                    "delegation-ns-synced": FSMT_RS_3b,
                 },
             },
             "csync-published": FSMState{
-                Name: "csync-published",
                 Next: map[string]FSMTransition{
-                    "delegation-ns-synched": FSMT_RS_4,
+                    "delegation-ns-synced": FSMT_RS_4,
                 },
             },
-            "delegation-ns-synched": FSMState{
-                Name: "delegation-ns-synched",
-                Next: map[string]FSMTransition{"delegation-ns-synched-2": FSMT_RS_5},
+            "delegation-ns-synced": FSMState{
+                Next: map[string]FSMTransition{"delegation-ns-synced-2": FSMT_RS_5},
             },
-            "delegation-ns-synched-2": FSMState{
-                Name: "delegation-ns-synched-2",
-                Next: map[string]FSMTransition{"delegation-ns-synched-3": FSMT_RS_6},
+            "delegation-ns-synced-2": FSMState{
+                Next: map[string]FSMTransition{"delegation-ns-synced-3": FSMT_RS_6},
             },
-            "delegation-ns-synched-3": FSMState{
-                Name: "delegation-ns-synched-3",
+            "delegation-ns-synced-3": FSMState{
                 Next: map[string]FSMTransition{"cds-known": FSMT_RS_7},
             },
             "cds-known": FSMState{
-                Name: "cds-known",
-                Next: map[string]FSMTransition{"cds-synched": FSMT_RS_8},
+                Next: map[string]FSMTransition{"cds-synced": FSMT_RS_8},
             },
-            "cds-synched": FSMState{
-                Name: "cds-synched",
-                Next: map[string]FSMTransition{"zsk-synched": FSMT_RS_9},
+            "cds-synced": FSMState{
+                Next: map[string]FSMTransition{"zsk-synced": FSMT_RS_9},
             },
-            "zsk-synched": FSMState{
-                Name: "zsk-synched",
-                Next: map[string]FSMTransition{"ds-synched": FSMT_RS_10},
+            "zsk-synced": FSMState{
+                Next: map[string]FSMTransition{"ds-synced": FSMT_RS_10},
             },
-            "ds-synched": FSMState{
-                Name: "ds-synched",
-                Next: map[string]FSMTransition{"signers-synched": FSMT_RS_11},
+            "ds-synced": FSMState{
+                Next: map[string]FSMTransition{"signers-synced": FSMT_RS_11},
             },
-            "signers-synched": FSMState{
-                Name: "signers-synched",
-                Next: map[string]FSMTransition{"stop": FSMT_RS_12},
+            "signers-synced": FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FSMT_RS_12},
             },
-            "stop": FSMState{
-                Name: "stop",
-                Next: map[string]FSMTransition{"stop": FSMT_RS_13},
+            FsmStateStop: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FSMT_RS_13},
             },
         },
     },
@@ -276,29 +235,22 @@ var FSMlist = map[string]FSM{
     // PROCESS: ZSK-ROLLOVER: This is a real process
     "zsk-rollover": FSM{
         Type:         "single-run",
-        InitialState: "signers-unsynched",
+        InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{
-            "signers-unsynched": FSMState{
-                Name: "signers-unsynched",
+            FsmStateSignerUnsynced: FSMState{
                 Next: map[string]FSMTransition{"zsk-known": FSMT_ZR_1},
             },
             "zsk-known": FSMState{
-                Name: "dnskeys-known",
-                Next: map[string]FSMTransition{"zsk-synched": FSMT_ZR_2},
+                Next: map[string]FSMTransition{"zsk-synced": FSMT_ZR_2},
             },
-            "zsk-synched": FSMState{
-                Name: "zsk-synched",
-                Next: map[string]FSMTransition{
-                    "signers-synched": FSMT_ZR_3,
-                },
+            "zsk-synced": FSMState{
+                Next: map[string]FSMTransition{"signers-synced": FSMT_ZR_3},
             },
-            "signers-synched": FSMState{
-                Name: "signers-synched",
-                Next: map[string]FSMTransition{"stop": FSMT_ZR_4},
+            "signers-synced": FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FSMT_ZR_4},
             },
-            "stop": FSMState{
-                Name: "stop",
-                Next: map[string]FSMTransition{"stop": FSMT_ZR_5},
+            FsmStateStop: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FSMT_ZR_5},
             },
         },
     },

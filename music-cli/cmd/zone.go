@@ -625,16 +625,13 @@ func PrintZones(zm map[string]music.Zone) {
             zone.ZskState = "---"
         }
 
-        var pnext string
+        nextStates := []string{}
         for k, _ := range zone.NextState {
-            pnext += " " + k
-        }
-        if len(pnext) > 1 {
-            pnext = pnext[1:]
+            nextStates = append(nextStates, k)
         }
         out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zone.Name, group, fsm,
             zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
-            pnext, zone.ZskState))
+            strings.Join(nextStates, " "), zone.ZskState))
     }
     fmt.Printf("%s\n", columnize.SimpleFormat(out))
 }

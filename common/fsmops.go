@@ -7,6 +7,7 @@ package music
 import (
     "errors"
     "fmt"
+    "strings"
     // "time"
 
     _ "github.com/mattn/go-sqlite3"
@@ -72,35 +73,36 @@ func (mdb *MusicDB) ZoneStepFsm(zonename string, dbzone *Zone, exist bool,
 
     CurrentFsm := FSMlist[fsmname]
 
+    state := dbzone.State
     var CurrentState FSMState
-    if CurrentState, exist = CurrentFsm.States[dbzone.State]; !exist {
+    if CurrentState, exist = CurrentFsm.States[state]; !exist {
         return errors.New(fmt.Sprintf("Zone state '%s' does not exist in process %s. Terminating.",
-            dbzone.State, dbzone.FSM)), "", emptyzm
+            state, dbzone.FSM)), "", emptyzm
     }
 
-    transitions := CurrentState.Next
-
-    possibles := ""
-    // keys := make([]string, len(transitions))
-    var keys []string
-    for k, _ := range transitions {
-        possibles += " " + k
-        keys = append(keys, k)
+    var transistions []string
+    for k, _ := range CurrentState.Next {
+        transistions = append(transistions, k)
     }
 
     msgtmpl := "Zone %s transitioned to state '%s' in process '%s'."
 
-    if len(transitions) == 1 && transitions[keys[0]].Criteria(dbzone) {
-        transitions[keys[0]].Action(dbzone)
-        return nil, fmt.Sprintf(msgtmpl, dbzone.Name, keys[0], fsmname),
-            map[string]Zone{dbzone.Name: *dbzone}
+    if len(CurrentState.Next) == 1 {
+        if CurrentState.Next[transistions[0]].Criteria(dbzone) {
+            CurrentState.Next[transistions[0]].Action(dbzone)
+            return nil, fmt.Sprintf(msgtmpl, dbzone.Name, transistions[0], fsmname),
+                map[string]Zone{dbzone.Name: *dbzone}
+        } else {
+            return errors.New(
+                fmt.Sprintf("Criteria for '%s' failed", state)), "", emptyzm
+        }
     }
 
-    if len(transitions) > 1 {
+    if len(CurrentState.Next) > 1 {
         if nextstate != "" {
-            if _, exist := transitions[nextstate]; exist {
-                if transitions[nextstate].Criteria(dbzone) {
-                    transitions[nextstate].Action(dbzone)
+            if _, exist := CurrentState.Next[nextstate]; exist {
+                if CurrentState.Next[nextstate].Criteria(dbzone) {
+                    CurrentState.Next[nextstate].Action(dbzone)
                     return nil,
                         fmt.Sprintf(msgtmpl, dbzone.Name,
                             nextstate, fsmname),
@@ -109,23 +111,23 @@ func (mdb *MusicDB) ZoneStepFsm(zonename string, dbzone *Zone, exist bool,
                     return errors.New(
                         fmt.Sprintf(
                             "State '%s' is a possible next state from '%s' but criteria failed",
-                            nextstate, CurrentState.Name)), "", emptyzm
+                            nextstate, state)), "", emptyzm
                 }
             } else {
                 return errors.New(
                     fmt.Sprintf(
                         "State '%s' is not a possible next state from '%s'",
-                        nextstate, CurrentState.Name)), "", emptyzm
+                        nextstate, state)), "", emptyzm
             }
         } else {
             return errors.New(fmt.Sprintf(
                 "Multiple possible next states from '%s': [%s] but next state not specified",
-                CurrentState.Name, possibles[1:])), "", emptyzm
+                state, strings.Join(transistions, " "))), "", emptyzm
         }
     }
 
-    // Arriving here equals len(transitions) == 0, i.e. you are in a state with no "next" state.
+    // Arriving here equals len(CurrentState.Next) == 0, i.e. you are in a state with no "next" state.
     // If that happens the FSM is likely buggy.
     return errors.New(fmt.Sprintf(
-        "Zero possible next states from '%s': you lose.", CurrentState.Name)), "", emptyzm
+        "Zero possible next states from '%s': you lose.", state)), "", emptyzm
 }

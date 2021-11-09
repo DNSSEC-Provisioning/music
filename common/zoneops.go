@@ -84,7 +84,7 @@ func (z *Zone) StateTransition(from, to string) error {
         return errors.New(fmt.Sprintf("StateTransition: Error: zone %s is in state '%s'. Should be '%s'.\n", z.State, from))
     }
 
-    if from == "stop" && to == "stop" {
+    if from == FsmStateStop && to == FsmStateStop {
         fmt.Printf("StateTransition: terminal state reached. Exiting process.\n")
         to = "---"
         fsm = "---"
@@ -235,7 +235,7 @@ func (mdb *MusicDB) ZoneJoinGroup(zonename string, dbzone *Zone, exist bool, g s
             "Zone %s has joined signer group %s and started the process '%s'.", zonename, SignerJoinGroupProcess)
     }
     return nil, fmt.Sprintf(
-        `Zone %s has joined signer group %s but could not start the process '%s' 
+        `Zone %s has joined signer group %s but could not start the process '%s'
 as the zone is already in process '%s'. Problematic.`, zonename, SignerJoinGroupProcess, dbzone.FSM)
 }
 
