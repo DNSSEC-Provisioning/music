@@ -183,7 +183,7 @@ func (mdb *MusicDB) SignerJoinGroup(s Signer, g string) (error, string) {
     }
 
     // if we now have more than one signer in the signer group it is possible that they
-    // are unsynched. Then we must enter the "add-signer" process to get them in sync.
+    // are unsynced. Then we must enter the "add-signer" process to get them in sync.
     if len(sg.SignerMap) > 1 {
         zones, err := mdb.GetSignerGroupZones(sg)
         if err != nil {
