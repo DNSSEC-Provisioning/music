@@ -6,3 +6,4 @@ etc/*
 sbin/*
 musicd/musicd
 *~
+music.db

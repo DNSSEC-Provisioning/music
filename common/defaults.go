@@ -4,8 +4,8 @@
 package music
 
 const (
-	SignerJoinGroupProcess = "add-signer"
-	SignerLeaveGroupProcess = "remove-signer"
+    SignerJoinGroupProcess  = "add-signer"
+    SignerLeaveGroupProcess = "remove-signer"
 
-	SignerGroupMinimumSigners = 1
+    SignerGroupMinimumSigners = 1
 )
