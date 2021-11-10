@@ -149,7 +149,7 @@ func AddSigner() error {
         Signer: music.Signer{
             Name:    signername,
             Method:  signermethod,
-            Auth:    music.AuthDataTmp(signerauth),
+            Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             Address: signeraddress,
         },
     }
@@ -183,7 +183,7 @@ func UpdateSigner() error {
         Signer: music.Signer{
             Name:    signername,
             Method:  signermethod,
-            Auth:    music.AuthDataTmp(signerauth),
+            Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             Address: signeraddress,
         },
     }
@@ -225,7 +225,7 @@ func SignerJoinGroup(signer, group string) (bool, string) {
         Signer: music.Signer{
             Name:        signer,
             Method:      signermethod,
-            Auth:        music.AuthDataTmp(signerauth),
+            Auth:        signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             SignerGroup: group,
         },
     }
@@ -266,7 +266,7 @@ func SignerLeaveGroup(signer, group string) (bool, string) {
         Signer: music.Signer{
             Name:        signer,
             Method:      signermethod,
-            Auth:        music.AuthDataTmp(signerauth),
+            Auth:        signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             SignerGroup: group,
         },
     }
