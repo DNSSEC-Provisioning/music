@@ -24,6 +24,14 @@ fsm         TEXT,
 sgroup      TEXT
 )`,
 
+    "zone_dnskeys": `CREATE TABLE IF NOT EXISTS 'zone_dnskeys' (
+id          INTEGER PRIMARY KEY,
+zone        TEXT,
+dnskey      TEXT,
+signer      TEXT,
+UNIQUE (zone, dnskey)
+)`,
+
     "signers": `CREATE TABLE IF NOT EXISTS 'signers' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,

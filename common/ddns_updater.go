@@ -2,7 +2,8 @@ package music
 
 import (
     "fmt"
-    // "time"
+    "strings"
+    "time"
 
     "github.com/miekg/dns"
 )
@@ -34,8 +35,13 @@ func (u *DdnsUpdater) Update(signer *Signer, fqdn string, inserts, removes *[][]
     if signer.Address == "" {
         return fmt.Errorf("No ip|host for signer %s", signer.Name)
     }
-
-    // TODO: need TSIG key + secret from signer.Auth
+    if signer.Auth == "" {
+        return fmt.Errorf("No TSIG for signer %s", signer.Name)
+    }
+    tsig := strings.SplitN(signer.Auth, ":", 2)
+    if len(tsig) != 2 {
+        return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
+    }
 
     m := new(dns.Msg)
     m.SetUpdate(fqdn)
@@ -49,16 +55,16 @@ func (u *DdnsUpdater) Update(signer *Signer, fqdn string, inserts, removes *[][]
             m.Remove(remove)
         }
     }
-    // TOOD: once we have TSIG
-    // m.SetTsig(tsigkey+".", dns.HmacSHA256, 300, time.Now().Unix())
+    m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
     c := new(dns.Client)
-    // TOOD: once we have TSIG
-    // c.TsigSecret = map[string]string{tsigkey + ".": secret}
-    // TODO: in, rtt - use?
-    _, _, err := c.Exchange(m, signer.Address)
+    c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+    in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
     if err != nil {
         return err
+    }
+    if in.MsgHdr.Rcode != dns.RcodeSuccess {
+        return fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode])
     }
 
     return nil
@@ -76,24 +82,29 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, fqdn string, rrsets [][]dns.RR
     if signer.Address == "" {
         return fmt.Errorf("No ip|host for signer %s", signer.Name)
     }
-
-    // TODO: need TSIG key + secret from signer.Auth
+    if signer.Auth == "" {
+        return fmt.Errorf("No TSIG for signer %s", signer.Name)
+    }
+    tsig := strings.SplitN(signer.Auth, ":", 2)
+    if len(tsig) != 2 {
+        return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
+    }
 
     m := new(dns.Msg)
     m.SetUpdate(fqdn)
     for _, rrset := range rrsets {
         m.RemoveRRset(rrset)
     }
-    // TOOD: once we have TSIG
-    // m.SetTsig(tsigkey+".", dns.HmacSHA256, 300, time.Now().Unix())
+    m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
     c := new(dns.Client)
-    // TOOD: once we have TSIG
-    // c.TsigSecret = map[string]string{tsigkey + ".": secret}
-    // TODO: in, rtt - use?
-    _, _, err := c.Exchange(m, signer.Address)
+    c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+    in, _, err := c.Exchange(m, signer.Address)
     if err != nil {
         return err
+    }
+    if in.MsgHdr.Rcode != dns.RcodeSuccess {
+        return fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode])
     }
 
     return nil

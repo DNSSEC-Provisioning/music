@@ -55,12 +55,12 @@ type Signer struct {
     Name        string
     Method      string // "ddns" | "desec" | ...
     Address     string
-    Auth        AuthDataTmp
+    Auth        string // AuthDataTmp // TODO: Issue #28
     SignerGroup string
     DB          *MusicDB
 }
 
-type AuthDataTmp string
+// type AuthDataTmp string // TODO: Issue #28
 
 type AuthData struct {
     TSIGKey    string

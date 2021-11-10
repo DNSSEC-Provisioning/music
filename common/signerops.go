@@ -135,7 +135,7 @@ func (mdb *MusicDB) GetSigner(s string) (Signer, error) {
         return Signer{
             Name:        name,
             Method:      method,
-            Auth:        AuthDataTmp(auth),
+            Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
             Address:     address,
             SignerGroup: signergroup,
             DB:          mdb,
@@ -304,7 +304,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
             sl[name] = Signer{
                 Name:        name,
                 Method:      method,
-                Auth:        AuthDataTmp(auth),
+                Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
                 SignerGroup: signergroup,
             }
         }
