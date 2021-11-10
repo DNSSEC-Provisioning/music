@@ -9,7 +9,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/DNSSEC-Provisioning/music/common"
+    music "github.com/DNSSEC-Provisioning/music/common"
 
     "github.com/ryanuber/columnize"
     "github.com/spf13/cobra"
@@ -141,8 +141,6 @@ func init() {
 }
 
 func AddSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
 
     data := music.SignerPost{
         Command: "add",
@@ -157,10 +155,9 @@ func AddSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {

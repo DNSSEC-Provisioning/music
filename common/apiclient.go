@@ -8,8 +8,8 @@ package music
 import (
     "bytes"
     "crypto/tls"
+    "crypto/x509"
 
-    //    "crypto/x509"
     "errors"
     "fmt"
     "io/ioutil"
@@ -323,8 +323,23 @@ func NewClient(debug bool) *Api {
     api.Apiurl = viper.GetString("musicd.baseurl")
     api.apiKey = viper.GetString("musicd.apikey")
     api.Authmethod = viper.GetString("musicd.authmethod")
-    api.Client = &http.Client{}
-    log.Printf("client is a: %T\n", api.Client)
+
+    rootCAPool := x509.NewCertPool()
+    rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
+
+    if err != nil {
+        log.Fatalf("reading cert failed : %v", err)
+    }
+
+    rootCAPool.AppendCertsFromPEM(rootCA)
+
+    api.Client = &http.Client{
+        Transport: &http.Transport{
+            TLSClientConfig: &tls.Config{
+                RootCAs: rootCAPool,
+            },
+        },
+    }
 
     if debug {
         fmt.Printf("apiurl is: %s \n apikey is: %s \n authmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)

@@ -2,6 +2,8 @@ apiserver:
    address:	127.0.0.1:8080
    usetls:	false   
    apikey:	you-have-stolen-my-frotzblinger
+   certFile: ../etc/certs/localhost+2.pem
+   keyFile: ../etc/certs/localhost+2.pem
 
 signers:
    desec:
