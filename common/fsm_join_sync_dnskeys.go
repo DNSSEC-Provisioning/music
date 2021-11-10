@@ -13,7 +13,6 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
     log.Printf("Syncing DNSKEYs for %s in group %s", z.Name, z.sgroup.Name)
 
     for _, s := range z.sgroup.SignerMap {
-
         m := new(dns.Msg)
         m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
