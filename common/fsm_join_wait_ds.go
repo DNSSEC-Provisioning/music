@@ -150,7 +150,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
         log.Printf("%s: Update %s successfully with NS record sets", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateParentDsSynced, FsmStateWaitDs)
+    z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
     return true
 }
 

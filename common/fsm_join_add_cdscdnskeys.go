@@ -130,7 +130,7 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
         log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateSyncDnskeys, FsmStateAddCdscdnskeys)
+    z.StateTransition(FsmStateDnskeysSynced, FsmStateCdscdnskeysAdded)
     return true
 }
 

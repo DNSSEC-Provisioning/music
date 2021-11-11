@@ -9,14 +9,14 @@ import (
 )
 
 const (
-    FsmStateSignerUnsynced = "signers-unsynced"
-    FsmStateSyncDnskeys    = "sync-dnskeys"
-    FsmStateAddCdscdnskeys = "add-cdscdnskeys"
-    FsmStateParentDsSynced = "parent-ds-synced"
-    FsmStateWaitDs         = "wait-ds"
-    FsmStateAddCsync       = "add-csync"
-    FsmStateParentNsSynced = "parent-ns-synced"
-    FsmStateStop           = "stop"
+    FsmStateSignerUnsynced   = "signers-unsynced"
+    FsmStateDnskeysSynced    = "dnskeys-synced"
+    FsmStateCdscdnskeysAdded = "cdscdnskeys-added"
+    FsmStateParentDsSynced   = "parent-ds-synced"
+    FsmStateDsPropagated     = "ds-propagated"
+    FsmStateCsyncAdded       = "csync-added"
+    FsmStateParentNsSynced   = "parent-ns-synced"
+    FsmStateStop             = "stop"
 )
 
 type FSMState struct {
@@ -154,21 +154,21 @@ var FSMlist = map[string]FSM{
         InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{
             FsmStateSignerUnsynced: FSMState{
-                Next: map[string]FSMTransition{FsmStateSyncDnskeys: FsmJoinSyncDnskeys},
+                Next: map[string]FSMTransition{FsmStateDnskeysSynced: FsmJoinSyncDnskeys},
             },
-            FsmStateSyncDnskeys: FSMState{
-                Next: map[string]FSMTransition{FsmStateAddCdscdnskeys: FsmJoinAddCdscdnskeys},
+            FsmStateDnskeysSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateCdscdnskeysAdded: FsmJoinAddCdscdnskeys},
             },
-            FsmStateAddCdscdnskeys: FSMState{
+            FsmStateCdscdnskeysAdded: FSMState{
                 Next: map[string]FSMTransition{FsmStateParentDsSynced: FsmJoinParentDsSynced},
             },
             FsmStateParentDsSynced: FSMState{
-                Next: map[string]FSMTransition{FsmStateWaitDs: FsmJoinWaitDs},
+                Next: map[string]FSMTransition{FsmStateDsPropagated: FsmJoinWaitDs},
             },
-            FsmStateWaitDs: FSMState{
-                Next: map[string]FSMTransition{FsmStateAddCsync: FsmJoinAddCsync},
+            FsmStateDsPropagated: FSMState{
+                Next: map[string]FSMTransition{FsmStateCsyncAdded: FsmJoinAddCsync},
             },
-            FsmStateAddCsync: FSMState{
+            FsmStateCsyncAdded: FSMState{
                 Next: map[string]FSMTransition{FsmStateParentNsSynced: FsmJoinParentNsSynced},
             },
             FsmStateParentNsSynced: FSMState{

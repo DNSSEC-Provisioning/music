@@ -105,7 +105,7 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
         log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateAddCdscdnskeys, FsmStateParentDsSynced)
+    z.StateTransition(FsmStateCdscdnskeysAdded, FsmStateParentDsSynced)
     return true
 }
 
