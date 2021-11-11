@@ -9,11 +9,10 @@ import (
     "fmt"
     "log"
 
-    "github.com/DNSSEC-Provisioning/music/common"
+    music "github.com/DNSSEC-Provisioning/music/common"
 
     "github.com/ryanuber/columnize"
     "github.com/spf13/cobra"
-    "github.com/spf13/viper"
 )
 
 var sgroupname string
@@ -68,9 +67,6 @@ func init() {
 }
 
 func AddSignerGroup() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signergroup"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerGroupPost{
         Command: "add",
         Name:    sgroupname,
@@ -78,10 +74,9 @@ func AddSignerGroup() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signergroup", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -99,9 +94,6 @@ func AddSignerGroup() error {
 }
 
 func DeleteSignerGroup() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signergroup"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerGroupPost{
         Command: "delete",
         Name:    sgroupname,
@@ -109,10 +101,9 @@ func DeleteSignerGroup() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signergroup", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -130,9 +121,6 @@ func DeleteSignerGroup() error {
 }
 
 func ListSignerGroups() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signergroup"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerGroupPost{
         Command: "list",
     }
@@ -140,10 +128,9 @@ func ListSignerGroups() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signergroup", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {

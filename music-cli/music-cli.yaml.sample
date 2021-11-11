@@ -8,3 +8,5 @@ api:
 musicd:
    baseurl:	http://127.0.0.1:8080/api/v1
    apikey:	you-have-stolen-my-frotzblinger
+   authmethod: X-API-Key
+   rootCApem: ../etc/certs/rootCA.pem

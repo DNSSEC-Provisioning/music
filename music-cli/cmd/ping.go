@@ -58,11 +58,11 @@ func PingMusicdServer() {
     }
 
     var pr music.PingResponse
+
     err = json.Unmarshal(buf, &pr)
     if err != nil {
         log.Fatalf("Error from unmarshal: %v\n", err)
     }
 
     fmt.Printf("Pings: %d Pongs: %d Message: %s\n", pr.Pings, pr.Pongs, pr.Message)
-    return
 }

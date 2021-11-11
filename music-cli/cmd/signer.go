@@ -9,11 +9,10 @@ import (
     "fmt"
     "log"
 
-    "github.com/DNSSEC-Provisioning/music/common"
+    music "github.com/DNSSEC-Provisioning/music/common"
 
     "github.com/ryanuber/columnize"
     "github.com/spf13/cobra"
-    "github.com/spf13/viper"
 )
 
 var signername, signermethod, signerauth, signeraddress string
@@ -141,8 +140,6 @@ func init() {
 }
 
 func AddSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
 
     data := music.SignerPost{
         Command: "add",
@@ -157,10 +154,9 @@ func AddSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -175,9 +171,6 @@ func AddSigner() error {
 }
 
 func UpdateSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerPost{
         Command: "update",
         Signer: music.Signer{
@@ -191,10 +184,9 @@ func UpdateSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -209,9 +201,6 @@ func UpdateSigner() error {
 }
 
 func SignerJoinGroup(signer, group string) (bool, string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     if signer == "" {
         log.Fatalf("SignerJoinGroup: signer not specified. Terminating.\n")
     }
@@ -232,10 +221,9 @@ func SignerJoinGroup(signer, group string) (bool, string) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error()
     }
     if cliconf.Debug {
@@ -250,9 +238,6 @@ func SignerJoinGroup(signer, group string) (bool, string) {
 }
 
 func SignerLeaveGroup(signer, group string) (bool, string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     if signer == "" {
         log.Fatalf("SignerLeaveGroup: signer not specified. Terminating.\n")
     }
@@ -273,10 +258,9 @@ func SignerLeaveGroup(signer, group string) (bool, string) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error()
     }
     if cliconf.Debug {
@@ -291,9 +275,6 @@ func SignerLeaveGroup(signer, group string) (bool, string) {
 }
 
 func DeleteSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerPost{
         Command: "delete",
         Signer: music.Signer{
@@ -303,10 +284,9 @@ func DeleteSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -321,9 +301,6 @@ func DeleteSigner() error {
 }
 
 func LoginSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerPost{
         Command: "login",
         Signer: music.Signer{
@@ -333,10 +310,9 @@ func LoginSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -351,9 +327,6 @@ func LoginSigner() error {
 }
 
 func LogoutSigner() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerPost{
         Command: "logout",
         Signer: music.Signer{
@@ -363,10 +336,9 @@ func LogoutSigner() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -395,9 +367,6 @@ func PrintSignerResponse(err error, iserr bool, errormsg, msg string) {
 }
 
 func ListSigners() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/signer"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.SignerPost{
         Command: "list",
     }
@@ -405,10 +374,9 @@ func ListSigners() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/signer", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {

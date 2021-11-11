@@ -14,7 +14,7 @@ import (
 
     "github.com/miekg/dns"
 
-    "github.com/DNSSEC-Provisioning/music/common"
+    music "github.com/DNSSEC-Provisioning/music/common"
 
     "github.com/gorilla/mux"
     "github.com/spf13/viper"
@@ -472,10 +472,12 @@ func walkRoutes(router *mux.Router, address string) {
 func APIdispatcher(conf *Config) error {
     router := SetupRouter(conf)
     address := viper.GetString("apiserver.address")
+    certFile := viper.GetString("apiserver.certFile")
+    keyFile := viper.GetString("apiserver.keyFile")
 
     if address != "" {
         log.Println("Starting API dispatcher. Listening on", address)
-        log.Fatal(http.ListenAndServe(address, router))
+        log.Fatal(http.ListenAndServeTLS(address, certFile, keyFile, router))
     }
 
     log.Println("API dispatcher: unclear how to stop the http server nicely.")

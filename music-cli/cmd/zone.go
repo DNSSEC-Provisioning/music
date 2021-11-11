@@ -12,12 +12,11 @@ import (
     "sort"
     "strings"
 
-    "github.com/DNSSEC-Provisioning/music/common"
+    music "github.com/DNSSEC-Provisioning/music/common"
 
     "github.com/miekg/dns"
     "github.com/ryanuber/columnize"
     "github.com/spf13/cobra"
-    "github.com/spf13/viper"
 )
 
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner string
@@ -165,9 +164,6 @@ func init() {
 }
 
 func AddZone(zonename, sgroup string) error {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     // IsDomainName() is too liberal, we need a stricter test.
     if _, ok := dns.IsDomainName(zonename); !ok {
         log.Fatalf("AddZone: Error: '%s' is not a legal domain name. Terminating.\n", zonename)
@@ -182,11 +178,9 @@ func AddZone(zonename, sgroup string) error {
     }
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
-
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -204,9 +198,6 @@ func AddZone(zonename, sgroup string) error {
 }
 
 func ZoneFsm(zone, fsm string) (bool, string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if zone == "" {
         log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
     }
@@ -225,10 +216,9 @@ func ZoneFsm(zone, fsm string) (bool, string) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error()
     }
     if cliconf.Debug {
@@ -246,9 +236,6 @@ func ZoneFsm(zone, fsm string) (bool, string) {
 }
 
 func ZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if zone == "" {
         log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
     }
@@ -274,10 +261,9 @@ func ZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error(), map[string]music.Zone{}
     }
     if cliconf.Debug {
@@ -295,9 +281,6 @@ func ZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
 }
 
 func ZoneJoinGroup(zone, group string) (bool, string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if zone == "" {
         log.Fatalf("ZoneJoinGroup: zone not specified. Terminating.\n")
     }
@@ -316,10 +299,9 @@ func ZoneJoinGroup(zone, group string) (bool, string) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error()
     }
     if cliconf.Debug {
@@ -337,9 +319,6 @@ func ZoneJoinGroup(zone, group string) (bool, string) {
 }
 
 func ZoneLeaveGroup(zone, group string) (bool, string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if zone == "" {
         log.Fatalf("ZoneLeaveGroup: zone not specified. Terminating.\n")
     }
@@ -358,10 +337,9 @@ func ZoneLeaveGroup(zone, group string) (bool, string) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key", bytebuf.Bytes(),
-        false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error()
     }
     if cliconf.Debug {
@@ -379,9 +357,6 @@ func ZoneLeaveGroup(zone, group string) (bool, string) {
 }
 
 func DeleteZone() error {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.ZonePost{
         Command: "delete",
         Zone: music.Zone{
@@ -391,10 +366,9 @@ func DeleteZone() error {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return err
     }
     if cliconf.Debug {
@@ -412,9 +386,6 @@ func DeleteZone() error {
 }
 
 func ListZones() (map[string]music.Zone, error) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     data := music.ZonePost{
         Command: "list",
     }
@@ -422,10 +393,9 @@ func ListZones() (map[string]music.Zone, error) {
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return map[string]music.Zone{}, err
     }
     if cliconf.Debug {
@@ -443,9 +413,6 @@ func ListZones() (map[string]music.Zone, error) {
 }
 
 func ZoneGetRRsets(zone, owner, rrtype string) (bool, string, map[string][]string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if !strings.HasSuffix(owner, zone) {
         fmt.Printf("Error: zone name %s is not a suffix of owner name %s\n", zone, owner)
         os.Exit(1)
@@ -463,10 +430,9 @@ func ZoneGetRRsets(zone, owner, rrtype string) (bool, string, map[string][]strin
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error(), map[string][]string{}
     }
     if cliconf.Debug {
@@ -487,9 +453,6 @@ func ZoneGetRRsets(zone, owner, rrtype string) (bool, string, map[string][]strin
 }
 
 func ZoneListRRset(zone, owner, rrtype, signer string) (bool, string, []string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if !strings.HasSuffix(owner, zone) {
         fmt.Printf("Error: zone name %s is not a suffix of owner name %s\n", zone, owner)
         os.Exit(1)
@@ -508,10 +471,9 @@ func ZoneListRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error(), []string{}
     }
     if cliconf.Debug {
@@ -532,9 +494,6 @@ func ZoneListRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
 }
 
 func ZoneCopyRRset(zone, owner, rrtype, signer string) (bool, string, []string) {
-    apiurl := viper.GetString("musicd.baseurl") + "/zone"
-    apikey := viper.GetString("musicd.apikey")
-
     if !strings.HasSuffix(owner, zone) {
         fmt.Printf("Error: zone name %s is not a suffix of owner name %s\n", zone, owner)
         os.Exit(1)
@@ -555,10 +514,9 @@ func ZoneCopyRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
     bytebuf := new(bytes.Buffer)
     json.NewEncoder(bytebuf).Encode(data)
 
-    status, buf, err := music.GenericAPIpost(apiurl, apikey, "X-API-Key",
-        bytebuf.Bytes(), false, cliconf.Verbose, cliconf.Debug, nil)
+    status, buf, err := api.Post("/zone", bytebuf.Bytes())
     if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
+        log.Println("Error from APIpost:", err)
         return true, err.Error(), []string{}
     }
     if cliconf.Debug {
