@@ -87,7 +87,7 @@ func fsmJoinParentNsSyncedAction(z *Zone) bool {
         log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateAddCsync, FsmStateParentNsSynced)
+    z.StateTransition(FsmStateCsyncAdded, FsmStateParentNsSynced)
     return true
 }
 

@@ -109,7 +109,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
         }
     }
 
-    z.StateTransition(FsmStateWaitDs, FsmStateAddCsync)
+    z.StateTransition(FsmStateDsPropagated, FsmStateCsyncAdded)
     return true
 }
 

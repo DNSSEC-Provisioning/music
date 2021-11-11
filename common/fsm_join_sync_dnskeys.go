@@ -108,7 +108,7 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
         }
     }
 
-    z.StateTransition(FsmStateSignerUnsynced, FsmStateSyncDnskeys)
+    z.StateTransition(FsmStateSignerUnsynced, FsmStateDnskeysSynced)
     return true
 }
 
