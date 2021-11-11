@@ -7,7 +7,7 @@ import (
     "github.com/miekg/dns"
 )
 
-func fsmJoinAddCdscdnskeys(z *Zone) bool {
+func fsmJoinAddCdscdnskeysCriteria(z *Zone) bool {
     dnskeys := make(map[string][]*dns.DNSKEY)
 
     log.Printf("Verifying that DNSKEYs for %s are in sync in group %s", z.Name, z.sgroup.Name)
@@ -85,20 +85,42 @@ func fsmJoinAddCdscdnskeys(z *Zone) bool {
     if !all_found {
         return false
     }
-    log.Printf("%s: All DNSKEYs synced between all signers, creating CDS/CDNSKEY record sets", z.Name)
+    log.Printf("%s: All DNSKEYs synced between all signers", z.Name)
+    return true
+}
 
-    // Create CDS/CDNSKEY records sets
+func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
+    log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
+
     cdses := []dns.RR{}
     cdnskeys := []dns.RR{}
-    for _, keys := range dnskeys {
-        for _, key := range keys {
-            if f := key.Flags & 0x101; f == 257 {
-                cdses = append(cdses, key.ToDS(dns.SHA256).ToCDS())
-                cdnskeys = append(cdnskeys, key.ToCDNSKEY())
+
+    for _, s := range z.sgroup.SignerMap {
+        m := new(dns.Msg)
+        m.SetQuestion(z.Name, dns.TypeDNSKEY)
+
+        c := new(dns.Client)
+        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+
+        if err != nil {
+            log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
+            return false
+        }
+
+        for _, a := range r.Answer {
+            dnskey, ok := a.(*dns.DNSKEY)
+            if !ok {
+                continue
+            }
+
+            if f := dnskey.Flags & 0x101; f == 257 {
+                cdses = append(cdses, dnskey.ToDS(dns.SHA256).ToCDS())
+                cdnskeys = append(cdnskeys, dnskey.ToCDNSKEY())
             }
         }
     }
 
+    // Create CDS/CDNSKEY records sets
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
         if err := updater.Update(&signer, z.Name, &[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
@@ -114,6 +136,6 @@ func fsmJoinAddCdscdnskeys(z *Zone) bool {
 
 var FsmJoinAddCdscdnskeys = FSMTransition{
     Description: "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-    Criteria:    func(z *Zone) bool { return true },
-    Action:      fsmJoinAddCdscdnskeys,
+    Criteria:    fsmJoinAddCdscdnskeysCriteria,
+    Action:      fsmJoinAddCdscdnskeysAction,
 }

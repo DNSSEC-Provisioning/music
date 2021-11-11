@@ -99,7 +99,7 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, fqdn string, rrsets [][]dns.RR
 
     c := new(dns.Client)
     c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-    in, _, err := c.Exchange(m, signer.Address)
+    in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
     if err != nil {
         return err
     }
