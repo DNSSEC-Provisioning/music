@@ -10,7 +10,7 @@ import (
 func fsmJoinAddCdscdnskeysCriteria(z *Zone) bool {
     dnskeys := make(map[string][]*dns.DNSKEY)
 
-    log.Printf("Verifying that DNSKEYs for %s are in sync in group %s", z.Name, z.sgroup.Name)
+    log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.sgroup.Name)
 
     for _, s := range z.sgroup.SignerMap {
         m := new(dns.Msg)

@@ -32,6 +32,14 @@ signer      TEXT,
 UNIQUE (zone, dnskey)
 )`,
 
+    "zone_nses": `CREATE TABLE IF NOT EXISTS 'zone_nses' (
+id          INTEGER PRIMARY KEY,
+zone        TEXT,
+ns          TEXT,
+signer      TEXT,
+UNIQUE (zone, ns)
+)`,
+
     "signers": `CREATE TABLE IF NOT EXISTS 'signers' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,

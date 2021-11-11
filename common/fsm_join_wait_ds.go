@@ -107,7 +107,21 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
             nses[s.Name] = append(nses[s.Name], ns)
 
-            // TODO: Store NS origin if never seen before
+            stmt, err := z.MusicDB.db.Prepare("INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)")
+            if err != nil {
+                log.Printf("%s: Statement prepare failed: %s", z.Name, err)
+                return false
+            }
+
+            res, err := stmt.Exec(z.Name, ns.Ns, s.Name)
+            if err != nil {
+                log.Printf("%s: Statement execute failed: %s", z.Name, err)
+                return false
+            }
+            rows, _ := res.RowsAffected()
+            if rows > 0 {
+                log.Printf("%s: Origin for %s set to %s", z.Name, ns.Ns, s.Name)
+            }
         }
     }
 
@@ -151,6 +165,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
     }
 
     z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
+    delete(zoneWaitDs, z.Name)
     return true
 }
 
