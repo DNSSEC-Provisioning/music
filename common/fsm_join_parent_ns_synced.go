@@ -92,7 +92,9 @@ func fsmJoinParentNsSyncedAction(z *Zone) bool {
 }
 
 var FsmJoinParentNsSynced = FSMTransition{
-    Description: "Wait for parent to pick up CSYNC and update it's NS records (criteria), then remove CSYNC from all signers and STOP (action)",
-    Criteria:    fsmJoinParentNsSyncedCriteria,
-    Action:      fsmJoinParentNsSyncedAction,
+    Description:         "Wait for parent to pick up CSYNC and update it's NS records (criteria), then remove CSYNC from all signers and STOP (action)",
+    MermaidCriteriaDesc: "Wait for parent to update NS RRset",
+    MermaidActionDesc:   "Remove CSYNC RR",
+    Criteria:            fsmJoinParentNsSyncedCriteria,
+    Action:              fsmJoinParentNsSyncedAction,
 }

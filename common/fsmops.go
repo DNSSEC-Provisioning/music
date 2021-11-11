@@ -7,34 +7,35 @@ package music
 import (
     "errors"
     "fmt"
+    "log"
     "strings"
-    // "time"
 
     _ "github.com/mattn/go-sqlite3"
 )
 
-func (mdb *MusicDB) ZoneAttachFsm(zonename string, dbzone *Zone, exist bool, fsm string) (error, string) {
+func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", dbzone.Name)), ""
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
     sgname := dbzone.SignerGroup().Name
 
     if sgname == "" || sgname == "---" {
-        return errors.New(fmt.Sprintf("Zone %s not assigned to any signer group, so it can not attach to a process\n",
-            dbzone.Name)), ""
+        return fmt.Errorf("Zone %s not assigned to any signer group, so it can not attach to a process\n",
+            dbzone.Name), ""
     }
 
+    var exist bool
     var process FSM
     if process, exist = FSMlist[fsm]; !exist {
-        return errors.New(fmt.Sprintf("Process %s unknown. Sorry.", fsm)), ""
+        return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
     }
 
     if dbzone.FSM != "" && dbzone.FSM != "---" {
-        return errors.New(fmt.Sprintf(
+        return fmt.Errorf(
             "Zone %s already attached to process %s. Only one process at a time possible.\n",
-            dbzone.Name, dbzone.FSM)), ""
+            dbzone.Name, dbzone.FSM), ""
     }
 
     initialstate := process.InitialState
@@ -56,18 +57,18 @@ func (mdb *MusicDB) ZoneAttachFsm(zonename string, dbzone *Zone, exist bool, fsm
         dbzone.Name, fsm, initialstate)
 }
 
-func (mdb *MusicDB) ZoneStepFsm(zonename string, dbzone *Zone, exist bool,
-    nextstate string) (error, string, map[string]Zone) {
+func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
+    string, map[string]Zone) {
     var emptyzm = map[string]Zone{}
 
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", zonename)), "", emptyzm
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name), "", emptyzm
     }
 
     fsmname := dbzone.FSM
 
     if fsmname == "" || fsmname == "---" {
-        return errors.New(fmt.Sprintf("Zone %s not attached to any process.", dbzone.Name)),
+        return fmt.Errorf("Zone %s not attached to any process.", dbzone.Name),
             "", emptyzm
     }
 
@@ -75,6 +76,7 @@ func (mdb *MusicDB) ZoneStepFsm(zonename string, dbzone *Zone, exist bool,
 
     state := dbzone.State
     var CurrentState FSMState
+    var exist bool
     if CurrentState, exist = CurrentFsm.States[state]; !exist {
         return errors.New(fmt.Sprintf("Zone state '%s' does not exist in process %s. Terminating.",
             state, dbzone.FSM)), "", emptyzm
@@ -130,4 +132,91 @@ func (mdb *MusicDB) ZoneStepFsm(zonename string, dbzone *Zone, exist bool,
     // If that happens the FSM is likely buggy.
     return errors.New(fmt.Sprintf(
         "Zero possible next states from '%s': you lose.", state)), "", emptyzm
+}
+
+func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
+    var resp []Process
+    for name, fsm := range FSMlist {
+        resp = append(resp, Process{
+            Name: name,
+            Desc: fsm.Desc,
+        })
+    }
+    return resp, nil, ""
+}
+
+func GetSortedTransitionKeys(fsm string) ([]string, error) {
+    var skeys = []string{}
+    return skeys, nil
+}
+
+func (mdb *MusicDB) GraphProcess(fsm string) (string, error) {
+    var exist bool
+    var process FSM
+
+    if process, exist = FSMlist[fsm]; !exist {
+        return "", fmt.Errorf("Process %s unknown. Sorry.", fsm)
+    }
+
+    gtype := "flowchart"
+
+    switch gtype {
+    case "flowchart":
+        return MermaidFlowChart(&process)
+    case "statediagram":
+        return MermaidStateDiagram(&process)
+    }
+    return "", nil
+}
+
+func MermaidStateDiagram(process *FSM) (string, error) {
+    return "", nil
+}
+
+func MermaidFlowChart(process *FSM) (string, error) {
+    //   var exist bool
+    graph := "mermaid\ngraph TD\n"
+    statenum := 0
+    var stateToId = map[string]string{}
+    //    var process FSM
+    //    if process, exist = FSMlist[fsm]; !exist {
+    //        return "", fmt.Errorf("Process %s unknown. Sorry.", process.Name)
+    //    }
+
+    log.Printf("GraphProcess: graphing process %s\n", process.Name)
+    for sn, _ := range process.States {
+        stateId := fmt.Sprintf("State%d", statenum)
+        graph += fmt.Sprintf("%s(%s)\n", stateId, sn)
+        stateToId[sn] = stateId
+        statenum++
+    }
+
+    log.Printf("GraphProcess: stateToId: %v\n", stateToId)
+
+    statenum = 0
+    for sn, st := range process.States {
+        var action string
+        var criteria string
+        for state, nt := range st.Next {
+            thisstate := sn
+            nextstate := stateToId[state]
+            if nt.MermaidCriteriaDesc != "" {
+                criteria = "Criteria: " + nt.MermaidCriteriaDesc + "<br/>"
+            }
+            if nt.MermaidActionDesc != "" {
+                action = "Action: " + nt.MermaidActionDesc + "<br/>"
+            }
+            txt := criteria + action
+            if txt != "" && len(txt) > 5 {
+                txt = "|" + txt[:len(txt)-5] + "|"
+            }
+            graph += fmt.Sprintf("%s --> %s %s\n", stateToId[thisstate],
+                txt, nextstate)
+        }
+        statenum++
+    }
+
+    log.Printf("GraphProcess: graph: \n%s\n", graph)
+
+    return graph, nil
 }

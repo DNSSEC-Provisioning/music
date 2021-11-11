@@ -12,7 +12,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/miekg/dns"
+    // "github.com/miekg/dns"
 
     music "github.com/DNSSEC-Provisioning/music/common"
 
@@ -93,14 +93,14 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             Client: r.RemoteAddr,
         }
 
-        dbzone, exist := mdb.GetZone(zp.Zone.Name) // Get a more complete Zone structure
+        dbzone, _ := mdb.GetZone(zp.Zone.Name) // Get a more complete Zone structure
         // fmt.Printf("APIzone: zp.Zone.Name: %s dbzone.Name: %s\n", zp.Zone.Name, dbzone.Name)
 
         switch zp.Command {
         case "list":
 
         case "add":
-            err, resp.Msg = mdb.AddZone(&zp.Zone, zp.SignerGroup)
+            err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
             if err != nil {
                 // log.Printf("Error from AddZone: %v", err)
                 resp.Error = true
@@ -108,7 +108,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "delete":
-            err, resp.Msg = mdb.DeleteZone(zp.Zone.Name, dbzone, exist)
+            err, resp.Msg = mdb.DeleteZone(dbzone)
             if err != nil {
                 // log.Printf("Error from DeleteZone: %v", err)
                 resp.Error = true
@@ -116,8 +116,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "join":
-            err, resp.Msg = mdb.ZoneJoinGroup(zp.Zone.Name, dbzone, exist,
-                zp.SignerGroup)
+            err, resp.Msg = mdb.ZoneJoinGroup(dbzone, zp.SignerGroup)
             if err != nil {
                 // log.Printf("Error from ZoneJoinGroup: %v", err)
                 resp.Error = true
@@ -125,8 +124,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "leave":
-            err, resp.Msg = mdb.ZoneLeaveGroup(zp.Zone.Name, dbzone, exist,
-                zp.SignerGroup)
+            err, resp.Msg = mdb.ZoneLeaveGroup(dbzone, zp.SignerGroup)
             if err != nil {
                 // log.Printf("Error from ZoneLeaveGroup: %v", err)
                 resp.Error = true
@@ -134,7 +132,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "fsm":
-            err, resp.Msg = mdb.ZoneAttachFsm(zp.Zone.Name, dbzone, exist, zp.FSM)
+            err, resp.Msg = mdb.ZoneAttachFsm(dbzone, zp.FSM)
             if err != nil {
                 // log.Printf("Error from ZoneAttachFsm: %v", err)
                 resp.Error = true
@@ -143,8 +141,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
         case "step-fsm":
             var zones map[string]music.Zone
-            err, resp.Msg, zones = mdb.ZoneStepFsm(zp.Zone.Name, dbzone,
-                exist, zp.FsmNextState)
+            err, resp.Msg, zones = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
             if err != nil {
                 // log.Printf("Error from ZoneStepFsm: %v", err)
                 resp.Error = true
@@ -156,10 +153,9 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "get-rrsets":
-            // fmt.Printf("APIzone: get-rrset: %s %s %s\n", zp.Zone.Name, zp.Owner, zp.RRtype)
-            var rrsets map[string][]dns.RR
-            err, resp.Msg, rrsets = mdb.ZoneGetRRsets(zp.Zone.Name, dbzone,
-                exist, zp.Owner, zp.RRtype)
+            // var rrsets map[string][]dns.RR
+            err, msg, _ := mdb.ZoneGetRRsets(dbzone, zp.Owner, zp.RRtype)
+            resp.Msg = msg
             if err != nil {
                 // log.Printf("Error from ZoneGetRRset: %v", err)
                 resp.Error = true
@@ -172,7 +168,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 var result = map[string][]string{}
                 var rrset []string
                 for k, _ := range sg.Signers() {
-                    err, resp.Msg, rrset = mdb.ListRRset(zp.Zone.Name, k, zp.Owner, zp.RRtype)
+                    err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner, zp.RRtype)
                     if err != nil {
                         log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
                     } else {
@@ -180,25 +176,16 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                     }
                 }
                 resp.RRsets = result
-                fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
-                //                switch dns.StringToType[zp.RRtype] {
-                //                case dns.TypeDNSKEY:
-                //                     resp.DNSKEYs = map[string][]dns.DNSKEY(rrsets)
-                //                case dns.TypeSOA:
-                //                     resp.SOAs = map[string][]dns.SOA(rrsets)
-                //                case dns.TypeNS:
-                //                     resp.NSs = map[string][]dns.NS(rrsets)
-                //                }
+                // fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
             }
             w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
             return
 
         case "copy-rrset":
-            fmt.Printf("APIzone: copy-rrset: %s %s %s\n", zp.Zone.Name, zp.Owner, zp.RRtype)
+            fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name, zp.Owner, zp.RRtype)
             // var rrset []dns.RR
-            err, resp.Msg = mdb.ZoneCopyRRset(zp.Zone.Name, dbzone,
-                exist, zp.Owner, zp.RRtype,
+            err, resp.Msg = mdb.ZoneCopyRRset(dbzone, zp.Owner, zp.RRtype,
                 zp.FromSigner, zp.ToSigner)
             if err != nil {
                 log.Printf("Error from ZoneCopyRRset: %v", err)
@@ -214,7 +201,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
         case "list-rrset":
             var rrset []string
-            err, resp.Msg, rrset = mdb.ListRRset(zp.Zone.Name, zp.Signer, zp.Owner, zp.RRtype)
+            err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer, zp.Owner, zp.RRtype)
             if err != nil {
                 log.Printf("Error from ListRRset: %v", err)
                 resp.Error = true
@@ -357,7 +344,7 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
         var sgp music.SignerGroupPost
         err := decoder.Decode(&sgp)
         if err != nil {
-            log.Println("APIsignergroup: error decoding signer post:",
+            log.Println("APIsignergroup: error decoding signergroup post:",
                 err)
         }
 
@@ -392,6 +379,55 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             log.Printf("Error from ListSignerGroups: %v", err)
         }
         resp.SignerGroups = ss
+
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(resp)
+    }
+}
+
+func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
+    mdb := conf.Internal.MusicDB
+    return func(w http.ResponseWriter, r *http.Request) {
+
+        log.Printf("APIprocess: received /process request from %s.\n",
+            r.RemoteAddr)
+
+        decoder := json.NewDecoder(r.Body)
+        var pp music.ProcessPost
+        err := decoder.Decode(&pp)
+        if err != nil {
+            log.Println("APIprocess: error decoding process post:", err)
+        }
+
+        var resp = music.ProcessResponse{
+            Time:   time.Now(),
+            Client: r.RemoteAddr,
+        }
+
+        fmt.Printf("apiserver: /process %v\n", pp)
+
+        switch pp.Command {
+        case "list":
+            sp, err, msg := mdb.ListProcesses()
+            if err != nil {
+                log.Printf("Error from ListProcesses: %v", err)
+                resp.Error = true
+                resp.ErrorMsg = msg
+            }
+            resp.Processes = sp
+
+        case "graph":
+            graph, err := mdb.GraphProcess(pp.Process)
+            if err != nil {
+                log.Printf("Error from GraphProcess: %v", err)
+                resp.Error = true
+                resp.ErrorMsg = err.Error()
+            }
+            resp.Graph = graph
+
+        default:
+
+        }
 
         w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(resp)
@@ -443,6 +479,8 @@ func SetupRouter(conf *Config) *mux.Router {
     sr.HandleFunc("/signer", APIsigner(conf)).Methods("POST")
     sr.HandleFunc("/zone", APIzone(conf)).Methods("POST")
     sr.HandleFunc("/signergroup", APIsignergroup(conf)).Methods("POST")
+    sr.HandleFunc("/process", APIprocess(conf)).Methods("POST")
+    sr.HandleFunc("/show/api", APIshowAPI(conf, r)).Methods("POST", "GET")
 
     return r
 }

@@ -170,7 +170,8 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 }
 
 var FsmJoinWaitDs = FSMTransition{
-    Description: "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
-    Criteria:    fsmJoinWaitDsCriteria,
-    Action:      fsmJoinWaitDsAction,
+    Description:         "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
+    MermaidCriteriaDesc: "Wait for DS to propagate",
+    Criteria:            fsmJoinWaitDsCriteria,
+    Action:              fsmJoinWaitDsAction,
 }

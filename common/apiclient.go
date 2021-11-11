@@ -317,7 +317,7 @@ func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug 
 }
 
 // api client
-func NewClient(debug bool) *Api {
+func NewClient(verbose, debug bool) *Api {
     api := Api{}
 
     api.Apiurl = viper.GetString("musicd.baseurl")
@@ -340,6 +340,10 @@ func NewClient(debug bool) *Api {
             },
         },
     }
+    // api.Client = &http.Client{}
+    api.Debug = debug
+    api.Verbose = verbose
+    // log.Printf("client is a: %T\n", api.Client)
 
     if debug {
         fmt.Printf("apiurl is: %s \n apikey is: %s \n authmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)
@@ -373,6 +377,11 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
     defer resp.Body.Close()
     buf, err := ioutil.ReadAll(resp.Body)
 
+    if api.Debug {
+        fmt.Printf("requestHelper: received %d bytes of response data: %v\n",
+            len(buf), string(buf))
+    }
+
     //not bothering to copy buf, this is a one-off
     return resp.StatusCode, buf, err
 
@@ -380,6 +389,12 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 
 // api Post
 func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
+
+    if api.Debug {
+        fmt.Printf("api.Post: posting %d bytes of data: %v\n",
+            len(data), string(data))
+    }
+
     req, err := http.NewRequest(http.MethodPost, api.Apiurl+endpoint, bytes.NewBuffer(data))
     if err != nil {
         log.Fatalf("Error from http.NewRequest: Error: %v", err)
@@ -399,8 +414,9 @@ func (api *Api) Delete(endpoint string, data []byte) (int, []byte, error) {
 
 // api Get
 // not tested
-func (api *Api) Get(endpoint string, data []byte) (int, []byte, error) {
-    req, err := http.NewRequest(http.MethodGet, api.Apiurl, nil)
+func (api *Api) Get(endpoint string) (int, []byte, error) {
+
+    req, err := http.NewRequest(http.MethodGet, api.Apiurl+endpoint, nil)
     if err != nil {
         log.Fatalf("Error from http.NewRequest: Error: %v", err)
     }

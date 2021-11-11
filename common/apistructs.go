@@ -101,4 +101,27 @@ type Api struct {
     Apiurl     string
     apiKey     string
     Authmethod string
+    Verbose    bool
+    Debug      bool
+}
+
+type ProcessPost struct {
+    Command string
+    Process string
+}
+
+type ProcessResponse struct {
+    Time      time.Time
+    Status    int
+    Client    string
+    Error     bool
+    ErrorMsg  string
+    Msg       string
+    Processes []Process
+    Graph     string
+}
+
+type Process struct {
+    Name string
+    Desc string
 }

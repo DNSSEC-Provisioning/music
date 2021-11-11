@@ -135,7 +135,9 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
 }
 
 var FsmJoinAddCdscdnskeys = FSMTransition{
-    Description: "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-    Criteria:    fsmJoinAddCdscdnskeysCriteria,
-    Action:      fsmJoinAddCdscdnskeysAction,
+    // XXX: what is the *criteria* for making this transition?
+    Description:         "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
+    MermaidCriteriaDesc: "Wait for DNSKEY RRset to be consistent",
+    Criteria:            fsmJoinAddCdscdnskeysCriteria,
+    Action:              fsmJoinAddCdscdnskeysAction,
 }

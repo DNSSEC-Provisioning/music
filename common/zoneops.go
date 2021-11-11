@@ -21,8 +21,9 @@ func (z *Zone) SignerGroup() *SignerGroup {
 
 func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
     fqdn := dns.Fqdn(z.Name)
-    if _, exists := mdb.GetZone(fqdn); exists {
-        return errors.New(fmt.Sprintf("Zone %s already present in MuSiC system.", fqdn)), ""
+    dbzone, _ := mdb.GetZone(fqdn)
+    if dbzone.Exists {
+        return fmt.Errorf("Zone %s already present in MuSiC system.", fqdn), ""
     }
 
     sqlq := "INSERT INTO zones(name, state, statestamp, fsm) VALUES (?, ?, datetime('now'), ?)"
@@ -42,16 +43,16 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
     if group != "" {
         fmt.Printf("AddGroup: notice that the zone %s has the signergroup %s specified so we set that too\n", z.Name, group)
         dbzone, _ := mdb.GetZone(z.Name)
-        mdb.ZoneJoinGroup(z.Name, dbzone, true, group) // we know that the zone exist
+        mdb.ZoneJoinGroup(dbzone, group) // we know that the zone exist
         return nil, fmt.Sprintf(
             "Zone %s was added and immediately attached to signer group %s.", fqdn, group)
     }
     return nil, fmt.Sprintf("Zone %s was added but is not yet attached to any signer group.", fqdn)
 }
 
-func (mdb *MusicDB) DeleteZone(zonename string, z *Zone, exist bool) (error, string) {
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s not present in MuSiC system.", zonename)), ""
+func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
+    if !z.Exists {
+        return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
     }
 
     sqlq := "DELETE FROM zones WHERE name=?"
@@ -67,7 +68,7 @@ func (mdb *MusicDB) DeleteZone(zonename string, z *Zone, exist bool) (error, str
         return err, ""
     }
     mdb.mu.Unlock()
-    return nil, fmt.Sprintf("Zone %s deleted.", zonename)
+    return nil, fmt.Sprintf("Zone %s deleted.", z.Name)
 }
 
 func (z *Zone) StateTransition(from, to string) error {
@@ -119,7 +120,10 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
     switch err = row.Scan(&name, &state, &timestamp, &fsm, &signergroup); err {
     case sql.ErrNoRows:
         // fmt.Printf("GetZone: Zone \"%s\" does not exist\n", zonename)
-        return &Zone{}, false
+        return &Zone{
+            Name:   zonename,
+            Exists: false,
+        }, false
 
     case nil:
         t, err := time.Parse(layout, timestamp)
@@ -131,6 +135,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 
         return &Zone{
             Name:       name,
+            Exists:     true,
             State:      state,
             Statestamp: t,
             FSM:        fsm,
@@ -141,7 +146,10 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
     default:
         log.Fatalf("GetZone: error from row.Scan(): name=%s, err=%v", zonename, err)
     }
-    return &Zone{}, false
+    return &Zone{
+        Name:   zonename,
+        Exists: false,
+    }, false
 }
 
 func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
@@ -197,9 +205,9 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 // zone, "joining" the signer group (that has signers) by definition
 // causes signers to be added (for that zone).
 
-func (mdb *MusicDB) ZoneJoinGroup(zonename string, dbzone *Zone, exist bool, g string) (error, string) {
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", zonename)), ""
+func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
     if _, err := mdb.GetSignerGroup(g); err != nil {
@@ -229,19 +237,24 @@ func (mdb *MusicDB) ZoneJoinGroup(zonename string, dbzone *Zone, exist bool, g s
     }
     mdb.mu.Unlock()
 
-    if dbzone.FSM == "" {
-        mdb.ZoneAttachFsm(dbzone.Name, dbzone, true, SignerJoinGroupProcess)
+    dbzone, _ = mdb.GetZone(dbzone.Name)
+
+    if dbzone.FSM == "" || dbzone.FSM == "---" {
+        err, msg := mdb.ZoneAttachFsm(dbzone, SignerJoinGroupProcess)
+        if err != nil {
+            return err, msg
+        }
         return nil, fmt.Sprintf(
-            "Zone %s has joined signer group %s and started the process '%s'.", zonename, SignerJoinGroupProcess)
+            "Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, SignerJoinGroupProcess)
     }
     return nil, fmt.Sprintf(
         `Zone %s has joined signer group %s but could not start the process '%s'
-as the zone is already in process '%s'. Problematic.`, zonename, SignerJoinGroupProcess, dbzone.FSM)
+as the zone is already in process '%s'. Problematic.`, dbzone.Name, g, SignerJoinGroupProcess, dbzone.FSM)
 }
 
-func (mdb *MusicDB) ZoneLeaveGroup(zonename string, dbzone *Zone, exist bool, g string) (error, string) {
-    if !exist {
-        return errors.New(fmt.Sprintf("Zone %s unknown", zonename)), ""
+func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
+    if !dbzone.Exists {
+        return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
     if _, err := mdb.GetSignerGroup(g); err != nil {
@@ -251,13 +264,13 @@ func (mdb *MusicDB) ZoneLeaveGroup(zonename string, dbzone *Zone, exist bool, g 
     sg := dbzone.SignerGroup()
 
     if sg.Name != g {
-        return errors.New(fmt.Sprintf("Zone %s is not assigned to signer group %s",
-            dbzone.Name, g)), ""
+        return fmt.Errorf("Zone %s is not assigned to signer group %s",
+            dbzone.Name, g), ""
     }
 
     if dbzone.FSM != "" && dbzone.FSM != "---" {
-        return errors.New(fmt.Sprintf(
-            "Zone %s is executing process '%s'. Cannot leave until finished.", dbzone.Name, dbzone.FSM)), ""
+        return fmt.Errorf(
+            "Zone %s is executing process '%s'. Cannot leave until finished.", dbzone.Name, dbzone.FSM), ""
     }
 
     mdb.mu.Lock()
@@ -273,7 +286,8 @@ func (mdb *MusicDB) ZoneLeaveGroup(zonename string, dbzone *Zone, exist bool, g 
         return err, ""
     }
     mdb.mu.Unlock()
-    return nil, fmt.Sprintf("Zone %s has left the signer group %s.", zonename, sg.Name)
+    return nil, fmt.Sprintf("Zone %s has left the signer group %s.",
+        dbzone.Name, sg.Name)
 }
 
 const layout = "2006-01-02 15:04:05"

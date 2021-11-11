@@ -113,7 +113,9 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 }
 
 var FsmJoinSyncDnskeys = FSMTransition{
-    Description: "First step when joining, this transistion has no criteria and will sync DNSKEYs between all signers (action)",
-    Criteria:    func(z *Zone) bool { return true },
-    Action:      fsmJoinSyncDnskeys,
+    Description:         "First step when joining, this transistion has no criteria and will sync DNSKEYs between all signers (action)",
+    MermaidCriteriaDesc: "",
+    MermaidActionDesc:   "",
+    Criteria:            func(z *Zone) bool { return true },
+    Action:              fsmJoinSyncDnskeys,
 }
