@@ -9,7 +9,7 @@ import (
 func fsmJoinParentNsSyncedCriteria(z *Zone) bool {
     nses := make(map[string][]*dns.NS)
 
-    log.Printf("Verifying that NSes for %s are in sync in the parent", z.Name)
+    log.Printf("%s: Verifying that NSes are in sync in the parent", z.Name)
 
     for _, s := range z.sgroup.SignerMap {
         m := new(dns.Msg)

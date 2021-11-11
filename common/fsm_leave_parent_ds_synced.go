@@ -7,8 +7,8 @@ import (
     "github.com/miekg/dns"
 )
 
-func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
-    cdses := make(map[string][]*dns.CDS)
+func fsmLeaveParentDsSyncedCriteria(z *Zone) bool {
+    cdsmap := make(map[string]*dns.CDS)
 
     log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
@@ -24,15 +24,13 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
             return false
         }
 
-        cdses[s.Name] = []*dns.CDS{}
         for _, a := range r.Answer {
             cds, ok := a.(*dns.CDS)
             if !ok {
                 continue
             }
 
-            log.Printf("%s: Signer %s CDS found: %d %d %d %s", z.Name, s.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
-            cdses[s.Name] = append(cdses[s.Name], cds)
+            cdsmap[fmt.Sprintf("%d %d %d %s", cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)] = cds
         }
     }
 
@@ -46,48 +44,23 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         log.Printf("%s: Unable to fetch DSes from parent: %s", z.Name, err)
         return false
     }
-    dses := []*dns.DS{}
-    removedses := make(map[string]*dns.DS)
     for _, a := range r.Answer {
         ds, ok := a.(*dns.DS)
         if !ok {
             continue
         }
 
-        log.Printf("%s: Parent DS found: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
-        dses = append(dses, ds)
-    }
-
-    parent_up_to_date := true
-
-    cdsmap := make(map[string]*dns.CDS)
-    for _, keys := range cdses {
-        for _, key := range keys {
-            cdsmap[fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm, key.DigestType, key.Digest)] = key
-            delete(removedses, fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm, key.DigestType, key.Digest))
+        if _, ok := cdsmap[fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)]; !ok {
+            log.Printf("%s: Parent DS found that is not in any signer: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+            return false
         }
-    }
-    for _, ds := range dses {
-        delete(cdsmap, fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
-    }
-    for _, cds := range cdsmap {
-        log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
-        parent_up_to_date = false
-    }
-    for _, ds := range removedses {
-        log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
-        parent_up_to_date = false // TODO: should unknown DS be allowed?
-    }
-
-    if !parent_up_to_date {
-        return false
     }
 
     log.Printf("%s: Parent is up-to-date with it's DS records", z.Name)
     return true
 }
 
-func fsmJoinParentDsSyncedAction(z *Zone) bool {
+func fsmLeaveParentDsSyncedAction(z *Zone) bool {
     log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
     cds := new(dns.CDS)
@@ -107,10 +80,13 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 
     z.StateTransition(FsmStateCdscdnskeysAdded, FsmStateParentDsSynced)
     return true
+
+    // TODO: remove state/metadata around leaving signer
+    //       tables: zone_dnskeys, zone_nses
 }
 
-var FsmJoinParentDsSynced = FSMTransition{
-    Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
-    Criteria:    fsmJoinParentDsSyncedCriteria,
-    Action:      fsmJoinParentDsSyncedAction,
+var FsmLeaveParentDsSynced = FSMTransition{
+    Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers and STOP (action)",
+    Criteria:    fsmLeaveParentDsSyncedCriteria,
+    Action:      fsmLeaveParentDsSyncedAction,
 }

@@ -16,6 +16,8 @@ const (
     FsmStateDsPropagated     = "ds-propagated"
     FsmStateCsyncAdded       = "csync-added"
     FsmStateParentNsSynced   = "parent-ns-synced"
+    FsmStateNsesSynced       = "nses-synced"
+    FsmStateNsPropagated     = "ns-propagated"
     FsmStateStop             = "stop"
 )
 
@@ -180,8 +182,42 @@ var FSMlist = map[string]FSM{
         },
     },
 
-    // PROCESS: REMOVE-SIGNER: This is a real process, from the draft doc.
     "remove-signer": FSM{
+        Type:         "single-run",
+        InitialState: FsmStateSignerUnsynced,
+        States: map[string]FSMState{
+            FsmStateSignerUnsynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateNsesSynced: FsmLeaveSyncNses},
+            },
+            FsmStateNsesSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateCsyncAdded: FsmLeaveAddCsync},
+            },
+            FsmStateCsyncAdded: FSMState{
+                Next: map[string]FSMTransition{FsmStateParentNsSynced: FsmLeaveParentNsSynced},
+            },
+            FsmStateParentNsSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateNsPropagated: FsmLeaveWaitNs},
+            },
+            FsmStateNsPropagated: FSMState{
+                Next: map[string]FSMTransition{FsmStateDnskeysSynced: FsmLeaveSyncDnskeys},
+            },
+            FsmStateDnskeysSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateCdscdnskeysAdded: FsmLeaveAddCdscdnskeys},
+            },
+            FsmStateCdscdnskeysAdded: FSMState{
+                Next: map[string]FSMTransition{FsmStateParentDsSynced: FsmLeaveParentDsSynced},
+            },
+            FsmStateParentDsSynced: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FsmTransitionStopFactory(FsmStateParentDsSynced)},
+            },
+            FsmStateStop: FSMState{
+                Next: map[string]FSMTransition{FsmStateStop: FsmGenericStop},
+            },
+        },
+    },
+
+    // PROCESS: REMOVE-SIGNER: This is a real process, from the draft doc.
+    "remove-signer-old": FSM{
         Type:         "single-run",
         InitialState: FsmStateSignerUnsynced,
         States: map[string]FSMState{

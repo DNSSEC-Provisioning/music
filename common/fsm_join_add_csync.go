@@ -9,7 +9,7 @@ import (
 func fsmJoinAddCsyncCriteria(z *Zone) bool {
     nses := make(map[string][]*dns.NS)
 
-    log.Printf("Verifying that NSes for %s are in sync in group %s", z.Name, z.sgroup.Name)
+    log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.sgroup.Name)
 
     for _, s := range z.sgroup.SignerMap {
         m := new(dns.Msg)
@@ -30,8 +30,6 @@ func fsmJoinAddCsyncCriteria(z *Zone) bool {
             }
 
             nses[s.Name] = append(nses[s.Name], ns)
-
-            // TODO: Store NS origin if never seen before
         }
     }
 
