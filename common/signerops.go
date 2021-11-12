@@ -130,7 +130,7 @@ func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
 		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
 	}
 
-	row := stmt.QueryRow(s)
+	row := stmt.QueryRow(s.Name)
 
 	var name, method, auth, address, signergroup string
 	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
