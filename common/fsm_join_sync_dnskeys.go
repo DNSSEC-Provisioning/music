@@ -56,9 +56,9 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
             log.Printf("%s: Fetched DNSKEYs from %s:", z.Name, s.Name)
             for _, k := range dnskeys[s.Name] {
                 if f := k.Flags & 0x101; f == 256 {
-                    log.Printf("%s: - %s (ZSK)", z.Name, k.PublicKey)
+                    log.Printf("%s: - %d (ZSK) %40s...", z.Name, k.KeyTag, k.PublicKey)
                 } else {
-                    log.Printf("%s: - %s (KSK)", z.Name, k.PublicKey)
+                    log.Printf("%s: - %d (KSK) %40s...", z.Name, k.KeyTag, k.PublicKey)
                 }
             }
         } else {
