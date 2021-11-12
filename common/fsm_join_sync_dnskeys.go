@@ -95,7 +95,7 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
                         // add a DNSKEY that we had but other signer did not
                         s := z.sgroup.SignerMap[other_signer]
                         updater := GetUpdater(s.Method)
-                        if err := updater.Update(&s, z.Name, &[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
+                        if err := updater.Update(s, z.Name, &[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
                             log.Printf("%s: Unable to update %s with new DNSKEY %s: %s", z.Name, other_signer, key.PublicKey, err)
                             return false
                         }

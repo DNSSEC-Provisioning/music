@@ -157,7 +157,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(&signer, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
+        if err := updater.Update(signer, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
             log.Printf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
             return false
         }

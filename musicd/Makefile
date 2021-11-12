@@ -19,6 +19,8 @@ build:
 
 install: ${PROG}
 	@mkdir -p ../etc ../sbin
+	@touch ../etc/musicd.tokens.yaml
+	@touch /var/tmp/music.db
 #	install -s -b ${PROG} ../sbin/
 	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
 

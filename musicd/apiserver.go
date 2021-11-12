@@ -85,7 +85,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             log.Println("APIzone: error decoding zone post:", err)
         }
 
-        log.Printf("APIsigner: received /zone request (command: %s) from %s.\n",
+        log.Printf("APIzone: received /zone request (command: %s) from %s.\n",
             zp.Command, r.RemoteAddr)
 
         var resp = music.ZoneResponse{
@@ -94,8 +94,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
         }
 
         dbzone, _ := mdb.GetZone(zp.Zone.Name) // Get a more complete Zone structure
-        // fmt.Printf("APIzone: zp.Zone.Name: %s dbzone.Name: %s\n", zp.Zone.Name, dbzone.Name)
-
         switch zp.Command {
         case "list":
 
@@ -168,7 +166,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 var result = map[string][]string{}
                 var rrset []string
                 for k, _ := range sg.Signers() {
-                    err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner, zp.RRtype)
+                    err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner,
+		    	 	   	   			 zp.RRtype)
                     if err != nil {
                         log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
                     } else {
@@ -183,7 +182,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             return
 
         case "copy-rrset":
-            fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name, zp.Owner, zp.RRtype)
+            fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name, 
+	    			 	     zp.Owner, zp.RRtype)
             // var rrset []dns.RR
             err, resp.Msg = mdb.ZoneCopyRRset(dbzone, zp.Owner, zp.RRtype,
                 zp.FromSigner, zp.ToSigner)
@@ -201,17 +201,14 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
         case "list-rrset":
             var rrset []string
-            err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer, zp.Owner, zp.RRtype)
+            err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer, 
+	    	 	   	   			 zp.Owner, zp.RRtype)
             if err != nil {
                 log.Printf("Error from ListRRset: %v", err)
                 resp.Error = true
                 resp.ErrorMsg = err.Error()
             } else {
                 resp.RRset = rrset
-                //                resp.Test = map[string][]string{
-                //                        "foo":    { "bar", "bar2"},
-                //                        "bar":    { "foo", "foo2"},
-                //                        }
             }
             w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
@@ -253,17 +250,22 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             Client: r.RemoteAddr,
         }
 
-        var dbsigner music.Signer
+        dbsigner, _ := mdb.GetSigner(&sp.Signer)
 
-        if sp.Command != "list" {
-            dbsigner, err = mdb.GetSigner(sp.Signer.Name)
-        }
+//        if sp.Command != "list" {
+//            dbsigner, err = mdb.GetSigner(sp.Signer.Name)
+//        }
 
         switch sp.Command {
         case "list":
+	     ss, err := mdb.ListSigners()
+             if err != nil {
+             	log.Printf("Error from GetSigners: %v", err)
+             }
+             resp.Signers = ss
 
         case "add":
-            err, resp.Msg = mdb.AddSigner(sp.Signer)
+            err, resp.Msg = mdb.AddSigner(dbsigner)
             if err != nil {
                 // log.Printf("Error from AddSigner: %v", err)
                 resp.Error = true
@@ -271,9 +273,9 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "update":
-            err, resp.Msg = mdb.UpdateSigner(sp.Signer)
+            err, resp.Msg = mdb.UpdateSigner(dbsigner)
             if err != nil {
-                // log.Printf("Error from AddSigner: %v", err)
+                // log.Printf("Error from UpdateSigner: %v", err)
                 resp.Error = true
                 resp.ErrorMsg = err.Error()
             }
@@ -287,7 +289,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "join":
-            err, resp.Msg = mdb.SignerJoinGroup(sp.Signer, sp.Signer.SignerGroup)
+            err, resp.Msg = mdb.SignerJoinGroup(dbsigner, sp.Signer.SignerGroup)
             if err != nil {
                 // log.Printf("Error from SignerJoinGroup: %v", err)
                 resp.Error = true
@@ -295,7 +297,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "leave":
-            err, resp.Msg = mdb.SignerLeaveGroup(sp.Signer, sp.Signer.SignerGroup)
+            err, resp.Msg = mdb.SignerLeaveGroup(dbsigner, sp.Signer.SignerGroup)
             if err != nil {
                 // log.Printf("Error from SignerLeaveGroup: %v", err)
                 resp.Error = true
@@ -303,14 +305,14 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "login":
-            err, resp.Msg = mdb.SignerLogin(&dbsigner, &cliconf, tokvip)
+            err, resp.Msg = mdb.SignerLogin(dbsigner, &cliconf, tokvip)
             if err != nil {
                 resp.Error = true
                 resp.ErrorMsg = err.Error()
             }
 
         case "logout":
-            err, resp.Msg = mdb.SignerLogout(&dbsigner, &cliconf, tokvip)
+            err, resp.Msg = mdb.SignerLogout(dbsigner, &cliconf, tokvip)
             if err != nil {
                 resp.Error = true
                 resp.ErrorMsg = err.Error()

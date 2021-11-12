@@ -38,11 +38,11 @@ func (mdb *MusicDB) ZoneCopyRRset(dbzone *Zone, owner,
         return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
-    fs, err := mdb.GetSigner(fromsigner)
+    fs, err := mdb.GetSigner(&Signer{ Name: fromsigner})
     if err != nil {
         return fmt.Errorf("Signer %s (copying from) is unknown.", fromsigner), ""
     }
-    ts, err := mdb.GetSigner(tosigner)
+    ts, err := mdb.GetSigner(&Signer{ Name: tosigner})
     if err != nil {
         return fmt.Errorf("Signer %s (copying to) is unknown.", tosigner), ""
     }

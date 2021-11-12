@@ -99,7 +99,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
             csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
             updater := GetUpdater(signer.Method)
-            if err := updater.Update(&signer, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
+            if err := updater.Update(signer, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
                 log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, signer.Name, err)
                 return false
             }
