@@ -138,7 +138,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
                         err)
                 } else {
                     fmt.Printf("LSG: got signer name: %s\n", name)
-                    s, err := mdb.GetSigner(&Signer{ Name: name })
+                    s, err := mdb.GetSignerByName(name)
                     if err != nil {
                         log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
                     } else {
@@ -182,7 +182,7 @@ func (sg *SignerGroup) PopulateSigners() error {
                     err)
             } else {
                 fmt.Printf("PS: got signer name: %s\n", name)
-                s, err := mdb.GetSigner(&Signer{ Name: name })
+                s, err := mdb.GetSignerByName(name)
                 if err != nil {
                     log.Fatalf("PopulateSigners: Error from GetSigner: %v", err)
                 } else {
@@ -220,7 +220,7 @@ func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]*Signer) {
                     err)
             } else {
                 // fmt.Printf("GGS: got signer name: %s\n", name)
-                s, err := mdb.GetSigner(&Signer{ Name: name })
+                s, err := mdb.GetSignerByName(name)
                 if err != nil {
                     log.Fatalf("GGS: Error from GetSigner: %v", err)
                 } else {

@@ -15,7 +15,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
     leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
     // Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-    leavingSigner, err := z.MusicDB.GetSigner(&Signer{ Name: leavingSignerName })
+    leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
     if err != nil {
         log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
         return false

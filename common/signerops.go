@@ -119,6 +119,10 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
+func (mdb *MusicDB) GetSignerByName(signername string) (*Signer, error) {
+     return mdb.GetSigner(&Signer{ Name: signername })
+}
+
 func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlcmd)
