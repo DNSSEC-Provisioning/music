@@ -1,6 +1,6 @@
 CERTDIR:=etc/certs
 
-all:
+all: cert
 	$(MAKE) -C musicd
 	$(MAKE) -C music-cli
 
