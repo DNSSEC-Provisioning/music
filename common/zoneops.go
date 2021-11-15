@@ -55,20 +55,47 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
         return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
     }
 
-    sqlq := "DELETE FROM zones WHERE name=?"
-    stmt, err := mdb.db.Prepare(sqlq)
+    mdb.mu.Lock()
+    stmt, err := mdb.db.Prepare("DELETE FROM zones WHERE name=?")
     if err != nil {
         fmt.Printf("DeleteZone: Error from db.Prepare: %v\n", err)
     }
-
-    mdb.mu.Lock()
     _, err = stmt.Exec(z.Name)
-    if CheckSQLError("DeleteZone", sqlq, err, false) {
+    if err != nil {
+        fmt.Printf("DeleteZone: Error from stmt.Exec: %v\n", err)
+    }
+    stmt, err = mdb.db.Prepare("DELETE FROM records WHERE zone=?")
+    _, err = stmt.Exec(z.Name)
+    stmt, err = mdb.db.Prepare("DELETE FROM metadata WHERE zone=?")
+    _, err = stmt.Exec(z.Name)
+
+    if CheckSQLError("DeleteZone", "DELETE FROM ... WHERE zone=...", err, false) {
         mdb.mu.Unlock()
         return err, ""
     }
     mdb.mu.Unlock()
     return nil, fmt.Sprintf("Zone %s deleted.", z.Name)
+}
+
+func (mdb *MusicDB) ZoneMeta(z *Zone, key, value string) (error, string) {
+    if !z.Exists {
+        return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
+    }
+
+    mdb.mu.Lock()
+    stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, value) VALUES (?, ?, ?)")
+    if err != nil {
+        fmt.Printf("ZoneMeta: Error from db.Prepare: %v\n", err)
+    }
+
+    _, err = stmt.Exec(z.Name, key, value)
+    if CheckSQLError("ZoneMeta", "INSERT OR REPLACE INTO", err, false) {
+        mdb.mu.Unlock()
+        return err, ""
+    }
+    mdb.mu.Unlock()
+    return nil, fmt.Sprintf("Zone %s metadata '%s' updated to be '%s'", 
+    	   			  z.Name, key, value)
 }
 
 func (z *Zone) StateTransition(from, to string) error {
@@ -104,6 +131,10 @@ func (z *Zone) StateTransition(from, to string) error {
         return err
     }
     mdb.mu.Unlock()
+    err, _ = mdb.ZoneMeta(z, "stop-reason", "")
+    if err != nil {
+       log.Printf("StateTransition: Error from ZoneMeta: %v\n", err)
+    }
     log.Printf("Zone %s transitioned from %s to %s in process %s", z.Name, from, to, fsm)
 
     return nil
@@ -133,14 +164,21 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
         }
 
         sg, _ := mdb.GetSignerGroup(signergroup)
+        nexttransitions := FSMlist[fsm].States[state].Next
+        next := map[string]bool{}
+        for k, _ := range nexttransitions {
+            next[k] = true
+        }
 
         return &Zone{
             Name:       name,
             Exists:     true,
             State:      state,
             Statestamp: t,
+	    NextState:	next,
             FSM:        fsm,
             sgroup:     sg,
+	    SGname:	sg.Name,
             MusicDB:    mdb,
         }, true
 

@@ -90,7 +90,7 @@ func DesecRetrieveRRset(s *Signer, zone, owner string, rrtype uint16) (error, []
         rrs = append(rrs, rr)
     }
 
-    mdb.WriteRRs(s, dns.Fqdn(owner), rrtype, rrs)
+    mdb.WriteRRs(s, dns.Fqdn(owner), zone, rrtype, rrs)
     return nil, DNSFilterRRsetOnType(rrs, rrtype)
 }
 

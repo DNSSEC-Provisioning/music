@@ -34,7 +34,12 @@ func fsmLeaveParentDsSyncedCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeDS)

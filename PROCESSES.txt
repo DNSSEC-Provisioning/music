@@ -105,18 +105,18 @@ PROCESS #1: A Signer joins the Multi-Signer group. No ZSK rollovers occur.
 
        Zone state: SIGNERS-UNSYNCHED  
 
-       3.  ACTION: Calculate CDS/CDNSKEY Records for all KSKs/CSKs
+       3.   ACTION: Add ZSK for each signer to all other Signers. 
+
+       Zone state: ZSK-SYNCHED 
+
+       4.  ACTION: Calculate CDS/CDNSKEY Records for all KSKs/CSKs
            represented in the Multi-Signer group.
 
        Zone state: CDS-KNOWN
 
-       4.  ACTION: Configure all Signers with the compiled CDS/CDNSKEY RRSET.
+       5.  ACTION: Configure all Signers with the compiled CDS/CDNSKEY RRSET.
 
        Zone state: CDS-SYNCHED
-
-       5.   ACTION: Add ZSK for each signer to all other Signers.
-
-       Zone state: ZSK-SYNCHED
 
        6.   HOLD: Wait for Parent to publish the combined DS RRset.
 

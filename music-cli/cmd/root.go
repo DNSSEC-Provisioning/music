@@ -20,6 +20,8 @@ var tokvip *viper.Viper
 var cliconf = music.CliConfig{}
 var api *music.Api
 
+var validate *validator.Validate
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
     Use:   "music-cli",
@@ -74,7 +76,7 @@ func initConfig() {
         log.Fatalf("unable to unmarshal the config %v", err)
     }
 
-    validate := validator.New()
+    validate = validator.New()
     if err := validate.Struct(&config); err != nil {
         log.Fatalf("Missing required attributes %v\n", err)
     }

@@ -50,7 +50,12 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeDS)
@@ -85,10 +90,18 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         delete(cdsmap, fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
     }
     for _, cds := range cdsmap {
+    	err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
+    	if err != nil {
+       	   log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+   	}
         log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
         parent_up_to_date = false
     }
     for _, ds := range removedses {
+    	err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
+    	if err != nil {
+       	   log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+   	}
         log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
         parent_up_to_date = false // TODO: should unknown DS be allowed?
     }
@@ -97,7 +110,7 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         return false
     }
 
-    log.Printf("%s: Parent is up-to-date with it's DS records", z.Name)
+    log.Printf("%s: DS records in parent are up-to-date", z.Name)
     return true
 }
 

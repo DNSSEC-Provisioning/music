@@ -151,9 +151,11 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 // resp.Zones = zones
 		// resp.Zones = map[string]Zone{ dbzone.Name: *dbzone }
                 // w.Header().Set("Content-Type", "application/json")
-                json.NewEncoder(w).Encode(resp)
-                return
 	    }
+	    dbzone, _ = mdb.GetZone(dbzone.Name)
+	    resp.Zones = map[string]music.Zone{ dbzone.Name: *dbzone }
+            json.NewEncoder(w).Encode(resp)
+            return
 
         case "get-rrsets":
             // var rrsets map[string][]dns.RR
@@ -217,6 +219,14 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             // w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
             return
+
+        case "meta":
+            err, resp.Msg = mdb.ZoneMeta(dbzone, zp.Metakey, zp.Metavalue)
+            if err != nil {
+                // log.Printf("Error from ZoneMeta: %v", err)
+                resp.Error = true
+                resp.ErrorMsg = err.Error()
+            }
 
         default:
         }
