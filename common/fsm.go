@@ -28,10 +28,16 @@ type FSMState struct {
 type FSMTransition struct {
     Description         string // used by various things
     Desc                string // used by music-cli process list
+
     MermaidCriteriaDesc string
+    MermaidPreCondDesc  string
     MermaidActionDesc   string
-    Criteria            func(z *Zone) bool
+    MermaidPostCondDesc string
+
+    Criteria            func(z *Zone) bool // being replaced by PreCondition
+    PreCondition        func(z *Zone) bool
     Action              func(z *Zone) bool
+    PostCondition	func(z *Zone) bool
 }
 
 type FSM struct {

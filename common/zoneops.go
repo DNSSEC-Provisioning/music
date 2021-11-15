@@ -104,6 +104,7 @@ func (z *Zone) StateTransition(from, to string) error {
         return err
     }
     mdb.mu.Unlock()
+    log.Printf("Zone %s transitioned from %s to %s in process %s", z.Name, from, to, fsm)
 
     return nil
 }
@@ -215,7 +216,7 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
     }
 
     sg := dbzone.SignerGroup()
-    fmt.Printf("ZoneJoinGroup: dbzone: %v sg: %v\n", dbzone, sg)
+    // fmt.Printf("ZoneJoinGroup: dbzone: %v sg: %v\n", dbzone, sg)
 
     // must test for existence of sg, as after AddZone() it is still nil
     if sg != nil && sg.Name != "" {

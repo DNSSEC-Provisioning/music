@@ -94,6 +94,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
         }
 
         dbzone, _ := mdb.GetZone(zp.Zone.Name) // Get a more complete Zone structure
+        w.Header().Set("Content-Type", "application/json")
+
         switch zp.Command {
         case "list":
 
@@ -138,17 +140,20 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             }
 
         case "step-fsm":
-            var zones map[string]music.Zone
-            err, resp.Msg, zones = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
+            // var zones map[string]music.Zone
+	    // var success bool
+            // err, resp.Msg, zones = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
+            _, err, resp.Msg = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
             if err != nil {
                 // log.Printf("Error from ZoneStepFsm: %v", err)
                 resp.Error = true
                 resp.ErrorMsg = err.Error()
-                resp.Zones = zones
-                w.Header().Set("Content-Type", "application/json")
+                // resp.Zones = zones
+		// resp.Zones = map[string]Zone{ dbzone.Name: *dbzone }
+                // w.Header().Set("Content-Type", "application/json")
                 json.NewEncoder(w).Encode(resp)
                 return
-            }
+	    }
 
         case "get-rrsets":
             // var rrsets map[string][]dns.RR
@@ -177,7 +182,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 resp.RRsets = result
                 // fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
             }
-            w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
             return
 
@@ -195,7 +199,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
                 // resp.RRset = rrset
                 // fmt.Printf("copy:rrset: len: %d\n", len(rrset))
             }
-            w.Header().Set("Content-Type", "application/json")
+            // w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
             return
 
@@ -210,7 +214,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
             } else {
                 resp.RRset = rrset
             }
-            w.Header().Set("Content-Type", "application/json")
+            // w.Header().Set("Content-Type", "application/json")
             json.NewEncoder(w).Encode(resp)
             return
 
@@ -225,7 +229,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
         // fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 
-        w.Header().Set("Content-Type", "application/json")
+        // w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(resp)
     }
 }

@@ -5,218 +5,279 @@
 package music
 
 import (
-    "errors"
-    "fmt"
-    "log"
-    "strings"
+	"fmt"
+	"log"
+	"strings"
 
-    _ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 
-    if !dbzone.Exists {
-        return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
-    }
+	if !dbzone.Exists {
+		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
+	}
 
-    sgname := dbzone.SignerGroup().Name
+	sgname := dbzone.SignerGroup().Name
 
-    if sgname == "" || sgname == "---" {
-        return fmt.Errorf("Zone %s not assigned to any signer group, so it can not attach to a process\n",
-            dbzone.Name), ""
-    }
+	if sgname == "" || sgname == "---" {
+		return fmt.Errorf("Zone %s not assigned to any signer group, so it can not attach to a process\n",
+			dbzone.Name), ""
+	}
 
-    var exist bool
-    var process FSM
-    if process, exist = FSMlist[fsm]; !exist {
-        return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
-    }
+	var exist bool
+	var process FSM
+	if process, exist = FSMlist[fsm]; !exist {
+		return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
+	}
 
-    if dbzone.FSM != "" && dbzone.FSM != "---" {
-        return fmt.Errorf(
-            "Zone %s already attached to process %s. Only one process at a time possible.\n",
-            dbzone.Name, dbzone.FSM), ""
-    }
+	if dbzone.FSM != "" && dbzone.FSM != "---" {
+		return fmt.Errorf(
+			"Zone %s already attached to process %s. Only one process at a time possible.\n",
+			dbzone.Name, dbzone.FSM), ""
+	}
 
-    initialstate := process.InitialState
+	initialstate := process.InitialState
 
-    mdb.mu.Lock()
-    sqlq := "UPDATE zones SET fsm=?, state=? WHERE name=?"
-    stmt, err := mdb.db.Prepare(sqlq)
-    if err != nil {
-        fmt.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
-    }
+	mdb.mu.Lock()
+	sqlq := "UPDATE zones SET fsm=?, state=? WHERE name=?"
+	stmt, err := mdb.db.Prepare(sqlq)
+	if err != nil {
+		fmt.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
+	}
 
-    _, err = stmt.Exec(fsm, initialstate, dbzone.Name)
-    if CheckSQLError("JoinGroup", sqlq, err, false) {
-        mdb.mu.Unlock()
-        return err, ""
-    }
-    mdb.mu.Unlock()
-    return nil, fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
-        dbzone.Name, fsm, initialstate)
+	_, err = stmt.Exec(fsm, initialstate, dbzone.Name)
+	if CheckSQLError("JoinGroup", sqlq, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	mdb.mu.Unlock()
+	return nil, fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
+		dbzone.Name, fsm, initialstate)
 }
 
-func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
-    string, map[string]Zone) {
-    var emptyzm = map[string]Zone{}
+// XXX: Returning a map[string]Zone just to get rid of an extra call
+// to ListZones() was a mistake. Let's simplify.
 
-    if !dbzone.Exists {
-        return fmt.Errorf("Zone %s unknown", dbzone.Name), "", emptyzm
-    }
+// func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
+//	string, map[string]Zone) {
+func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, 
+     	  	    		       nextstate string) (bool, error, string) {
 
-    fsmname := dbzone.FSM
+	if !dbzone.Exists {
+		return false, fmt.Errorf("Zone %s unknown", dbzone.Name), ""
+	}
 
-    if fsmname == "" || fsmname == "---" {
-        return fmt.Errorf("Zone %s not attached to any process.", dbzone.Name),
-            "", emptyzm
-    }
+	fsmname := dbzone.FSM
 
-    CurrentFsm := FSMlist[fsmname]
+	if fsmname == "" || fsmname == "---" {
+		return false, fmt.Errorf("Zone %s not attached to any process.", dbzone.Name),
+			""
+	}
 
-    state := dbzone.State
-    var CurrentState FSMState
-    var exist bool
-    if CurrentState, exist = CurrentFsm.States[state]; !exist {
-        return errors.New(fmt.Sprintf("Zone state '%s' does not exist in process %s. Terminating.",
-            state, dbzone.FSM)), "", emptyzm
-    }
+	CurrentFsm := FSMlist[fsmname]
 
-    var transistions []string
-    for k, _ := range CurrentState.Next {
-        transistions = append(transistions, k)
-    }
+	state := dbzone.State
+	var CurrentState FSMState
+	var exist bool
+	if CurrentState, exist = CurrentFsm.States[state]; !exist {
+		return false, fmt.Errorf(
+		"Zone state '%s' does not exist in process %s. Terminating.",
+			state, dbzone.FSM), ""
+	}
 
-    msgtmpl := "Zone %s transitioned to state '%s' in process '%s'."
+	var transitions []string
+	for k, _ := range CurrentState.Next {
+		transitions = append(transitions, k)
+	}
 
-    if len(CurrentState.Next) == 1 {
-        if CurrentState.Next[transistions[0]].Criteria(dbzone) {
-            CurrentState.Next[transistions[0]].Action(dbzone)
-            return nil, fmt.Sprintf(msgtmpl, dbzone.Name, transistions[0], fsmname),
-                map[string]Zone{dbzone.Name: *dbzone}
-        } else {
-            return errors.New(
-                fmt.Sprintf("Criteria for '%s' failed", state)), "", emptyzm
-        }
-    }
+	msgtmpl := "Zone %s transitioned to state '%s' in process '%s'."
+	// transittmpl := "Zone %s transitioned to state '%s' in process '%s'."
+	// notransittmpl := "Zone %s did not transition to state '%s' (post-condition failed)."
 
-    if len(CurrentState.Next) > 1 {
-        if nextstate != "" {
-            if _, exist := CurrentState.Next[nextstate]; exist {
-                if CurrentState.Next[nextstate].Criteria(dbzone) {
-                    CurrentState.Next[nextstate].Action(dbzone)
-                    return nil,
-                        fmt.Sprintf(msgtmpl, dbzone.Name,
-                            nextstate, fsmname),
-                        map[string]Zone{dbzone.Name: *dbzone}
-                } else {
-                    return errors.New(
-                        fmt.Sprintf(
-                            "State '%s' is a possible next state from '%s' but criteria failed",
-                            nextstate, state)), "", emptyzm
-                }
-            } else {
-                return errors.New(
-                    fmt.Sprintf(
-                        "State '%s' is not a possible next state from '%s'",
-                        nextstate, state)), "", emptyzm
-            }
-        } else {
-            return errors.New(fmt.Sprintf(
-                "Multiple possible next states from '%s': [%s] but next state not specified",
-                state, strings.Join(transistions, " "))), "", emptyzm
-        }
-    }
+	// Only one possible next state: this it the most common case
+	if len(CurrentState.Next) == 1 {
+		nextname := transitions[0]
+		t := CurrentState.Next[nextname]
+		// success, err, msg := dbzone.AttemptStateTransition(nextname, t)
+		return dbzone.AttemptStateTransition(nextname, t)
+	}
 
-    // Arriving here equals len(CurrentState.Next) == 0, i.e. you are in a state with no "next" state.
-    // If that happens the FSM is likely buggy.
-    return errors.New(fmt.Sprintf(
-        "Zero possible next states from '%s': you lose.", state)), "", emptyzm
+	// More than one possible next state: this can happen. Right now we can
+	// only deal with multiple possible next states when the "right" next state
+	// is explicitly specified (via parameter nextstate).
+	// In the future it seems like a better approach will be to iterate through
+	// all the pre-conditions and execute on the first that returns true.
+	// It can be argued that if multiple pre-conditions can be true at the same
+	// time then the FSM is buggy (as in not deterministic).
+	if len(CurrentState.Next) > 1 {
+		if nextstate != "" {
+			if _, exist := CurrentState.Next[nextstate]; exist {
+				t := CurrentState.Next[nextstate]
+				// success, err, msg := dbzone.AttemptStateTransition(nextstate, t)
+				return dbzone.AttemptStateTransition(nextstate, t)
+			} else {
+				return false, fmt.Errorf(
+			"State '%s' is not a possible next state from '%s'",
+						nextstate, state), ""
+			}
+		} else {
+			return false, fmt.Errorf(
+"Multiple possible next states from '%s': [%s] but next state not specified",
+				state, strings.Join(transitions, " ")), ""
+		}
+	}
+
+	// More than one possible next state: this can happen; old version
+	if len(CurrentState.Next) > 1 {
+		if nextstate != "" {
+			if _, exist := CurrentState.Next[nextstate]; exist {
+				if CurrentState.Next[nextstate].Criteria(dbzone) {
+					CurrentState.Next[nextstate].Action(dbzone)
+					return true, nil,
+						fmt.Sprintf(msgtmpl, dbzone.Name,
+							nextstate, fsmname)
+				} else {
+					return false, fmt.Errorf(
+	"State '%s' is a possible next state from '%s' but criteria failed",
+							nextstate, state), ""
+				}
+			} else {
+				return false, fmt.Errorf(
+			"State '%s' is not a possible next state from '%s'",
+						nextstate, state), ""
+			}
+		} else {
+			return false, fmt.Errorf(
+  "Multiple possible next states from '%s': [%s] but next state not specified",
+				state, strings.Join(transitions, " ")), ""
+		}
+	}
+
+	// Arriving here equals len(CurrentState.Next) == 0, i.e. you are in a
+	// state with no "next" state. If that happens the FSM is likely buggy.
+	return false, fmt.Errorf(
+		"Zero possible next states from '%s': you lose.", state), ""
+}
+
+// pre-condition false ==> return false, nil, "msg": no transit, no error
+// pre-cond true + no post-cond ==> return false, error, "msg": no transit, error
+// pre-cond true + post-cond false ==> return false, nil, "msg"
+// pre-cond true + post-cond true ==> return true, nil, "msg": all ok
+func (z *Zone) AttemptStateTransition(nextstate string,
+	t FSMTransition) (bool, error, string) {
+	currentstate := z.State
+
+	// If pre-condition(aka criteria)==true ==> execute action
+	// If post-condition==true ==> change state.
+	// If post-condition==false ==> bump hold time
+	if t.Criteria(z) {
+		t.Action(z)
+		if t.PostCondition != nil {
+			postcond := t.PostCondition(z)
+			if postcond {
+				z.StateTransition(currentstate, nextstate) // success
+				return true, nil,
+					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
+						z.Name, currentstate, nextstate)
+			} else {
+				return false, nil,
+					fmt.Sprintf("Zone %s did not transition from %s to %s",
+						z.Name, currentstate, nextstate)
+			}
+
+		} else {
+			// there is no post-condition
+			return false, fmt.Errorf("Cannot transition due to lack of definied post-condition for transition %s --> %s", currentstate, nextstate), ""
+		}
+	}
+	// pre-condition returns false
+	return false, nil, fmt.Sprintf("Pre-condition for '%s' failed", nextstate)
 }
 
 func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
-    var resp []Process
-    for name, fsm := range FSMlist {
-        resp = append(resp, Process{
-            Name: name,
-            Desc: fsm.Desc,
-        })
-    }
-    return resp, nil, ""
+	var resp []Process
+	for name, fsm := range FSMlist {
+		resp = append(resp, Process{
+			Name: name,
+			Desc: fsm.Desc,
+		})
+	}
+	return resp, nil, ""
 }
 
 func GetSortedTransitionKeys(fsm string) ([]string, error) {
-    var skeys = []string{}
-    return skeys, nil
+	var skeys = []string{}
+	return skeys, nil
 }
 
 func (mdb *MusicDB) GraphProcess(fsm string) (string, error) {
-    var exist bool
-    var process FSM
+	var exist bool
+	var process FSM
 
-    if process, exist = FSMlist[fsm]; !exist {
-        return "", fmt.Errorf("Process %s unknown. Sorry.", fsm)
-    }
+	if process, exist = FSMlist[fsm]; !exist {
+		return "", fmt.Errorf("Process %s unknown. Sorry.", fsm)
+	}
 
-    gtype := "flowchart"
+	gtype := "flowchart"
 
-    switch gtype {
-    case "flowchart":
-        return MermaidFlowChart(&process)
-    case "statediagram":
-        return MermaidStateDiagram(&process)
-    }
-    return "", nil
+	switch gtype {
+	case "flowchart":
+		return MermaidFlowChart(&process)
+	case "statediagram":
+		return MermaidStateDiagram(&process)
+	}
+	return "", nil
 }
 
 func MermaidStateDiagram(process *FSM) (string, error) {
-    return "", nil
+	return "", nil
 }
 
 func MermaidFlowChart(process *FSM) (string, error) {
-    //   var exist bool
-    graph := "mermaid\ngraph TD\n"
-    statenum := 0
-    var stateToId = map[string]string{}
-    //    var process FSM
-    //    if process, exist = FSMlist[fsm]; !exist {
-    //        return "", fmt.Errorf("Process %s unknown. Sorry.", process.Name)
-    //    }
+	//   var exist bool
+	graph := "mermaid\ngraph TD\n"
+	statenum := 0
+	var stateToId = map[string]string{}
+	//    var process FSM
+	//    if process, exist = FSMlist[fsm]; !exist {
+	//        return "", fmt.Errorf("Process %s unknown. Sorry.", process.Name)
+	//    }
 
-    log.Printf("GraphProcess: graphing process %s\n", process.Name)
-    for sn, _ := range process.States {
-        stateId := fmt.Sprintf("State%d", statenum)
-        graph += fmt.Sprintf("%s(%s)\n", stateId, sn)
-        stateToId[sn] = stateId
-        statenum++
-    }
+	log.Printf("GraphProcess: graphing process %s\n", process.Name)
+	for sn, _ := range process.States {
+		stateId := fmt.Sprintf("State%d", statenum)
+		graph += fmt.Sprintf("%s(%s)\n", stateId, sn)
+		stateToId[sn] = stateId
+		statenum++
+	}
 
-    log.Printf("GraphProcess: stateToId: %v\n", stateToId)
+	log.Printf("GraphProcess: stateToId: %v\n", stateToId)
 
-    statenum = 0
-    for sn, st := range process.States {
-        var action string
-        var criteria string
-        for state, nt := range st.Next {
-            thisstate := sn
-            nextstate := stateToId[state]
-            if nt.MermaidCriteriaDesc != "" {
-                criteria = "Criteria: " + nt.MermaidCriteriaDesc + "<br/>"
-            }
-            if nt.MermaidActionDesc != "" {
-                action = "Action: " + nt.MermaidActionDesc + "<br/>"
-            }
-            txt := criteria + action
-            if txt != "" && len(txt) > 5 {
-                txt = "|" + txt[:len(txt)-5] + "|"
-            }
-            graph += fmt.Sprintf("%s --> %s %s\n", stateToId[thisstate],
-                txt, nextstate)
-        }
-        statenum++
-    }
+	statenum = 0
+	for sn, st := range process.States {
+		var action string
+		var criteria string
+		for state, nt := range st.Next {
+			thisstate := sn
+			nextstate := stateToId[state]
+			if nt.MermaidCriteriaDesc != "" {
+				criteria = "Criteria: " + nt.MermaidCriteriaDesc + "<br/>"
+			}
+			if nt.MermaidActionDesc != "" {
+				action = "Action: " + nt.MermaidActionDesc + "<br/>"
+			}
+			txt := criteria + action
+			if txt != "" && len(txt) > 5 {
+				txt = "|" + txt[:len(txt)-5] + "|"
+			}
+			graph += fmt.Sprintf("%s --> %s %s\n", stateToId[thisstate],
+				txt, nextstate)
+		}
+		statenum++
+	}
 
-    log.Printf("GraphProcess: graph: \n%s\n", graph)
+	log.Printf("GraphProcess: graph: \n%s\n", graph)
 
-    return graph, nil
+	return graph, nil
 }

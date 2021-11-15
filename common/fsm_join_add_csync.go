@@ -6,6 +6,19 @@ import (
     "github.com/miekg/dns"
 )
 
+var FsmJoinAddCsync = FSMTransition{
+    Description:         "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
+
+    MermaidCriteriaDesc: "Wait for NS RRset to be consistent",
+    MermaidPreCondDesc: "Wait for NS RRset to be consistent",
+    MermaidActionDesc:   "Generate and push CSYNC record",
+    MermaidPostCondDesc:  "Verify that CSYNC record has been published",
+    Criteria:            fsmJoinAddCsyncCriteria,
+    Action:              fsmJoinAddCsyncAction,
+    PostCondition:	 func (z *Zone) bool { return true },
+}
+
+
 func fsmJoinAddCsyncCriteria(z *Zone) bool {
     nses := make(map[string][]*dns.NS)
 
@@ -107,14 +120,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
         }
     }
 
-    z.StateTransition(FsmStateDsPropagated, FsmStateCsyncAdded)
+//    z.StateTransition(FsmStateDsPropagated, FsmStateCsyncAdded)
     return true
 }
 
-var FsmJoinAddCsync = FSMTransition{
-    Description:         "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
-    MermaidCriteriaDesc: "Wait for NS RRset to be consistent",
-    MermaidActionDesc:   "Generate and push CSYNC record",
-    Criteria:            fsmJoinAddCsyncCriteria,
-    Action:              fsmJoinAddCsyncAction,
-}
