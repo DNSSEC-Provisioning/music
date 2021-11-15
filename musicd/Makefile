@@ -1,5 +1,6 @@
 PROG:=../sbin/musicd
 CONFIG:=musicd.yaml
+DB:=/var/tmp/music.db
 
 VERSION:=$(shell git describe --dirty=+WiP --always)
 GOFLAGS:=-v -ldflags "-X app.version=$(VERSION) -v"
@@ -20,8 +21,7 @@ build:
 install: ${PROG}
 	@mkdir -p ../etc ../sbin
 	@touch ../etc/musicd.tokens.yaml
-	@touch /var/tmp/music.db
-#	install -s -b ${PROG} ../sbin/
+	@touch ${DB}
 	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
 
 test:
