@@ -6,7 +6,7 @@ draft-wisser-dnssec-automation-02 and different to the first
 implementation done (multi-signer-controller). There are several
 observations to be made regarding the adaptions:
 
-1. The draft is writter from the POV of a zone being under the control
+1. The draft is written from the POV of a zone being under the control
    of a "multi signer group" and then a signer typically joins the
    group or leaves the group. Once the changes needed to deal with the
    new set of signers is complete the process is done and an end state
