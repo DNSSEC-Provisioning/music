@@ -51,6 +51,8 @@ type ZonePost struct {
     SignerGroup  string
     FSM          string
     FsmNextState string
+    Metakey	 string
+    Metavalue	 string
 }
 
 type DNSRecords []dns.RR

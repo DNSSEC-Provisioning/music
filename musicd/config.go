@@ -27,13 +27,15 @@ type Config struct {
 }
 
 type ApiServerConf struct {
-    Address string `validate:"required"`
+    Address  string `validate:"required,hostname_port"`
+    CertFile string `validate:"required,file"`
+    KeyFile  string `validate:"required,file"`
     UseTLS  bool
 }
 
 type SignerConf struct {
     Name    string
-    Address string `validate:"host_port"`
+    Address string `validate:"hostname_port"`
     BaseURL string `validate:"url"`
     Method  string // ddns | desec | ...
     Auth    string // tsig | userpasstoken

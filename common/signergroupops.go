@@ -130,7 +130,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
             return sgl, err
         } else {
             var name string
-            signers := map[string]Signer{}
+            signers := map[string]*Signer{}
             for rows.Next() {
                 err := rows.Scan(&name)
                 if err != nil {
@@ -138,7 +138,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
                         err)
                 } else {
                     fmt.Printf("LSG: got signer name: %s\n", name)
-                    s, err := mdb.GetSigner(name)
+                    s, err := mdb.GetSignerByName(name)
                     if err != nil {
                         log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
                     } else {
@@ -174,7 +174,7 @@ func (sg *SignerGroup) PopulateSigners() error {
         return err
     } else {
         var name string
-        signers := map[string]Signer{}
+        signers := map[string]*Signer{}
         for rows.Next() {
             err := rows.Scan(&name)
             if err != nil {
@@ -182,7 +182,7 @@ func (sg *SignerGroup) PopulateSigners() error {
                     err)
             } else {
                 fmt.Printf("PS: got signer name: %s\n", name)
-                s, err := mdb.GetSigner(name)
+                s, err := mdb.GetSignerByName(name)
                 if err != nil {
                     log.Fatalf("PopulateSigners: Error from GetSigner: %v", err)
                 } else {
@@ -197,7 +197,7 @@ func (sg *SignerGroup) PopulateSigners() error {
     return nil
 }
 
-func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]Signer) {
+func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]*Signer) {
     sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
     stmt, err := mdb.db.Prepare(sqlcmd)
     if err != nil {
@@ -207,10 +207,10 @@ func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]Signer) {
     rows, err := stmt.Query(name)
     defer rows.Close()
 
-    signers := map[string]Signer{}
+    signers := map[string]*Signer{}
 
     if CheckSQLError("GetGroupSigners", sqlcmd, err, false) {
-        return err, map[string]Signer{}
+        return err, map[string]*Signer{}
     } else {
         var name, method, auth, address string
         for rows.Next() {
@@ -220,7 +220,7 @@ func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]Signer) {
                     err)
             } else {
                 // fmt.Printf("GGS: got signer name: %s\n", name)
-                s, err := mdb.GetSigner(name)
+                s, err := mdb.GetSignerByName(name)
                 if err != nil {
                     log.Fatalf("GGS: Error from GetSigner: %v", err)
                 } else {

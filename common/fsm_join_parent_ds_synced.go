@@ -7,6 +7,20 @@ import (
     "github.com/miekg/dns"
 )
 
+var FsmJoinParentDsSynced = FSMTransition{
+    Description:         "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
+
+    MermaidCriteriaDesc: "Verify that parent DS RRset is updated",
+    MermaidPreCondDesc:  "Verify that parent DS RRset is updated",
+    MermaidActionDesc:   "Remove all CDS/CDNSKEYs",
+    MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs are removed",
+
+    Criteria:            fsmJoinParentDsSyncedCriteria,
+    PreCondition:        fsmJoinParentDsSyncedCriteria,
+    Action:              fsmJoinParentDsSyncedAction,
+    PostCondition:	 fsmVerifyCdsRemoved,
+}
+
 func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
     cdses := make(map[string][]*dns.CDS)
 
@@ -36,7 +50,12 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeDS)
@@ -71,10 +90,18 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         delete(cdsmap, fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
     }
     for _, cds := range cdsmap {
+    	err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
+    	if err != nil {
+       	   log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+   	}
         log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
         parent_up_to_date = false
     }
     for _, ds := range removedses {
+    	err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
+    	if err != nil {
+       	   log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+   	}
         log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
         parent_up_to_date = false // TODO: should unknown DS be allowed?
     }
@@ -83,7 +110,7 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
         return false
     }
 
-    log.Printf("%s: Parent is up-to-date with it's DS records", z.Name)
+    log.Printf("%s: DS records in parent are up-to-date", z.Name)
     return true
 }
 
@@ -98,21 +125,41 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(&signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
+        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
             log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
             return false
         }
         log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateCdscdnskeysAdded, FsmStateParentDsSynced)
     return true
 }
 
-var FsmJoinParentDsSynced = FSMTransition{
-    Description:         "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
-    MermaidCriteriaDesc: "Wait for parent to update DS RRset",
-    MermaidActionDesc:   "Remove all CDS/CDNSKEYs",
-    Criteria:            fsmJoinParentDsSyncedCriteria,
-    Action:              fsmJoinParentDsSyncedAction,
+func fsmVerifyCdsRemoved(z *Zone) bool {
+    log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
+
+    for _, signer := range z.sgroup.SignerMap {
+        updater := GetUpdater(signer.Method)
+	err, cdsrrs := updater.FetchRRset(signer, z.Name, dns.StringToType["CDS"])
+	if err != nil {
+	   log.Printf("Error from FetchRRset: %v\n", err)
+	}
+
+        if len(cdsrrs) > 0 {
+            log.Printf("%s: CDS RRset still published by %s\n", z.Name, signer.Name)
+            return false
+        }
+	err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, dns.StringToType["CDNSKEY"])
+	if err != nil {
+	   log.Printf("Error from FetchRRset: %v\n", err)
+	}
+
+        if len(cdnskeyrrs) > 0 {
+            log.Printf("%s: CDNSKEY RRset still published by %s\n", z.Name, signer.Name)
+            return false
+        }
+    }
+
+    return true
 }
+

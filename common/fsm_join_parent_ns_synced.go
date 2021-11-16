@@ -6,6 +6,20 @@ import (
     "github.com/miekg/dns"
 )
 
+var FsmJoinParentNsSynced = FSMTransition{
+    Description:         "Wait for parent to pick up CSYNC and update it's NS records (criteria), then remove CSYNC from all signers and STOP (action)",
+
+    MermaidCriteriaDesc: "Wait for parent to update NS RRset",
+    MermaidPreCondDesc:  "Verify that parent has published updated NS RRset",
+    MermaidActionDesc:   "Remove CSYNC RR from all signers",
+    MermaidPostCondDesc: "Verify that CSYNC has been removed from all signers",
+
+    Criteria:            fsmJoinParentNsSyncedCriteria,
+    PreCondition:        fsmJoinParentNsSyncedCriteria,
+    Action:              fsmJoinParentNsSyncedAction,
+    PostCondition:	 func (z *Zone) bool { return true },
+}
+
 func fsmJoinParentNsSyncedCriteria(z *Zone) bool {
     nses := make(map[string][]*dns.NS)
 
@@ -41,7 +55,12 @@ func fsmJoinParentNsSyncedCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeNS)
@@ -80,21 +99,14 @@ func fsmJoinParentNsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(&signer, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
+        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
             log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, signer.Name, err)
             return false
         }
         log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
     }
 
-    z.StateTransition(FsmStateCsyncAdded, FsmStateParentNsSynced)
+//    z.StateTransition(FsmStateCsyncAdded, FsmStateParentNsSynced)
     return true
 }
 
-var FsmJoinParentNsSynced = FSMTransition{
-    Description:         "Wait for parent to pick up CSYNC and update it's NS records (criteria), then remove CSYNC from all signers and STOP (action)",
-    MermaidCriteriaDesc: "Wait for parent to update NS RRset",
-    MermaidActionDesc:   "Remove CSYNC RR",
-    Criteria:            fsmJoinParentNsSyncedCriteria,
-    Action:              fsmJoinParentNsSyncedAction,
-}

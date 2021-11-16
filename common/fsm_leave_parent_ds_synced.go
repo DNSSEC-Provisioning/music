@@ -34,7 +34,12 @@ func fsmLeaveParentDsSyncedCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeDS)
@@ -71,7 +76,7 @@ func fsmLeaveParentDsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(&signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
+        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
             log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
             return false
         }

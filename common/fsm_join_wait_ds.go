@@ -13,6 +13,20 @@ func init() {
     zoneWaitDs = make(map[string]time.Time)
 }
 
+var FsmJoinWaitDs = FSMTransition{
+    Description:         "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
+
+    MermaidCriteriaDesc: "Wait for DS to propagate",
+    MermaidPreCondDesc:  "Wait for DS to propagate",
+    MermaidActionDesc:   "Sync NS RRsets between all signers",
+    MermaidPostCondDesc: "Verify that NS RRsets are in sync",
+
+    Criteria:            fsmJoinWaitDsCriteria,
+    PreCondition:        fsmJoinWaitDsCriteria,
+    Action:              fsmJoinWaitDsAction,
+    PostCondition:	 func (z *Zone) bool { return true },
+}
+
 func fsmJoinWaitDsCriteria(z *Zone) bool {
     if until, ok := zoneWaitDs[z.Name]; ok {
         if time.Now().Before(until) {
@@ -27,17 +41,16 @@ func fsmJoinWaitDsCriteria(z *Zone) bool {
 
     var ttl uint32
 
-    for _, s := range z.sgroup.SignerMap {
-        m := new(dns.Msg)
-        m.SetQuestion(z.Name, dns.TypeDNSKEY)
-        c := new(dns.Client)
-        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
-        if err != nil {
-            log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
-            return false
-        }
+    for _, signer := range z.sgroup.SignerMap {
 
-        for _, a := range r.Answer {
+	updater := GetUpdater(signer.Method)
+	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
+	err, rrs := updater.FetchRRset(signer, z.Name, dns.StringToType["DNSKEY"])
+	if err != nil {
+		log.Printf("Error from updater.FetchRRset: %v\n", err)
+	}
+
+        for _, a := range rrs {
             dnskey, ok := a.(*dns.DNSKEY)
             if !ok {
                 continue
@@ -49,7 +62,12 @@ func fsmJoinWaitDsCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m := new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeDS)
@@ -87,25 +105,33 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
     nses := make(map[string][]*dns.NS)
 
-    for _, s := range z.sgroup.SignerMap {
-        m := new(dns.Msg)
-        m.SetQuestion(z.Name, dns.TypeNS)
-        c := new(dns.Client)
-        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
-        if err != nil {
-            log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
-            return false
-        }
+    for _, signer := range z.sgroup.SignerMap {
+//        m := new(dns.Msg)
+//        m.SetQuestion(z.Name, dns.TypeNS)
+//        c := new(dns.Client)
+//        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+//        if err != nil {
+//            log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
+//            return false
+//        }
 
-        nses[s.Name] = []*dns.NS{}
+	updater := GetUpdater(signer.Method)
+	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
+	err, rrs := updater.FetchRRset(signer, z.Name, dns.StringToType["NS"])
+	if err != nil {
+		log.Printf("Error from updater.FetchRRset: %v\n", err)
+	}
 
-        for _, a := range r.Answer {
+        nses[signer.Name] = []*dns.NS{}
+
+//        for _, a := range r.Answer {
+        for _, a := range rrs {
             ns, ok := a.(*dns.NS)
             if !ok {
                 continue
             }
 
-            nses[s.Name] = append(nses[s.Name], ns)
+            nses[signer.Name] = append(nses[signer.Name], ns)
 
             stmt, err := z.MusicDB.db.Prepare("INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)")
             if err != nil {
@@ -113,14 +139,14 @@ func fsmJoinWaitDsAction(z *Zone) bool {
                 return false
             }
 
-            res, err := stmt.Exec(z.Name, ns.Ns, s.Name)
+            res, err := stmt.Exec(z.Name, ns.Ns, signer.Name)
             if err != nil {
                 log.Printf("%s: Statement execute failed: %s", z.Name, err)
                 return false
             }
             rows, _ := res.RowsAffected()
             if rows > 0 {
-                log.Printf("%s: Origin for %s set to %s", z.Name, ns.Ns, s.Name)
+                log.Printf("%s: Origin for %s set to %s", z.Name, ns.Ns, signer.Name)
             }
         }
     }
@@ -157,7 +183,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(&signer, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
+        if err := updater.Update(signer, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
             log.Printf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
             return false
         }
@@ -169,9 +195,3 @@ func fsmJoinWaitDsAction(z *Zone) bool {
     return true
 }
 
-var FsmJoinWaitDs = FSMTransition{
-    Description:         "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
-    MermaidCriteriaDesc: "Wait for DS to propagate",
-    Criteria:            fsmJoinWaitDsCriteria,
-    Action:              fsmJoinWaitDsAction,
-}

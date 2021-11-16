@@ -34,7 +34,7 @@ type Zone struct {
 
 type SignerGroup struct {
     Name      string
-    SignerMap map[string]Signer
+    SignerMap map[string]*Signer
     State     string
     DB        *MusicDB
 }
@@ -46,7 +46,7 @@ type GormSignerGroup struct {
     DB        *MusicDB
 }
 
-func (sg *SignerGroup) Signers() map[string]Signer {
+func (sg *SignerGroup) Signers() map[string]*Signer {
     return sg.SignerMap
 }
 
@@ -54,6 +54,7 @@ type ZoneState string
 
 type Signer struct {
     Name        string
+    Exists	bool	
     Method      string // "ddns" | "desec" | ...
     Address     string
     Auth        string // AuthDataTmp // TODO: Issue #28

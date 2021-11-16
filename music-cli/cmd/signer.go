@@ -8,6 +8,7 @@ import (
     "encoding/json"
     "fmt"
     "log"
+    "strings"
 
     music "github.com/DNSSEC-Provisioning/music/common"
 
@@ -145,7 +146,7 @@ func AddSigner() error {
         Command: "add",
         Signer: music.Signer{
             Name:    signername,
-            Method:  signermethod,
+            Method:  strings.ToLower(signermethod),
             Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             Address: signeraddress,
         },
@@ -175,7 +176,7 @@ func UpdateSigner() error {
         Command: "update",
         Signer: music.Signer{
             Name:    signername,
-            Method:  signermethod,
+            Method:  strings.ToLower(signermethod),
             Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             Address: signeraddress,
         },
@@ -213,7 +214,7 @@ func SignerJoinGroup(signer, group string) (bool, string) {
         Command: "join",
         Signer: music.Signer{
             Name:        signer,
-            Method:      signermethod,
+            Method:      strings.ToLower(signermethod),
             Auth:        signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             SignerGroup: group,
         },
@@ -250,7 +251,7 @@ func SignerLeaveGroup(signer, group string) (bool, string) {
         Command: "leave",
         Signer: music.Signer{
             Name:        signer,
-            Method:      signermethod,
+            Method:      strings.ToLower(signermethod),
             Auth:        signerauth, // Issue #28: music.AuthDataTmp(signerauth),
             SignerGroup: group,
         },

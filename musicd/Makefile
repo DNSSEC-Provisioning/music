@@ -20,10 +20,9 @@ build:
 
 install: ${PROG}
 	@mkdir -p ../etc ../sbin
+	@touch ../etc/musicd.tokens.yaml
+	@touch ${DB}
 	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
-	touch ${DB}
-	touch ../etc/musicd.tokens.yaml
-
 
 test:
 	$(GO) test -v -cover

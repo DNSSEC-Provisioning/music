@@ -27,7 +27,7 @@ func fsmLeaveWaitNsCriteria(z *Zone) bool {
     leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
     // Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-    leavingSigner, err := z.MusicDB.GetSigner(leavingSignerName)
+    leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
     if err != nil {
         log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
         return false
@@ -79,7 +79,12 @@ func fsmLeaveWaitNsCriteria(z *Zone) bool {
         }
     }
 
-    parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+    // parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
+
+    parentAddress, err := z.GetParentAddressOrStop()
+    if err != nil {
+       return false
+    }
 
     m = new(dns.Msg)
     m.SetQuestion(z.Name, dns.TypeNS)

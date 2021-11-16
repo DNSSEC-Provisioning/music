@@ -57,10 +57,19 @@ name        TEXT
 
     "records": `CREATE TABLE IF NOT EXISTS 'records' (
 id          INTEGER PRIMARY KEY,
+zone	    TEXT,
 owner       TEXT,
 signer      TEXT,
 rrtype      INTEGER,
 rdata       TEXT
+)`,
+
+    "metadata": `CREATE TABLE IF NOT EXISTS 'metadata' (
+id         INTEGER PRIMARY KEY,
+zone       TEXT,
+key        TEXT,
+value      TEXT,
+UNIQUE (zone, key)
 )`,
 }
 

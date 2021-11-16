@@ -5,6 +5,7 @@
 package music
 
 import (
+    "database/sql"
     "errors"
     "fmt"
     "log"
@@ -38,11 +39,11 @@ func (mdb *MusicDB) ZoneCopyRRset(dbzone *Zone, owner,
         return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
     }
 
-    fs, err := mdb.GetSigner(fromsigner)
+    fs, err := mdb.GetSignerByName(fromsigner)
     if err != nil {
         return fmt.Errorf("Signer %s (copying from) is unknown.", fromsigner), ""
     }
-    ts, err := mdb.GetSigner(tosigner)
+    ts, err := mdb.GetSignerByName(tosigner)
     if err != nil {
         return fmt.Errorf("Signer %s (copying to) is unknown.", tosigner), ""
     }
@@ -99,7 +100,7 @@ func (s *Signer) RetrieveRRset(zone, owner string, rrtype uint16) (error, []dns.
     fmt.Printf("Signer %s: retrieving RRset '%s %s'\n", s.Name, owner, dns.TypeToString[rrtype])
     switch s.Method {
     case "ddns":
-        return DNSRetrieveRRset(s, owner, rrtype)
+        return DNSRetrieveRRset(s, owner, zone, rrtype)
     case "desec-api":
         return DesecRetrieveRRset(s, StripDot(zone), StripDot(owner), rrtype)
     default:
@@ -122,18 +123,19 @@ func (s *Signer) UpdateRRset(zone, owner string, rrtype uint16, rrs []dns.RR) er
     switch s.Method {
     case "ddns":
         // return DNSUpdateRRset(s, owner, rrtype)
-        return errors.New(fmt.Sprintf("Signer %s has method=ddns, which is not yet implemented.",
-            s.Name))
+        return fmt.Errorf(
+	       "Signer %s has method=ddns, which is not yet implemented.",
+            s.Name)
     case "desec-api":
         err, _ := DesecUpdateRRset(s, StripDot(zone), StripDot(owner), rrtype, rrs)
         return err
     default:
-        return errors.New(fmt.Sprintf("Unknown RRset retrieval method: %s", s.Method))
+        return fmt.Errorf("Unknown RRset retrieval method: %s", s.Method)
     }
     return nil
 }
 
-func DNSRetrieveRRset(s *Signer, owner string, rrtype uint16) (error, []dns.RR) {
+func DNSRetrieveRRset(s *Signer, owner, zone string, rrtype uint16) (error, []dns.RR) {
     mdb := s.MusicDB()
     address := s.Address
     log.Printf("DNSRetrieveRRset: looking up '%s IN %s' from %s\n", owner,
@@ -157,7 +159,7 @@ func DNSRetrieveRRset(s *Signer, owner string, rrtype uint16) (error, []dns.RR) 
         } else {
             // if RRs in Answer, they must be CDS + RRSIG(CDS)
             // rr := response.Answer[0].(*dns.CDS)
-            mdb.WriteRRs(s, owner, rrtype, r.Answer)
+            mdb.WriteRRs(s, owner, zone, rrtype, r.Answer)
             return nil, DNSFilterRRsetOnType(r.Answer, rrtype)
         }
     } else {
@@ -181,7 +183,7 @@ func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
     return out
 }
 
-func (mdb *MusicDB) WriteRRs(signer *Signer, owner string,
+func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
     rrtype uint16, rrs []dns.RR) error {
 
     delsql := "DELETE FROM records WHERE owner=? AND signer=? AND rrtype=?"
@@ -190,14 +192,14 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner string,
         log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)
     }
 
-    addsql := "INSERT INTO records (owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?)"
+    addsql := "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
     addstmt, err := mdb.db.Prepare(addsql)
     if err != nil {
         log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", addsql, err)
     }
 
     mdb.mu.Lock()
-    _, err = delstmt.Exec(owner, signer.Name, int(rrtype))
+    _, err = delstmt.Exec(zone, owner, signer.Name, int(rrtype))
     if CheckSQLError("WriteRRs", delsql, err, false) {
         mdb.mu.Unlock()
         return err
@@ -277,3 +279,25 @@ func RecursiveDNSQuery(qname, nameserver string, rrtype uint16, verbose bool) (*
     }
     return r, validated
 }
+
+func (mdb *MusicDB) GetMeta(z *Zone, key string) (string, bool) {
+     stmt, err := mdb.db.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+     if err != nil {
+        fmt.Printf("GetMeta: Error from db.Prepare: %v\n", err)
+     }
+
+       row := stmt.QueryRow(z.Name, key)
+
+        var value string
+        switch err = row.Scan(&value); err {
+        case sql.ErrNoRows:
+                // fmt.Printf("GetMeta: Key \"%s\" does not exist\n", key)
+                return "", false
+        
+        case nil:
+                // fmt.Printf("GetMeta: found key %s\n", key)
+                return value, true
+	}
+     	return "", false
+}
+
