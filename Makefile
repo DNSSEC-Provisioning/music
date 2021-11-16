@@ -6,7 +6,6 @@ all: cert
 
 fmt:
 	gofmt -w `find common musicd music-cli -type f -name '*.go'`
-	gsed -i -e 's%	%    %g' `find common musicd music-cli -type f -name '*.go'`
 
 cert:
 	mkdir -p "${CERTDIR}"
