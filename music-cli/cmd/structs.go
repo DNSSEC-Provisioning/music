@@ -17,5 +17,6 @@ type Config struct {
 
 type MusicdConf struct {
     BaseUrl string `validate:"required"`
+    RootCApem string `validate:"required,file"`
     ApiKey  string `validate:"required"`
 }
