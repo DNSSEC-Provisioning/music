@@ -232,11 +232,11 @@ func ZoneMeta(zone, metakey, metavalue string) (bool, string) {
 	switch metakey {
 	case "":
 		log.Fatalf("ZoneMeta: Metadata key not specified. Terminating.\n")
-	
+
 	case "parentaddr":
 		err := validate.Var(metavalue, "required,hostname_port")
 		if err != nil {
-		   log.Fatalf("ZoneMeta: Metadata value not a host:port: %v\n", err)
+			log.Fatalf("ZoneMeta: Metadata value not a host:port: %v\n", err)
 		}
 	}
 

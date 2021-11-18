@@ -4,171 +4,171 @@
 package music
 
 import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "log"
-    "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
 
-    "github.com/spf13/viper"
+	"github.com/spf13/viper"
 )
 
 func DesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
-    apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
+	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
 
-    dlp := DesecLPost{
-        Email:    viper.GetString("signers.desec.email"),
-        Password: viper.GetString("signers.desec.password"),
-    }
+	dlp := DesecLPost{
+		Email:    viper.GetString("signers.desec.email"),
+		Password: viper.GetString("signers.desec.password"),
+	}
 
-    bytebuf := new(bytes.Buffer)
-    json.NewEncoder(bytebuf).Encode(dlp)
+	bytebuf := new(bytes.Buffer)
+	json.NewEncoder(bytebuf).Encode(dlp)
 
-    _, buf, err := GenericAPIpost(apiurl, "", "none", bytebuf.Bytes(),
-        true, cc.Verbose, cc.Debug, nil)
-    if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
-    }
-    // fmt.Printf("Status: %d\n", status)
+	_, buf, err := GenericAPIpost(apiurl, "", "none", bytebuf.Bytes(),
+		true, cc.Verbose, cc.Debug, nil)
+	if err != nil {
+		log.Println("Error from GenericAPIpost:", err)
+	}
+	// fmt.Printf("Status: %d\n", status)
 
-    var dlr DesecLResponse
-    err = json.Unmarshal(buf, &dlr)
-    if err != nil {
-        log.Fatalf("Error from unmarshal: %v\n", err)
-    }
+	var dlr DesecLResponse
+	err = json.Unmarshal(buf, &dlr)
+	if err != nil {
+		log.Fatalf("Error from unmarshal: %v\n", err)
+	}
 
-    // fmt.Printf("Response from Desec login: %v\n", dlr)
-    dlr.MaxUnused = ParseDesecDuration(dlr.MaxUnusedRaw)
-    dlr.MaxAge = ParseDesecDuration(dlr.MaxAgeRaw)
+	// fmt.Printf("Response from Desec login: %v\n", dlr)
+	dlr.MaxUnused = ParseDesecDuration(dlr.MaxUnusedRaw)
+	dlr.MaxAge = ParseDesecDuration(dlr.MaxAgeRaw)
 
-    tokvip.Set("desec.token", dlr.Token)
-    tokvip.Set("desec.created", dlr.Created)
-    tokvip.Set("desec.maxunused", dlr.MaxUnused)
-    tokvip.Set("desec.maxage", dlr.MaxAge)
-    tokvip.WriteConfig()
-    return dlr, nil
+	tokvip.Set("desec.token", dlr.Token)
+	tokvip.Set("desec.created", dlr.Created)
+	tokvip.Set("desec.maxunused", dlr.MaxUnused)
+	tokvip.Set("desec.maxage", dlr.MaxAge)
+	tokvip.WriteConfig()
+	return dlr, nil
 }
 
 func DesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
-    maxdur, _ := time.ParseDuration(tokvip.GetString("desec.maxunused"))
-    lasttouch, _ := time.Parse(layout, tokvip.GetString("desec.touched"))
-    remaining := time.Until(lasttouch.Add(maxdur))
+	maxdur, _ := time.ParseDuration(tokvip.GetString("desec.maxunused"))
+	lasttouch, _ := time.Parse(layout, tokvip.GetString("desec.touched"))
+	remaining := time.Until(lasttouch.Add(maxdur))
 
-    fmt.Printf("Time remaining before this token expires: %v\n", remaining)
+	fmt.Printf("Time remaining before this token expires: %v\n", remaining)
 
-    if remaining.Minutes() < 2 {
-        fmt.Printf("Less than 2 minutes remain. Need to login again.\n")
-        cc := CliConfig{
-            Verbose: true,
-            Debug:   false,
-        }
-        _, err := DesecLogin(&cc, tokvip)
-        if err != nil {
-            fmt.Printf("DesecTokenStillOk: deSEC login failed. Error: %v\n", err)
-        } else {
-            fmt.Printf("DesecTokenStillOk: deSEC login suceeded.\n")
-        }
-        // fmt.Printf("Response data from deSEC login: %v\n", dlr)
-    }
-    return true
+	if remaining.Minutes() < 2 {
+		fmt.Printf("Less than 2 minutes remain. Need to login again.\n")
+		cc := CliConfig{
+			Verbose: true,
+			Debug:   false,
+		}
+		_, err := DesecLogin(&cc, tokvip)
+		if err != nil {
+			fmt.Printf("DesecTokenStillOk: deSEC login failed. Error: %v\n", err)
+		} else {
+			fmt.Printf("DesecTokenStillOk: deSEC login suceeded.\n")
+		}
+		// fmt.Printf("Response data from deSEC login: %v\n", dlr)
+	}
+	return true
 }
 
 func DesecLogout(cc *CliConfig, tokvip *viper.Viper) error {
-    token := tokvip.GetString("desec.token")
-    apiurl := viper.GetString("signers.desec.baseurl") + "/auth/logout/"
+	token := tokvip.GetString("desec.token")
+	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/logout/"
 
-    bytebuf := new(bytes.Buffer)
-    fmt.Printf("About to post '%s' to desec\n", string(bytebuf.Bytes()))
-    // return nil
+	bytebuf := new(bytes.Buffer)
+	fmt.Printf("About to post '%s' to desec\n", string(bytebuf.Bytes()))
+	// return nil
 
-    status, _, err := GenericAPIpost(apiurl, token, "Authorization",
-        bytebuf.Bytes(), true, cc.Verbose, cc.Debug, nil)
-    if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
-    }
-    fmt.Printf("Status: %d\n", status)
+	status, _, err := GenericAPIpost(apiurl, token, "Authorization",
+		bytebuf.Bytes(), true, cc.Verbose, cc.Debug, nil)
+	if err != nil {
+		log.Println("Error from GenericAPIpost:", err)
+	}
+	fmt.Printf("Status: %d\n", status)
 
-    // here we should delete the token file.
-    tokvip.Set("desec.token", "")
-    tokvip.Set("desec.created", "")
-    tokvip.Set("desec.maxunused", "")
-    tokvip.Set("desec.maxage", "")
-    tokvip.WriteConfig()
+	// here we should delete the token file.
+	tokvip.Set("desec.token", "")
+	tokvip.Set("desec.created", "")
+	tokvip.Set("desec.maxunused", "")
+	tokvip.Set("desec.maxage", "")
+	tokvip.WriteConfig()
 
-    return err
+	return err
 }
 
 func DesecListZone(cc *CliConfig, zone string, tokvip *viper.Viper) ([]DesecZone, error) {
-    apiurl := viper.GetString("api.baseurl") + "/domains/"
-    if zone != "" {
-        apiurl += zone + "/"
-    }
-    apikey := tokvip.GetString("desec.token")
+	apiurl := viper.GetString("api.baseurl") + "/domains/"
+	if zone != "" {
+		apiurl += zone + "/"
+	}
+	apikey := tokvip.GetString("desec.token")
 
-    status, buf, err := GenericAPIget(apiurl, apikey, "Authorization", true,
-        cc.Verbose, cc.Debug, nil)
-    if err != nil {
-        log.Println("Error from GenericAPIget:", err)
-    }
-    fmt.Printf("Status: %d\n", status)
+	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization", true,
+		cc.Verbose, cc.Debug, nil)
+	if err != nil {
+		log.Println("Error from GenericAPIget:", err)
+	}
+	fmt.Printf("Status: %d\n", status)
 
-    var zl []DesecZone
-    err = json.Unmarshal(buf, &zl)
-    if err != nil {
-        log.Fatalf("Error from unmarshal: %v\n", err)
-    }
+	var zl []DesecZone
+	err = json.Unmarshal(buf, &zl)
+	if err != nil {
+		log.Fatalf("Error from unmarshal: %v\n", err)
+	}
 
-    return zl, nil
+	return zl, nil
 }
 
 func DesecAddZone(cc *CliConfig, zone string, tokvip *viper.Viper) (DesecZone, error) {
-    var dz DesecZone
+	var dz DesecZone
 
-    apiurl := viper.GetString("api.baseurl") + "/domains/"
-    apikey := tokvip.GetString("desec.token")
+	apiurl := viper.GetString("api.baseurl") + "/domains/"
+	apikey := tokvip.GetString("desec.token")
 
-    data := ZoneName{Name: zone}
+	data := ZoneName{Name: zone}
 
-    bytebuf := new(bytes.Buffer)
-    json.NewEncoder(bytebuf).Encode(data)
+	bytebuf := new(bytes.Buffer)
+	json.NewEncoder(bytebuf).Encode(data)
 
-    fmt.Printf("About to post to desec: '%s'\n", string(bytebuf.Bytes()))
-    // os.Exit(1)
+	fmt.Printf("About to post to desec: '%s'\n", string(bytebuf.Bytes()))
+	// os.Exit(1)
 
-    status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
-        bytebuf.Bytes(), true, cc.Verbose, cc.Debug, nil)
-    if err != nil {
-        log.Println("Error from GenericAPIpost:", err)
-        return dz, err
-    }
-    if cc.Verbose {
-        fmt.Printf("Status: %d\n", status)
-    }
+	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
+		bytebuf.Bytes(), true, cc.Verbose, cc.Debug, nil)
+	if err != nil {
+		log.Println("Error from GenericAPIpost:", err)
+		return dz, err
+	}
+	if cc.Verbose {
+		fmt.Printf("Status: %d\n", status)
+	}
 
-    fmt.Printf("Response from Desec add zone: %v\n", string(buf))
-    err = json.Unmarshal(buf, &dz)
-    if err != nil {
-        log.Fatalf("Error from unmarshal: %v\n", err)
-    }
+	fmt.Printf("Response from Desec add zone: %v\n", string(buf))
+	err = json.Unmarshal(buf, &dz)
+	if err != nil {
+		log.Fatalf("Error from unmarshal: %v\n", err)
+	}
 
-    return dz, err
+	return dz, err
 }
 
 func DesecDeleteZone(cc *CliConfig, zone string, tokvip *viper.Viper) error {
-    apiurl := viper.GetString("api.baseurl") + "/domains/" + zone + "/"
-    apikey := tokvip.GetString("desec.token")
+	apiurl := viper.GetString("api.baseurl") + "/domains/" + zone + "/"
+	apikey := tokvip.GetString("desec.token")
 
-    status, _, err := GenericAPIdelete(apiurl, apikey, "Authorization",
-        true, cc.Verbose, cc.Debug, nil)
-    if cc.Verbose {
-        fmt.Printf("Status: %d\n", status)
-    }
-    if status == 204 {
-        return nil // all ok
-    }
-    if err != nil {
-        log.Println("Error from GenericAPIdelete:", err)
-        return err
-    }
-    return nil
+	status, _, err := GenericAPIdelete(apiurl, apikey, "Authorization",
+		true, cc.Verbose, cc.Debug, nil)
+	if cc.Verbose {
+		fmt.Printf("Status: %d\n", status)
+	}
+	if status == 204 {
+		return nil // all ok
+	}
+	if err != nil {
+		log.Println("Error from GenericAPIdelete:", err)
+		return err
+	}
+	return nil
 }

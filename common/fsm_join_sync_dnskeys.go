@@ -16,9 +16,9 @@ import (
 var FsmJoinSyncDnskeys = FSMTransition{
 	Description:         "First step when joining, this transistion has no criteria and will sync DNSKEYs between all signers (action)",
 	MermaidCriteriaDesc: "",
-	MermaidPreCondDesc: "",
+	MermaidPreCondDesc:  "",
 	MermaidActionDesc:   "Update all signer DNSKEY RRsets with all ZSKs",
-	MermaidPostCondDesc:   "Verify that all ZSKs are published in signer DNSKEY RRsets",
+	MermaidPostCondDesc: "Verify that all ZSKs are published in signer DNSKEY RRsets",
 	Criteria:            func(z *Zone) bool { return true },
 	PreCondition:        func(z *Zone) bool { return true },
 	Action:              fsmJoinSyncDnskeys,
@@ -48,7 +48,7 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 		updater := GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
-		     	    			  dns.TypeDNSKEY)
+			dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -118,29 +118,29 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 
 	for _, s := range z.sgroup.SignerMap {
 
-//		m := new(dns.Msg)
-//		m.SetQuestion(z.Name, dns.TypeDNSKEY)
+		//		m := new(dns.Msg)
+		//		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
-//		c := new(dns.Client)
-//		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		//		c := new(dns.Client)
+		//		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
 
-//		if err != nil {
-//			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
-//			return false
-//		}
+		//		if err != nil {
+		//			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
+		//			return false
+		//		}
 
 		updater := GetUpdater(s.Method)
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
-		     	    			  dns.TypeDNSKEY)
+			dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
 
-		// signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}		
+		// signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
-//		for _, a := range r.Answer {
+		//		for _, a := range r.Answer {
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
@@ -212,7 +212,7 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 						s := z.sgroup.SignerMap[other_signer]
 						updater := GetUpdater(s.Method)
 						if err := updater.Update(s, z.Name, z.Name,
-						       	  		    &[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
+							&[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
 							log.Printf("%s: Unable to update %s with new DNSKEY %s: %s", z.Name, other_signer, key.PublicKey, err)
 							return false
 						}

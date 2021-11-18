@@ -1,13 +1,14 @@
 CERTDIR:=etc/certs
 
-all: cert
+all:
+	@if [ ! -e ${CERTDIR}/RootCA.crt ] ; then make certs; fi
 	$(MAKE) -C musicd
 	$(MAKE) -C music-cli
 
 fmt:
 	gofmt -w `find common musicd music-cli -type f -name '*.go'`
 
-cert:
+certs:
 	mkdir -p "${CERTDIR}"
 	openssl req -x509 -nodes -new -sha256 -days 1024 -newkey rsa:2048 -keyout "${CERTDIR}/RootCA.key" -out "${CERTDIR}/RootCA.pem" -subj "/C=US/CN=Music-Root-CA"
 	openssl x509 -outform pem -in "${CERTDIR}/RootCA.pem" -out "${CERTDIR}/RootCA.crt"

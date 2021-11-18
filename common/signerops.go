@@ -64,27 +64,27 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
-	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method, 
-	       	 			     dbsigner.Auth, dbsigner.Address)
+	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
+		dbsigner.Auth, dbsigner.Address)
 	mdb.mu.Unlock()
 
 	if err != nil {
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s\n",
-			dbsigner.Name, dbsigner.Method, dbsigner.Auth, 
+			dbsigner.Name, dbsigner.Method, dbsigner.Auth,
 			dbsigner.Address)
 		return err, ""
 	}
 	fmt.Printf("AddSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
-			       dbsigner.Method, dbsigner.Auth, dbsigner.Address)
-	return nil, fmt.Sprintf("New signer %s successfully added.", 
-	       	    		     dbsigner.Name)
+		dbsigner.Method, dbsigner.Auth, dbsigner.Address)
+	return nil, fmt.Sprintf("New signer %s successfully added.",
+		dbsigner.Name)
 }
 
 func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	var err error
-	if ! dbsigner.Exists {
-		return fmt.Errorf("Signer %s not present in system.", 
-		       			  dbsigner.Name), ""
+	if !dbsigner.Exists {
+		return fmt.Errorf("Signer %s not present in system.",
+			dbsigner.Name), ""
 	}
 
 	// s.Method = strings.ToLower(s.Method)
@@ -106,21 +106,21 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, 
-	       	 			    dbsigner.Address, dbsigner.Name)
+	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
+		dbsigner.Address, dbsigner.Name)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", "", err, false) {
 		return err, ""
 	}
 
 	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
-				  dbsigner.Method, dbsigner.Auth, 
-				  dbsigner.Address)
+		dbsigner.Method, dbsigner.Auth,
+		dbsigner.Address)
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
 func (mdb *MusicDB) GetSignerByName(signername string) (*Signer, error) {
-     return mdb.GetSigner(&Signer{ Name: signername })
+	return mdb.GetSigner(&Signer{Name: signername})
 }
 
 func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
@@ -140,7 +140,7 @@ func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
 			Name:    s.Name,
 			Exists:  false,
 			Method:  s.Method,
-			Auth:	 s.Auth,
+			Auth:    s.Auth,
 			Address: s.Address,
 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
 
@@ -227,7 +227,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	var sg *SignerGroup
 	var err error
 
-	if ! dbsigner.Exists {
+	if !dbsigner.Exists {
 		return fmt.Errorf("Signer %s is unknown.", dbsigner.Name), ""
 	}
 
@@ -235,7 +235,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		return err, ""
 	}
 
-	// It is not legal to remove the last signer in a signer group (as 
+	// It is not legal to remove the last signer in a signer group (as
 	// that would cause rather obvious problems).
 	if len(sg.SignerMap) == SignerGroupMinimumSigners {
 		return fmt.Errorf(
@@ -322,7 +322,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 			}
 			sl[name] = Signer{
 				Name:        name,
-				Exists:	     true,
+				Exists:      true,
 				Method:      method,
 				Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
 				SignerGroup: signergroup,
@@ -333,7 +333,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 }
 
 func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
-     	  	    			 tokvip *viper.Viper) (error, string) {
+	tokvip *viper.Viper) (error, string) {
 	var err error
 	var dlr DesecLResponse
 	var msg string
@@ -365,7 +365,7 @@ func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
 }
 
 func (mdb *MusicDB) SignerLogout(dbsigner *Signer, cliconf *CliConfig,
-     	  	    			  tokvip *viper.Viper) (error, string) {
+	tokvip *viper.Viper) (error, string) {
 	var err error
 	var msg string
 

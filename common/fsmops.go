@@ -61,8 +61,8 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 
 // func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
 //	string, map[string]Zone) {
-func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, 
-     	  	    		       nextstate string) (bool, error, string) {
+func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
+	nextstate string) (bool, error, string) {
 
 	if !dbzone.Exists {
 		return false, fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -82,7 +82,7 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 	var exist bool
 	if CurrentState, exist = CurrentFsm.States[state]; !exist {
 		return false, fmt.Errorf(
-		"Zone state '%s' does not exist in process %s. Terminating.",
+			"Zone state '%s' does not exist in process %s. Terminating.",
 			state, dbzone.FSM), ""
 	}
 
@@ -118,12 +118,12 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 				return dbzone.AttemptStateTransition(nextstate, t)
 			} else {
 				return false, fmt.Errorf(
-			"State '%s' is not a possible next state from '%s'",
-						nextstate, state), ""
+					"State '%s' is not a possible next state from '%s'",
+					nextstate, state), ""
 			}
 		} else {
 			return false, fmt.Errorf(
-"Multiple possible next states from '%s': [%s] but next state not specified",
+				"Multiple possible next states from '%s': [%s] but next state not specified",
 				state, strings.Join(transitions, " ")), ""
 		}
 	}
@@ -139,17 +139,17 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 							nextstate, fsmname)
 				} else {
 					return false, fmt.Errorf(
-	"State '%s' is a possible next state from '%s' but criteria failed",
-							nextstate, state), ""
+						"State '%s' is a possible next state from '%s' but criteria failed",
+						nextstate, state), ""
 				}
 			} else {
 				return false, fmt.Errorf(
-			"State '%s' is not a possible next state from '%s'",
-						nextstate, state), ""
+					"State '%s' is not a possible next state from '%s'",
+					nextstate, state), ""
 			}
 		} else {
 			return false, fmt.Errorf(
-  "Multiple possible next states from '%s': [%s] but next state not specified",
+				"Multiple possible next states from '%s': [%s] but next state not specified",
 				state, strings.Join(transitions, " ")), ""
 		}
 	}
@@ -181,9 +181,9 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate)
 			} else {
-			       stopreason, exist := z.MusicDB.GetMeta(z, "stop-reason")
-			       if exist {
-	   		       	  stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
+				stopreason, exist := z.MusicDB.GetMeta(z, "stop-reason")
+				if exist {
+					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 				}
 				return false, nil,
 					fmt.Sprintf("Zone %s did not transition from %s to %s.%s",
@@ -198,10 +198,10 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	// pre-condition returns false
 	stopreason, exist := z.MusicDB.GetMeta(z, "stop-reason")
 	if exist {
-	   stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
+		stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 	}
-	return false, nil, fmt.Sprintf("%s: Pre-condition for '%s' failed.%s", 
-	       	      	   		    z.Name, nextstate, stopreason)
+	return false, nil, fmt.Sprintf("%s: Pre-condition for '%s' failed.%s",
+		z.Name, nextstate, stopreason)
 }
 
 func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
@@ -216,20 +216,19 @@ func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
 }
 
 func (z *Zone) GetParentAddressOrStop() (string, error) {
-    var parentAddress string
-    var exist bool
-    if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
-       err, _ := z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
-       if err != nil {
-       	  log.Printf("GetParentAddressOrStop: Error from ZoneMeta: %v\n", err)
-       }
-       log.Printf("GetParentAddressOrStop: Zone %s has no parent address registered.", 
-       						 z.Name)
-       return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
-    }
-    return parentAddress, nil
+	var parentAddress string
+	var exist bool
+	if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
+		err, _ := z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
+		if err != nil {
+			log.Printf("GetParentAddressOrStop: Error from ZoneMeta: %v\n", err)
+		}
+		log.Printf("GetParentAddressOrStop: Zone %s has no parent address registered.",
+			z.Name)
+		return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
+	}
+	return parentAddress, nil
 }
-
 
 func GetSortedTransitionKeys(fsm string) ([]string, error) {
 	var skeys = []string{}
