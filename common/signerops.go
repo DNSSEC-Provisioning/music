@@ -268,7 +268,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess) // we know that z exist
 	}
 	return nil, fmt.Sprintf(
-		"Signer %s has left signer group % and therefore %d zones entered the 'remove-signer' process.",
+		"Signer %s has left signer group %s and therefore %d zones entered the 'remove-signer' process.",
 		dbsigner.Name, g, len(zones))
 }
 

@@ -55,6 +55,9 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	// log.Printf("FetchRRset: looking up '%s IN %s' from %s\n", owner,
 	//    dns.TypeToString[rrtype], s.Address)
 
+	zone = StripDot(zone)
+	owner = StripDot(owner)
+
 	urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", zone, DesecSubname(zone, owner, true),
 		dns.TypeToString[rrtype])
 
@@ -198,6 +201,8 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 	verbose := viper.GetBool("common.verbose")
 	debug := viper.GetBool("common.debug")
 
+	fmt.Printf("DesecUpdater: inserts: %v removes: %v\n", inserts, removes)
+
 	DesecTokenRefreshIfNeeded(tokvip)
 	urldetails := fmt.Sprintf("/domains/%s/rrsets/", zone)
 	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
@@ -206,6 +211,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 
 	desecRRsets := []DesecRRset{}
 
+	if inserts != nil {
 	for _, rrset := range *inserts {
 		if len(rrset) == 0 {
 			continue
@@ -218,7 +224,9 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 			desecRRsets = append(desecRRsets, desecRRset)
 		}
 	}
+	}
 
+	if removes != nil {
 	for _, rrset := range *removes {
 		if len(rrset) == 0 {
 			continue
@@ -230,6 +238,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 		} else {
 			desecRRsets = append(desecRRsets, desecRRset)
 		}
+	}
 	}
 
 	bytebuf := new(bytes.Buffer)
@@ -256,6 +265,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 
 func (u *DesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
 
+	fmt.Printf("Desec RemoveRRset: rrsets: %v\n", rrsets)
 	return u.Update(signer, zone, owner, &[][]dns.RR{}, &rrsets)
 }
 
@@ -286,5 +296,8 @@ func CreateDesecRRset(zone, owner string,
 		TTL:     3600,
 		RData:   rdata,
 	}
+
+	fmt.Printf("CreateDesecRRset: data: %v\n", data)
+
 	return data, nil
 }

@@ -192,7 +192,7 @@ func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	rrtype uint16, rrs []dns.RR) error {
 
-	delsql := "DELETE FROM records WHERE owner=? AND signer=? AND rrtype=?"
+	delsql := "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
 	delstmt, err := mdb.db.Prepare(delsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)

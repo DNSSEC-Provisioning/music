@@ -19,15 +19,18 @@ var validate = validator.New()
 
 func DesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
 	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
+	if err := validate.Var(apiurl, "required,url"); err != nil {
+	   log.Fatalf("deSEC base URL configured as signers.desec.baseurl required: %v", err)
+	}
 
 	email := viper.GetString("signers.desec.email")
 	password := viper.GetString("signers.desec.password")
 	if err := validate.Var(email, "required,email"); err != nil {
-	   log.Fatalf("Email address configured as signers.desec.email required")
+	   log.Fatalf("Email address configured as signers.desec.email required: %v", err)
 	}
 	
-	if validate.Var(password, "required,ascii") != nil {
-	   log.Fatalf("Password configured as signers.desec.password required")
+	if err := validate.Var(password, "required,ascii"); err != nil {
+	   log.Fatalf("Password configured as signers.desec.password required: %v", err)
 	}
 
 	dlp := DesecLPost{

@@ -15,8 +15,6 @@ import (
 
 func (mdb *MusicDB) AddSignerGroup(group string) error {
 	fmt.Printf("AddSignerGroup(%s)\n", group)
-	//delcmd := fmt.Sprintf("DELETE FROM signergroups WHERE name='%s'", group)
-	//addcmd := fmt.Sprintf("INSERT INTO signergroups(name) VALUES ('%s')", group)
 	delcmd := "DELETE FROM signergroups WHERE name=?"
 	addcmd := "INSERT INTO signergroups(name) VALUES (?)"
 	delstmt, err := mdb.db.Prepare(delcmd)
@@ -75,18 +73,32 @@ func (mdb *MusicDB) GetSignerGroup(sg string) (*SignerGroup, error) {
 	return &SignerGroup{}, err
 }
 
+// DeleteSignerGroup: it is always possible to delete a signer group. If there are signers
+// that are part of the signer group then they are thrown out. Obviously, deleting a signer
+// group is a major change that should not be undertaken lightly, but at the same time it is
+// more or less the only tool we have to force a cleanup if or when stuff has gotten seriously
+// out of whack.
+
 func (mdb *MusicDB) DeleteSignerGroup(group string) error {
-	sqlcmd := "DELETE FROM signergroups WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	mdb.mu.Lock()
+	stmt, err := mdb.db.Prepare("DELETE FROM signergroups WHERE name=?")
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
-
-	mdb.mu.Lock()
 	_, err = stmt.Exec(group)
+	if CheckSQLError("DeleteSignerGroup", "DELETE FROM signergroups ...", err, false) {
+	   	mdb.mu.Unlock()
+		return err
+	}
+
+	stmt, err = mdb.db.Prepare("UPDATE signers SET sgroup=? WHERE sgroup=?")
+	if err != nil {
+		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
+	}
+	_, err = stmt.Exec(group, group)
 	mdb.mu.Unlock()
 
-	if CheckSQLError("DeleteSignerGroup", sqlcmd, err, false) {
+	if CheckSQLError("DeleteSignerGroup", "UPDATE signers SET ...", err, false) {
 		return err
 	}
 	return nil
