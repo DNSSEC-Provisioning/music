@@ -125,7 +125,8 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
+        if err := updater.RemoveRRset(signer, z.Name, z.Name, [][]dns.RR{[]dns.RR{cds},
+	       	  			      []dns.RR{ccds}}); err != nil {
             log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
             return false
         }
@@ -140,16 +141,18 @@ func fsmVerifyCdsRemoved(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-	err, cdsrrs := updater.FetchRRset(signer, z.Name, dns.StringToType["CDS"])
+	err, cdsrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDS)
 	if err != nil {
 	   log.Printf("Error from FetchRRset: %v\n", err)
 	}
 
         if len(cdsrrs) > 0 {
-            log.Printf("%s: CDS RRset still published by %s\n", z.Name, signer.Name)
+            log.Printf("%s: CDS RRset still published by %s\n", z.Name,
+	    		    	signer.Name)
             return false
         }
-	err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, dns.StringToType["CDNSKEY"])
+	err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, z.Name,
+	     		   			      dns.TypeCDNSKEY)
 	if err != nil {
 	   log.Printf("Error from FetchRRset: %v\n", err)
 	}

@@ -30,7 +30,7 @@ func fsmJoinAddCdscdnskeysCriteria(z *Zone) bool {
 
 		updater := GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["DNSKEY"])
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -110,7 +110,7 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
 
 		updater := GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["DNSKEY"])
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -133,7 +133,7 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
     // Publish CDS/CDNSKEY RRsets
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(signer, z.Name, 
+        if err := updater.Update(signer, z.Name, z.Name, 
 	       	  	         &[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
             log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
 	    		    z.Name, signer.Name, err)
@@ -161,7 +161,7 @@ func fsmVerifyCdsPublished(z *Zone) bool {
     for _, s := range z.sgroup.SignerMap {
 	updater := GetUpdater(s.Method)
 	log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-	err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["DNSKEY"])
+	err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 	if err != nil {
 		log.Printf("Error from updater.FetchRRset: %v\n", err)
 	}
@@ -183,13 +183,13 @@ func fsmVerifyCdsPublished(z *Zone) bool {
     // Check against published CDS/CDNSKEY RRsets.
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        err, cdsrrs := updater.FetchRRset(signer, z.Name, dns.StringToType["CDS"])
+        err, cdsrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDS)
 	if err != nil {
             log.Printf("%s: Unable to fetch CDS RRset from %s: %v", 
 	    		    	   z.Name, signer.Name, err)
             return false
         }
-        err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, 
+        err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, z.Name,
 	     		   			      dns.StringToType["CDNSKEY"])
 	if err != nil {
             log.Printf("%s: Unable to fetch CDNSKEY RRset from %s: %v", 

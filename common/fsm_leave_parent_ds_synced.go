@@ -76,7 +76,8 @@ func fsmLeaveParentDsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
+        if err := updater.RemoveRRset(signer, z.Name, z.Name,
+	       	  			      [][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
             log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
             return false
         }

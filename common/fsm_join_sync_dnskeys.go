@@ -47,7 +47,8 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 
 		updater := GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["DNSKEY"])
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
+		     	    			  dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -130,7 +131,8 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 
 		updater := GetUpdater(s.Method)
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["DNSKEY"])
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
+		     	    			  dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -209,7 +211,8 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 						// add a DNSKEY that we had but other signer did not
 						s := z.sgroup.SignerMap[other_signer]
 						updater := GetUpdater(s.Method)
-						if err := updater.Update(s, z.Name, &[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
+						if err := updater.Update(s, z.Name, z.Name,
+						       	  		    &[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
 							log.Printf("%s: Unable to update %s with new DNSKEY %s: %s", z.Name, other_signer, key.PublicKey, err)
 							return false
 						}

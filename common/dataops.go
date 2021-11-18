@@ -6,7 +6,7 @@ package music
 
 import (
     "database/sql"
-    "errors"
+    // "errors"
     "fmt"
     "log"
     "net"
@@ -96,17 +96,23 @@ func (z *Zone) RetrieveRRset(owner string, rrtype uint16) (error, map[string][]d
 
 type SignerRRsets map[string][]dns.RR
 
+// func (s *Signer) xxxRetrieveRRset(zone, owner string, rrtype uint16) (error, []dns.RR) {
+//    fmt.Printf("Signer %s: retrieving RRset '%s %s'\n", s.Name, owner, dns.TypeToString[rrtype])
+//    switch s.Method {
+//    case "ddns":
+//        return DNSRetrieveRRset(s, owner, zone, rrtype)
+//    case "desec-api":
+//        return DesecRetrieveRRset(s, StripDot(zone), StripDot(owner), rrtype)
+//    default:
+//        return errors.New(fmt.Sprintf("Unknown RRset retrieval method: %s", s.Method)), []dns.RR{}
+//    }
+//    return nil, []dns.RR{}
+// }
+
 func (s *Signer) RetrieveRRset(zone, owner string, rrtype uint16) (error, []dns.RR) {
     fmt.Printf("Signer %s: retrieving RRset '%s %s'\n", s.Name, owner, dns.TypeToString[rrtype])
-    switch s.Method {
-    case "ddns":
-        return DNSRetrieveRRset(s, owner, zone, rrtype)
-    case "desec-api":
-        return DesecRetrieveRRset(s, StripDot(zone), StripDot(owner), rrtype)
-    default:
-        return errors.New(fmt.Sprintf("Unknown RRset retrieval method: %s", s.Method)), []dns.RR{}
-    }
-    return nil, []dns.RR{}
+    updater := GetUpdater(s.Method)
+    return updater.FetchRRset(s, zone, zone, rrtype)
 }
 
 func StripDot(fqdn string) string {

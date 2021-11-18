@@ -37,7 +37,7 @@ func fsmJoinAddCsyncCriteria(z *Zone) bool {
 
 	updater := GetUpdater(s.Method)
 	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
-	err, rrs := updater.FetchRRset(s, z.Name, dns.StringToType["NS"])
+	err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)
 	if err != nil {
 		log.Printf("Error from updater.FetchRRset: %v\n", err)
 	}
@@ -110,7 +110,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
 
 	updater := GetUpdater(signer.Method)
 	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
-	err, rrs := updater.FetchRRset(signer, z.Name, dns.StringToType["SOA"])
+	err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeSOA)
 	if err != nil {
 		log.Printf("Error from updater.FetchRRset: %v\n", err)
 	}
@@ -133,7 +133,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
             csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
             updater := GetUpdater(signer.Method)
-            if err := updater.Update(signer, z.Name, 
+            if err := updater.Update(signer, z.Name, z.Name,
 	       	      &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
                 log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
 				z.Name, signer.Name, err)

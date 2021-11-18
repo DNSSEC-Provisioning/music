@@ -103,8 +103,10 @@ func fsmLeaveAddCdscdnskeysAction(z *Zone) bool {
     // Create CDS/CDNSKEY records sets
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(signer, z.Name, &[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
-            log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s", z.Name, signer.Name, err)
+        if err := updater.Update(signer, z.Name, z.Name,
+	       	  			 &[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
+            log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
+	    		    z.Name, signer.Name, err)
             return false
         }
         log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets", z.Name, signer.Name)

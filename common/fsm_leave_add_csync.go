@@ -129,7 +129,8 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
             csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
             updater := GetUpdater(signer.Method)
-            if err := updater.Update(signer, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
+            if err := updater.Update(signer, z.Name, z.Name,
+	       	      			     &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
                 log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, signer.Name, err)
                 return false
             }
@@ -159,8 +160,10 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
         csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
         updater := GetUpdater(leavingSigner.Method)
-        if err := updater.Update(leavingSigner, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-            log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, leavingSigner.Name, err)
+        if err := updater.Update(leavingSigner, z.Name, z.Name,
+	       	  				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
+            log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
+	    		    	      	     z.Name, leavingSigner.Name, err)
             return false
         }
         log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, leavingSigner.Name)

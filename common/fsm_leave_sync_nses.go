@@ -52,7 +52,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(signer, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+        if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
             log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, signer.Name, err)
             return false
         }
@@ -60,7 +60,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
     }
 
     updater := GetUpdater(leavingSigner.Method)
-    if err := updater.Update(leavingSigner, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+    if err := updater.Update(leavingSigner, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
         log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, leavingSigner.Name, err)
         return false
     }
