@@ -346,7 +346,7 @@ func NewClient(verbose, debug bool) *Api {
 	// log.Printf("client is a: %T\n", api.Client)
 
 	if debug {
-		fmt.Printf("apiurl is: %s \n apikey is: %s \n authmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)
+		fmt.Printf("apiurl is: %s \napikey is: %s \nauthmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)
 	}
 
 	return &api

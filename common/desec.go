@@ -11,14 +11,28 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+        "github.com/go-playground/validator/v10"
 )
+
+// available throughout package music
+var validate = validator.New()
 
 func DesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
 	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
 
+	email := viper.GetString("signers.desec.email")
+	password := viper.GetString("signers.desec.password")
+	if err := validate.Var(email, "required,email"); err != nil {
+	   log.Fatalf("Email address configured as signers.desec.email required")
+	}
+	
+	if validate.Var(password, "required,ascii") != nil {
+	   log.Fatalf("Password configured as signers.desec.password required")
+	}
+
 	dlp := DesecLPost{
-		Email:    viper.GetString("signers.desec.email"),
-		Password: viper.GetString("signers.desec.password"),
+		Email:    email,
+		Password: password,
 	}
 
 	bytebuf := new(bytes.Buffer)
