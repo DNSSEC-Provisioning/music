@@ -120,15 +120,17 @@ func fsmLeaveParentNsSyncedAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
-            log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, signer.Name, err)
+        if err := updater.RemoveRRset(signer, z.Name, z.Name,
+	       	  			      [][]dns.RR{[]dns.RR{csync}}); err != nil {
+            log.Printf("%s: Unable to remove CSYNC record sets from %s: %s",
+	    		    	      	     	   z.Name, signer.Name, err)
             return false
         }
         log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
     }
 
     updater := GetUpdater(leavingSigner.Method)
-    if err := updater.RemoveRRset(leavingSigner, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
+    if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
         log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, leavingSigner.Name, err)
         return false
     }

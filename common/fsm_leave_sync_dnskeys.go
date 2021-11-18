@@ -72,7 +72,7 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 
         if len(rem) > 0 {
             updater := GetUpdater(s.Method)
-            if err := updater.Update(s, z.Name, nil, &[][]dns.RR{rem}); err != nil {
+            if err := updater.Update(s, z.Name, z.Name, nil, &[][]dns.RR{rem}); err != nil {
                 log.Printf("%s: Unable to remove DNSKEYs from %s: %s", z.Name, s.Name, err)
                 return false
             }

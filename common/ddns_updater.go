@@ -16,7 +16,8 @@ func init() {
 	Updaters["ddns"] = &DdnsUpdater{}
 }
 
-func (u *DdnsUpdater) Update(signer *Signer, fqdn string, inserts, removes *[][]dns.RR) error {
+func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
+     		      		    inserts, removes *[][]dns.RR) error {
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
 		signer.Name, fqdn, inserts, removes)
 	inserts_len := 0
@@ -73,7 +74,7 @@ func (u *DdnsUpdater) Update(signer *Signer, fqdn string, inserts, removes *[][]
 	return nil
 }
 
-func (u *DdnsUpdater) RemoveRRset(signer *Signer, fqdn string, rrsets [][]dns.RR) error {
+func (u *DdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error {
 	rrsets_len := 0
 	for _, rrset := range rrsets {
 		rrsets_len += len(rrset)
@@ -113,7 +114,7 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, fqdn string, rrsets [][]dns.RR
 	return nil
 }
 
-func (u *DdnsUpdater) FetchRRset(signer *Signer, fqdn string,
+func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	rrtype uint16) (error, []dns.RR) {
 	if signer.Address == "" {
 		return fmt.Errorf("No ip|host for signer %s", signer.Name), []dns.RR{}

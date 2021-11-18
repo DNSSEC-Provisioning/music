@@ -45,7 +45,7 @@ func fsmJoinWaitDsCriteria(z *Zone) bool {
 
 	updater := GetUpdater(signer.Method)
 	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
-	err, rrs := updater.FetchRRset(signer, z.Name, dns.StringToType["DNSKEY"])
+	err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeDNSKEY)
 	if err != nil {
 		log.Printf("Error from updater.FetchRRset: %v\n", err)
 	}
@@ -106,25 +106,15 @@ func fsmJoinWaitDsAction(z *Zone) bool {
     nses := make(map[string][]*dns.NS)
 
     for _, signer := range z.sgroup.SignerMap {
-//        m := new(dns.Msg)
-//        m.SetQuestion(z.Name, dns.TypeNS)
-//        c := new(dns.Client)
-//        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
-//        if err != nil {
-//            log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
-//            return false
-//        }
-
 	updater := GetUpdater(signer.Method)
-	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
-	err, rrs := updater.FetchRRset(signer, z.Name, dns.StringToType["NS"])
+	log.Printf("JoinWaitDsAction: Using FetchRRset interface:\n")
+	err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 	if err != nil {
 		log.Printf("Error from updater.FetchRRset: %v\n", err)
 	}
 
         nses[signer.Name] = []*dns.NS{}
 
-//        for _, a := range r.Answer {
         for _, a := range rrs {
             ns, ok := a.(*dns.NS)
             if !ok {
@@ -183,7 +173,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
     for _, signer := range z.sgroup.SignerMap {
         updater := GetUpdater(signer.Method)
-        if err := updater.Update(signer, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
+        if err := updater.Update(signer, z.Name, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
             log.Printf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
             return false
         }

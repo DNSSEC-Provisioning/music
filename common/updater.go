@@ -14,9 +14,9 @@ import (
 // array.
 //
 type Updater interface {
-    Update(signer *Signer, fqdn string, inserts, removes *[][]dns.RR) error
-    RemoveRRset(signer *Signer, fqdn string, rrsets [][]dns.RR) error
-    FetchRRset(signer *Signer, fqdn string, rrtype uint16) (error, []dns.RR)
+    Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
+    RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error
+    FetchRRset(signer *Signer, zone, fqdn string, rrtype uint16) (error, []dns.RR)
 }
 
 var Updaters map[string]Updater = make(map[string]Updater)
