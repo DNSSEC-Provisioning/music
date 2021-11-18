@@ -1,9 +1,9 @@
 package music
 
 import (
-    "log"
+	"log"
 
-    "github.com/miekg/dns"
+	"github.com/miekg/dns"
 )
 
 //
@@ -14,17 +14,17 @@ import (
 // array.
 //
 type Updater interface {
-    Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
-    RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error
-    FetchRRset(signer *Signer, zone, fqdn string, rrtype uint16) (error, []dns.RR)
+	Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
+	RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error
+	FetchRRset(signer *Signer, zone, fqdn string, rrtype uint16) (error, []dns.RR)
 }
 
 var Updaters map[string]Updater = make(map[string]Updater)
 
 func GetUpdater(type_ string) Updater {
-    updater, ok := Updaters[type_]
-    if !ok {
-        log.Fatal("No updater type", type_)
-    }
-    return updater
+	updater, ok := Updaters[type_]
+	if !ok {
+		log.Fatal("No updater type", type_)
+	}
+	return updater
 }

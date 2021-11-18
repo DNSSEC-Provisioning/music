@@ -22,7 +22,7 @@ type DesecUpdater struct {
 }
 
 func init() {
-    Updaters["desec-api"] = &DesecUpdater{}
+	Updaters["desec-api"] = &DesecUpdater{}
 }
 
 func DesecSubname(zone, owner string, urluse bool) string {
@@ -171,15 +171,15 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 	json.NewEncoder(bytebuf).Encode(data)
 
 	fmt.Printf("DesecUpdateRRset: deSEC API url: %s. token: %s Data: %v\n",
-				      apiurl, apikey, data)
+		apiurl, apikey, data)
 
 	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
-		     	    			   bytebuf.Bytes(), true, verbose,
-						   debug, nil)
+		bytebuf.Bytes(), true, verbose,
+		debug, nil)
 	if err != nil {
 		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
 		return errors.New(fmt.Sprintf("Error from deSEC API for %s: %v",
-		       				     urldetails, err)), ""
+			urldetails, err)), ""
 	}
 
 	if verbose {
@@ -239,11 +239,11 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 		apiurl, apikey, desecRRsets)
 
 	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
-		bytebuf.Bytes(), true, verbose,	debug, nil)
+		bytebuf.Bytes(), true, verbose, debug, nil)
 	if err != nil {
 		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
 		return fmt.Errorf("Error from deSEC API for %s: %v",
-		       			 urldetails, err)
+			urldetails, err)
 	}
 
 	if verbose {
@@ -256,7 +256,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 
 func (u *DesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
 
-     return u.Update(signer, zone, owner, &[][]dns.RR{}, &rrsets)
+	return u.Update(signer, zone, owner, &[][]dns.RR{}, &rrsets)
 }
 
 func CreateDesecRRset(zone, owner string,

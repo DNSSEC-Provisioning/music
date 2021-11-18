@@ -17,7 +17,7 @@ func init() {
 }
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
-     		      		    inserts, removes *[][]dns.RR) error {
+	inserts, removes *[][]dns.RR) error {
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
 		signer.Name, fqdn, inserts, removes)
 	inserts_len := 0

@@ -4,76 +4,76 @@
 package music
 
 import (
-    "database/sql"
-    "github.com/spf13/viper"
-    "sync"
-    "time"
+	"database/sql"
+	"github.com/spf13/viper"
+	"sync"
+	"time"
 )
 
 type CliConfig struct {
-    Debug   bool
-    Verbose bool
+	Debug   bool
+	Verbose bool
 }
 
 type DBUpdate struct {
-    Type string
+	Type string
 }
 
 type Zone struct {
-    Name       string
-    Exists     bool // true if zone is present in system
-    State      string
-    Statestamp time.Time
-    NextState  map[string]bool
-    FSM        string
-    sgroup     *SignerGroup
-    SGname     string
-    MusicDB    *MusicDB
-    ZskState   string
+	Name       string
+	Exists     bool // true if zone is present in system
+	State      string
+	Statestamp time.Time
+	NextState  map[string]bool
+	FSM        string
+	sgroup     *SignerGroup
+	SGname     string
+	MusicDB    *MusicDB
+	ZskState   string
 }
 
 type SignerGroup struct {
-    Name      string
-    SignerMap map[string]*Signer
-    State     string
-    DB        *MusicDB
+	Name      string
+	SignerMap map[string]*Signer
+	State     string
+	DB        *MusicDB
 }
 
 type GormSignerGroup struct {
-    Name      string
-    SignerMap []Signer
-    State     string
-    DB        *MusicDB
+	Name      string
+	SignerMap []Signer
+	State     string
+	DB        *MusicDB
 }
 
 func (sg *SignerGroup) Signers() map[string]*Signer {
-    return sg.SignerMap
+	return sg.SignerMap
 }
 
 type ZoneState string
 
 type Signer struct {
-    Name        string
-    Exists	bool	
-    Method      string // "ddns" | "desec" | ...
-    Address     string
-    Auth        string // AuthDataTmp // TODO: Issue #28
-    SignerGroup string
-    DB          *MusicDB
+	Name        string
+	Exists      bool
+	Method      string // "ddns" | "desec" | ...
+	Address     string
+	Auth        string // AuthDataTmp // TODO: Issue #28
+	SignerGroup string
+	DB          *MusicDB
 }
 
 // type AuthDataTmp string // TODO: Issue #28
 
 type AuthData struct {
-    TSIGKey    string
-    TSIGName   string
-    TSIGAlg    string // dns.HmacSHA256, etc
-    ApiToken   string
-    ApiBaseUrl string `validate:"required" json:"url"`
+	TSIGKey    string
+	TSIGName   string
+	TSIGAlg    string // dns.HmacSHA256, etc
+	ApiToken   string
+	ApiBaseUrl string `validate:"required" json:"url"`
 }
 
 type MusicDB struct {
-    mu     sync.Mutex
-    db     *sql.DB
-    Tokvip *viper.Viper
+	mu     sync.Mutex
+	db     *sql.DB
+	Tokvip *viper.Viper
 }
