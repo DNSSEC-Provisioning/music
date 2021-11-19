@@ -186,6 +186,20 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 			}
 			rrs = append(rrs, rr)
 
+		case "SOA":
+			rr, ok := a.(*dns.SOA)
+			if !ok {
+				continue
+			}
+			rrs = append(rrs, rr)
+
+		case "CSYNC":
+			rr, ok := a.(*dns.CSYNC)
+			if !ok {
+				continue
+			}
+			rrs = append(rrs, rr)
+
 		}
 	}
 
