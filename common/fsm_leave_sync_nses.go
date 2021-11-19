@@ -12,7 +12,11 @@ func fsmLeaveSyncNsesCriteria(z *Zone) bool {
 }
 
 func fsmLeaveSyncNsesAction(z *Zone) bool {
+<<<<<<< HEAD
 	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+=======
+	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+>>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -52,7 +56,11 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 
 	for _, signer := range z.sgroup.SignerMap {
 		updater := GetUpdater(signer.Method)
+<<<<<<< HEAD
 		if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+=======
+		if err := updater.Update(signer, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+>>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 			log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, signer.Name, err)
 			return false
 		}
@@ -60,7 +68,11 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 	}
 
 	updater := GetUpdater(leavingSigner.Method)
+<<<<<<< HEAD
 	if err := updater.Update(leavingSigner, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+=======
+	if err := updater.Update(leavingSigner, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
+>>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 		log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
 	}

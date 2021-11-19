@@ -12,7 +12,11 @@ func fsmLeaveSyncDnskeysCriteria(z *Zone) bool {
 }
 
 func fsmLeaveSyncDnskeysAction(z *Zone) bool {
+<<<<<<< HEAD
 	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+=======
+	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+>>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -72,7 +76,11 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 
 		if len(rem) > 0 {
 			updater := GetUpdater(s.Method)
+<<<<<<< HEAD
 			if err := updater.Update(s, z.Name, z.Name, nil, &[][]dns.RR{rem}); err != nil {
+=======
+			if err := updater.Update(s, z.Name, nil, &[][]dns.RR{rem}); err != nil {
+>>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 				log.Printf("%s: Unable to remove DNSKEYs from %s: %s", z.Name, s.Name, err)
 				return false
 			}
