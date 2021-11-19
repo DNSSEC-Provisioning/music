@@ -58,8 +58,9 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	zone = StripDot(zone)
 	owner = StripDot(owner)
 
-	urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", zone, DesecSubname(zone, owner, true),
-		dns.TypeToString[rrtype])
+	urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
+		      		  zone, DesecSubname(zone, owner, true),
+				  dns.TypeToString[rrtype])
 
 	DesecTokenRefreshIfNeeded(tokvip)
 
@@ -75,11 +76,11 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		true, verbose, debug, nil)
 	if err != nil {
 		log.Printf("Error from GenericAPIget (desec): %v\n", err)
-		return errors.New(fmt.Sprintf("Error from deSEC API for %s: %v", urldetails, err)),
+		return fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
 			[]dns.RR{}
 	}
 
-	fmt.Printf("FetchRRset: got a response from Desec:\n%v\n", string(buf))
+	fmt.Printf("FetchRRset: got a response from deSEC:\n%v\n", string(buf))
 	if verbose {
 		fmt.Printf("FetchRRset: status: %d\n", status)
 	}
@@ -201,10 +202,15 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 	verbose := viper.GetBool("common.verbose")
 	debug := viper.GetBool("common.debug")
 
+	zone = StripDot(zone)
 	fmt.Printf("DesecUpdater: inserts: %v removes: %v\n", inserts, removes)
 
 	DesecTokenRefreshIfNeeded(tokvip)
 	urldetails := fmt.Sprintf("/domains/%s/rrsets/", zone)
+	//urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
+	//	      		  zone, DesecSubname(zone, owner, true),
+	//			  dns.TypeToString[rrtype])
+
 	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
 	apikey := tokvip.GetString("desec.token")
 	tokvip.Set("desec.touched", time.Now().Format(layout))
@@ -247,7 +253,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, remov
 	fmt.Printf("DesecUpdater: deSEC API url: %s. token: %s Data: %v\n",
 		apiurl, apikey, desecRRsets)
 
-	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
+	status, buf, err := GenericAPIput(apiurl, apikey, "Authorization",
 		bytebuf.Bytes(), true, verbose, debug, nil)
 	if err != nil {
 		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
@@ -269,10 +275,15 @@ func (u *DesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets []
 	return u.Update(signer, zone, owner, &[][]dns.RR{}, &rrsets)
 }
 
+
 func CreateDesecRRset(zone, owner string,
 	rrset []dns.RR, remove bool) (DesecRRset, error) {
 	var rdata []string
 	var err error
+	subname := "" // most common case
+	if owner != zone {
+	   subname = DesecSubname(zone, owner, false)
+	}
 
 	rr := rrset[0]
 	rrtype := rr.Header().Rrtype
@@ -286,12 +297,12 @@ func CreateDesecRRset(zone, owner string,
 			return DesecRRset{}, err
 		}
 	}
-
+	
 	log.Printf("CreateDesecRRset: creating update of RRset '%s IN %s\n",
 		owner, dns.TypeToString[rrtype])
 
 	data := DesecRRset{
-		Subname: DesecSubname(zone, owner, false),
+		Subname: subname,
 		RRtype:  dns.TypeToString[rrtype],
 		TTL:     3600,
 		RData:   rdata,
