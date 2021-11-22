@@ -10,10 +10,9 @@ import (
 	"log"
 
 	"github.com/spf13/viper"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/DNSSEC-Provisioning/music/common"
-
-	"github.com/go-playground/validator/v10"
 )
 
 var cfgFile string
@@ -40,6 +39,12 @@ type SignerConf struct {
 	Method  string // ddns | desec | ...
 	Auth    string // tsig | userpasstoken
 	Tsig    TsigConf
+	Limits	RateLimitsConf
+}
+
+type RateLimitsConf struct {
+        Fetch	    int // get rrset ops / second
+        Update	    int // update rrset ops / second
 }
 
 type TsigConf struct {
@@ -63,6 +68,8 @@ type InternalConf struct {
 	DB         *sql.DB
 	MusicDB    *music.MusicDB
 	TokViper   *viper.Viper
+	DesecFetch chan DesecOp
+	DesecUpdate chan DesecOp
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile string, safemode bool) error {

@@ -161,7 +161,12 @@ func main() {
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 
+	conf.Internal.DesecFetch = make(chan DesecOp, 100)
+	conf.Internal.DesecUpdate = make(chan DesecOp, 100)
+	var done = make(chan struct{}, 1)
+
 	// initialMigration()
 	go APIdispatcher(&conf)
+	go deSECmgr(&conf, done)
 	mainloop(&conf, apistopper)
 }

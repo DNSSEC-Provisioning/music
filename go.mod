@@ -1,4 +1,4 @@
-module github.com/romu42/play_go
+module github.com/DNSSEC-Provisioning/music
 
 go 1.15
 

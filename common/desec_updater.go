@@ -45,9 +45,26 @@ func DesecSubname(zone, owner string, urluse bool) string {
 	return newowner
 }
 
-// func DesecRetrieveRRset(s *Signer, zone, owner string, rrtype uint16) (error, []dns.RR) {
 func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
+
+	// what we want:
+	// op := DesecOp{
+	//		Signer:	s,
+	//		Zone:	zone,
+	//		Owner:	owner,
+	//		RRtype:	rrtype,
+	//		Response: make(chan DesecResponse),
+	//	}
+	// conf.Internal.DesecFetch <- op
+	// time.Sleep(1 * time.Second)
+	// resp := <- op.Response
+	// return resp.Error, resp.RRs
+	return nil, []dns.RR{} // no-op
+}
+
+func DesecBFetchRRset(s *Signer, zone, owner string,
+			rrtype uint16) (int, error, []dns.RR) {
 	mdb := s.MusicDB()
 	tokvip := mdb.Tokvip
 	verbose := viper.GetBool("common.verbose")
@@ -74,9 +91,14 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 
 	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization",
 		true, verbose, debug, nil)
+	if status == 429 { // we have been rate-limited
+	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
+	   return status, nil, []dns.RR{}
+	}
+
 	if err != nil {
 		log.Printf("Error from GenericAPIget (desec): %v\n", err)
-		return fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
+		return status, fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
 			[]dns.RR{}
 	}
 
@@ -97,14 +119,15 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		rrstr := fmt.Sprintf("%s %d IN %s %s", dr.Name, dr.TTL, dr.RRtype, r)
 		rr, err := dns.NewRR(rrstr)
 		if err != nil {
-			return errors.New(fmt.Sprintf("FetchRRset: Error parsing RR into dns.RR: %v\n",
-				err)), []dns.RR{}
+			return status, 
+			       fmt.Errorf("FetchRRset: Error parsing RR into dns.RR: %v\n",
+			       			       err), []dns.RR{}
 		}
 		rrs = append(rrs, rr)
 	}
 
 	mdb.WriteRRs(s, dns.Fqdn(owner), zone, rrtype, rrs)
-	return nil, DNSFilterRRsetOnType(rrs, rrtype)
+	return status, nil, DNSFilterRRsetOnType(rrs, rrtype)
 }
 
 type DesecRRset struct {
@@ -180,6 +203,10 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
 		bytebuf.Bytes(), true, verbose,
 		debug, nil)
+	if status == 429 { // we have been rate-limited
+	   fmt.Printf("desec.UpdateRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
+	}
+
 	if err != nil {
 		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
 		return errors.New(fmt.Sprintf("Error from deSEC API for %s: %v",
@@ -194,8 +221,8 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 	return nil, ""
 }
 
-// func (u *DesecUpdater) Update(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR) (error, string) {
-func (u *DesecUpdater) Update(signer *Signer, zone, owner string, inserts, removes *[][]dns.RR) error {
+func (u *DesecUpdater) Update(signer *Signer, zone, owner string, 
+     		       		     inserts, removes *[][]dns.RR) error {
 	mdb := signer.MusicDB()
 	tokvip := mdb.Tokvip
 	// address := signer.Address
