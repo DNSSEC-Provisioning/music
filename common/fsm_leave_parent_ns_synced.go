@@ -8,11 +8,7 @@ import (
 )
 
 func fsmLeaveParentNsSyncedCriteria(z *Zone) bool {
-<<<<<<< HEAD
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
-=======
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -108,11 +104,7 @@ func fsmLeaveParentNsSyncedCriteria(z *Zone) bool {
 }
 
 func fsmLeaveParentNsSyncedAction(z *Zone) bool {
-<<<<<<< HEAD
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
-=======
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -128,26 +120,17 @@ func fsmLeaveParentNsSyncedAction(z *Zone) bool {
 
 	for _, signer := range z.sgroup.SignerMap {
 		updater := GetUpdater(signer.Method)
-<<<<<<< HEAD
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
 			log.Printf("%s: Unable to remove CSYNC record sets from %s: %s",
 				z.Name, signer.Name, err)
-=======
-		if err := updater.RemoveRRset(signer, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
-			log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, signer.Name, err)
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 			return false
 		}
 		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
 	}
 
 	updater := GetUpdater(leavingSigner.Method)
-<<<<<<< HEAD
 	if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
-=======
-	if err := updater.RemoveRRset(leavingSigner, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 		log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
 	}

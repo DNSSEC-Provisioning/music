@@ -24,11 +24,7 @@ func fsmLeaveWaitNsCriteria(z *Zone) bool {
 		return true
 	}
 
-<<<<<<< HEAD
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
-=======
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)

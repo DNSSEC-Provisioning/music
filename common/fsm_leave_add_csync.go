@@ -8,11 +8,7 @@ import (
 )
 
 func fsmLeaveAddCsyncCriteria(z *Zone) bool {
-<<<<<<< HEAD
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
-=======
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -133,12 +129,8 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 			csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
 			updater := GetUpdater(signer.Method)
-<<<<<<< HEAD
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-=======
-			if err := updater.Update(signer, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 				log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, signer.Name, err)
 				return false
 			}
@@ -168,15 +160,10 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 		csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
 		updater := GetUpdater(leavingSigner.Method)
-<<<<<<< HEAD
 		if err := updater.Update(leavingSigner, z.Name, z.Name,
 			&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
 			log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
 				z.Name, leavingSigner.Name, err)
-=======
-		if err := updater.Update(leavingSigner, z.Name, &[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-			log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, leavingSigner.Name, err)
->>>>>>> b2ea418 (updated hardcoded signers for lab, and fixed CYSNC and SOA in ddns_updater)
 			return false
 		}
 		log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, leavingSigner.Name)
