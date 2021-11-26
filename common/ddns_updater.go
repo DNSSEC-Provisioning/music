@@ -148,6 +148,10 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 
 	var rrs []dns.RR
 
+	// XXX: Here we want to filter out all RRs that are of other types than the
+	//      rrtype we're looking for. It would be much better to have a general
+	//      check for a.(type) == rrtype, but I have not figured out how.
+
 	for _, a := range r.Answer {
 		switch dns.TypeToString[rrtype] {
 
