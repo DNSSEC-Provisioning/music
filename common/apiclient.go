@@ -234,6 +234,86 @@ func GenericAPIpost(apiurl, apikey, authmethod string, data []byte,
 	return resp.StatusCode, buf, err
 }
 
+func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
+	usetls, verbose, debug bool, extclient *http.Client) (int, []byte, error) {
+
+	var client *http.Client
+
+	if extclient == nil {
+		if debug {
+			fmt.Fprintf(os.Stdout, "GenericAPIput: http client is nil, creating tmp client.\n")
+		}
+
+		if usetls {
+			client = &http.Client{
+				// CheckRedirect: redirectPolicyFunc,
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				},
+			}
+		} else {
+			client = &http.Client{
+				// CheckRedirect: redirectPolicyFunc,
+			}
+		}
+	} else {
+		client = extclient
+	}
+
+	if usetls {
+		if debug {
+			fmt.Printf("GenericAPIput: apiurl: %s (using TLS)\n", apiurl)
+		}
+	} else {
+		if debug {
+			fmt.Printf("GenericAPIput: apiurl: %s\n", apiurl)
+		}
+	}
+
+	if debug {
+		fmt.Printf("GenericAPIput: posting %d bytes of data: %v\n",
+			len(data), string(data))
+	}
+	req, err := http.NewRequest(http.MethodPut, apiurl,
+		bytes.NewBuffer(data))
+	if err != nil {
+		log.Fatalf("Error from http.NewRequest: Error: %v", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	if authmethod == "X-API-Key" {
+		req.Header.Add("X-API-Key", apikey)
+	} else if authmethod == "Authorization" {
+		req.Header.Add("Authorization", fmt.Sprintf("token %s", apikey))
+	} else if authmethod == "none" {
+		// do not add any authentication header at all
+	} else {
+		log.Printf("Error: GenericAPIpost: unknown auth method: %s. Aborting.\n", authmethod)
+		return 501, []byte{}, errors.New(fmt.Sprintf("unknown auth method: %s", authmethod))
+	}
+
+	fmt.Printf("Faking the HTTPS PUT op. Not sending anything.\n")
+	return 301, []byte{}, nil
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return 501, nil, err
+	}
+
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+	if debug {
+		fmt.Printf("GenericAPIputt: response from api:\n%s\n\n", string(buf))
+	}
+
+	// not bothering to copy buf, this is a one-off
+	return resp.StatusCode, buf, err
+}
+
 func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug bool,
 	extclient *http.Client) (int, []byte, error) {
 

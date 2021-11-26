@@ -19,15 +19,18 @@ var validate = validator.New()
 
 func DesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
 	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
+	if err := validate.Var(apiurl, "required,url"); err != nil {
+	   log.Fatalf("deSEC base URL configured as signers.desec.baseurl required: %v", err)
+	}
 
 	email := viper.GetString("signers.desec.email")
 	password := viper.GetString("signers.desec.password")
 	if err := validate.Var(email, "required,email"); err != nil {
-	   log.Fatalf("Email address configured as signers.desec.email required")
+	   log.Fatalf("Email address configured as signers.desec.email required: %v", err)
 	}
 	
-	if validate.Var(password, "required,ascii") != nil {
-	   log.Fatalf("Password configured as signers.desec.password required")
+	if err := validate.Var(password, "required,ascii"); err != nil {
+	   log.Fatalf("Password configured as signers.desec.password required: %v", err)
 	}
 
 	dlp := DesecLPost{
@@ -92,7 +95,7 @@ func DesecLogout(cc *CliConfig, tokvip *viper.Viper) error {
 	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/logout/"
 
 	bytebuf := new(bytes.Buffer)
-	fmt.Printf("About to post '%s' to desec\n", string(bytebuf.Bytes()))
+	// fmt.Printf("About to post '%s' to desec\n", string(bytebuf.Bytes()))
 	// return nil
 
 	status, _, err := GenericAPIpost(apiurl, token, "Authorization",
@@ -121,6 +124,9 @@ func DesecListZone(cc *CliConfig, zone string, tokvip *viper.Viper) ([]DesecZone
 
 	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization", true,
 		cc.Verbose, cc.Debug, nil)
+	if status == 401 {
+	   return []DesecZone{}, fmt.Errorf("401 Unauthorized.")
+	}
 	if err != nil {
 		log.Println("Error from GenericAPIget:", err)
 	}
@@ -146,11 +152,14 @@ func DesecAddZone(cc *CliConfig, zone string, tokvip *viper.Viper) (DesecZone, e
 	bytebuf := new(bytes.Buffer)
 	json.NewEncoder(bytebuf).Encode(data)
 
-	fmt.Printf("About to post to desec: '%s'\n", string(bytebuf.Bytes()))
+	// fmt.Printf("About to post to desec: '%s'\n", string(bytebuf.Bytes()))
 	// os.Exit(1)
 
 	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
 		bytebuf.Bytes(), true, cc.Verbose, cc.Debug, nil)
+	if status == 401 {
+	   return DesecZone{}, fmt.Errorf("401 Unauthorized.")
+	}
 	if err != nil {
 		log.Println("Error from GenericAPIpost:", err)
 		return dz, err
@@ -176,6 +185,9 @@ func DesecDeleteZone(cc *CliConfig, zone string, tokvip *viper.Viper) error {
 		true, cc.Verbose, cc.Debug, nil)
 	if cc.Verbose {
 		fmt.Printf("Status: %d\n", status)
+	}
+	if status == 401 {
+	   return fmt.Errorf("401 Unauthorized.")
 	}
 	if status == 204 {
 		return nil // all ok

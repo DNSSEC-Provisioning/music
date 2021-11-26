@@ -33,7 +33,10 @@ var desecZoneAddCmd = &cobra.Command{
 			fmt.Printf("Cannot add a zone without a name. Use '-z'\n")
 			os.Exit(1)
 		}
-		music.DesecAddZone(&cliconf, zonename, tokvip)
+		_, err := music.DesecAddZone(&cliconf, zonename, tokvip)
+		if err != nil {
+		   fmt.Printf("Error from DesecAddZone: %v\n", err)
+		}
 	},
 }
 
@@ -46,7 +49,10 @@ var desecZoneDeleteCmd = &cobra.Command{
 			fmt.Printf("Cannot delete a zone without a name. Use '-z'\n")
 			os.Exit(1)
 		}
-		music.DesecDeleteZone(&cliconf, zonename, tokvip)
+		err := music.DesecDeleteZone(&cliconf, zonename, tokvip)
+		if err != nil {
+		   fmt.Printf("Error from DesecDeleteZone: %v\n", err)
+		}
 	},
 }
 
@@ -55,7 +61,10 @@ var desecZoneListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List one or all zones served by deSEC",
 	Run: func(cmd *cobra.Command, args []string) {
-		zl, _ := music.DesecListZone(&cliconf, zonename, tokvip)
+		zl, err := music.DesecListZone(&cliconf, zonename, tokvip)
+		if err != nil {
+		   fmt.Printf("Error from DesecListZone: %v\n", err)
+		}
 
 		if len(zl) > 0 {
 			var out = []string{"Zone|Created|Published"}
