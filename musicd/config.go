@@ -68,8 +68,8 @@ type InternalConf struct {
 	DB         *sql.DB
 	MusicDB    *music.MusicDB
 	TokViper   *viper.Viper
-	DesecFetch chan DesecOp
-	DesecUpdate chan DesecOp
+	DesecFetch chan music.DesecOp
+	DesecUpdate chan music.DesecOp
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile string, safemode bool) error {

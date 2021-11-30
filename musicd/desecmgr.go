@@ -15,7 +15,7 @@ import (
 	music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-type DesecOp struct {
+type xxDesecOp struct {
 	Command  string
 	Signer   *music.Signer
 	Zone     string
@@ -23,10 +23,10 @@ type DesecOp struct {
 	RRtype   uint16
 	Inserts  *[][]dns.RR
 	Removes  *[][]dns.RR
-	Response chan DesecResponse
+	Response chan music.DesecResponse
 }
 
-type DesecResponse struct {
+type xxDesecResponse struct {
 	Status   int
 	RRs      []dns.RR
 	Error    error
@@ -67,9 +67,10 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 	update_ticker := time.NewTicker(time.Minute)
 
 	var fetch_ops, update_ops int
-	var fdop, udop DesecOp
+	var fdop, udop music.DesecOp
 
 	go func() {
+	   	var rl bool
 		var status int
 		var rrs []dns.RR
 		var err error
@@ -86,9 +87,9 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 					}
 					// Do stuff
 					fmt.Printf("Fetch channel: %v\n", fdop)
-					status, err, rrs = music.DesecBFetchRRset(fdop.Signer,
+					rl, status, err, rrs = music.RLDesecFetchRRset(fdop.Signer,
 						fdop.Zone, fdop.Owner, fdop.RRtype)
-					fmt.Printf("DesecMgr: status: %d err: %v rrs: %v\n", status, err, rrs)
+					fmt.Printf("DesecMgr: rate-limitied: %v status: %d err: %v rrs: %v\n", rl, status, err, rrs)
 				}
 
 			case <-done:

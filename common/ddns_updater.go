@@ -16,6 +16,10 @@ func init() {
 	Updaters["ddns"] = &DdnsUpdater{}
 }
 
+func (u *DdnsUpdater) SetChannels(fetch, update chan DesecOp) {
+     // no-op
+}
+
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",

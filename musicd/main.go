@@ -138,8 +138,11 @@ func main() {
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 
-	conf.Internal.DesecFetch = make(chan DesecOp, 100)
-	conf.Internal.DesecUpdate = make(chan DesecOp, 100)
+	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
+	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
+	rldu := music.Updaters["rldesec-api"]
+	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
+	
 	var done = make(chan struct{}, 1)
 
 	// initialMigration()

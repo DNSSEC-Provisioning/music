@@ -25,6 +25,10 @@ func init() {
 	Updaters["desec-api"] = &DesecUpdater{}
 }
 
+func (u *DesecUpdater) SetChannels(fetch, update chan DesecOp) {
+     // no-op
+}
+
 func DesecSubname(zone, owner string, urluse bool) string {
 	newowner := owner
 	if strings.HasSuffix(owner, zone) {

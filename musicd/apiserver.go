@@ -65,10 +65,10 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		pongs += 1
 
 		for i := 1 ; i < pp.Fetches ; i++ {
-		    conf.Internal.DesecFetch <- DesecOp{}
+		    conf.Internal.DesecFetch <- music.DesecOp{}
 		}
 		for i := 1 ; i < pp.Updates ; i++ {
-		    conf.Internal.DesecUpdate <- DesecOp{}
+		    conf.Internal.DesecUpdate <- music.DesecOp{}
 		}
 
 		response := music.PingResponse{
