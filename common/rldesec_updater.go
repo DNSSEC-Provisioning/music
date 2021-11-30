@@ -18,14 +18,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-type DesecUpdater struct {
+type RLDesecUpdater struct {
 }
 
 func init() {
-	Updaters["desec-api"] = &DesecUpdater{}
+	Updaters["rldesec-api"] = &RLDesecUpdater{}
 }
 
-func DesecSubname(zone, owner string, urluse bool) string {
+func xxDesecSubname(zone, owner string, urluse bool) string {
 	newowner := owner
 	if strings.HasSuffix(owner, zone) {
 		if len(owner) > (len(zone) + 1) {
@@ -45,7 +45,7 @@ func DesecSubname(zone, owner string, urluse bool) string {
 	return newowner
 }
 
-func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
+func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
 	// what we want:
@@ -60,11 +60,11 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	// time.Sleep(1 * time.Second)
 	// resp := <- op.Response
 	// return resp.Error, resp.RRs
-//	return nil, []dns.RR{} // no-op
-//}
+	return nil, []dns.RR{} // no-op
+}
 
-// func DesecBFetchRRset(s *Signer, zone, owner string,
-//			rrtype uint16) (int, error, []dns.RR) {
+func DesecBFetchRRset(s *Signer, zone, owner string,
+			rrtype uint16) (int, error, []dns.RR) {
 	mdb := s.MusicDB()
 	tokvip := mdb.Tokvip
 	verbose := viper.GetBool("common.verbose")
@@ -93,12 +93,12 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		true, verbose, debug, nil)
 	if status == 429 { // we have been rate-limited
 	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
-	   return nil, []dns.RR{}
+	   return status, nil, []dns.RR{}
 	}
 
 	if err != nil {
 		log.Printf("Error from GenericAPIget (desec): %v\n", err)
-		return fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
+		return status, fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
 			[]dns.RR{}
 	}
 
@@ -119,17 +119,18 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		rrstr := fmt.Sprintf("%s %d IN %s %s", dr.Name, dr.TTL, dr.RRtype, r)
 		rr, err := dns.NewRR(rrstr)
 		if err != nil {
-			return fmt.Errorf("FetchRRset: Error parsing RR into dns.RR: %v\n",
+			return status, 
+			       fmt.Errorf("FetchRRset: Error parsing RR into dns.RR: %v\n",
 			       			       err), []dns.RR{}
 		}
 		rrs = append(rrs, rr)
 	}
 
 	mdb.WriteRRs(s, dns.Fqdn(owner), zone, rrtype, rrs)
-	return nil, DNSFilterRRsetOnType(rrs, rrtype)
+	return status, nil, DNSFilterRRsetOnType(rrs, rrtype)
 }
 
-type DesecRRset struct {
+type xxDesecRRset struct {
 	// Domain    string     `json:"domain"`
 	Subname string   `json:"subname"`
 	RRtype  string   `json:"type"`
@@ -137,7 +138,7 @@ type DesecRRset struct {
 	RData   []string `json:"records"`
 }
 
-type DesecResponseRRset struct {
+type xxDesecResponseRRset struct {
 	Created string   `json:"created"`
 	Touched string   `json:"touched"`
 	Domain  string   `json:"domain"`
@@ -148,7 +149,7 @@ type DesecResponseRRset struct {
 	RData   []string `json:"records"`
 }
 
-func DesecBuildRData(rrs []dns.RR) (error, []string) {
+func xxDesecBuildRData(rrs []dns.RR) (error, []string) {
 	var parts, rdata []string
 	for _, r := range rrs {
 		parts = strings.Split(r.String(), "\t")
@@ -163,7 +164,7 @@ func DesecBuildRData(rrs []dns.RR) (error, []string) {
 	return nil, rdata
 }
 
-func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR) (error, string) {
+func xxDesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR) (error, string) {
 	mdb := s.MusicDB()
 	tokvip := mdb.Tokvip
 	// address := s.Address
@@ -220,7 +221,7 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 	return nil, ""
 }
 
-func (u *DesecUpdater) Update(signer *Signer, zone, owner string, 
+func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string, 
      		       		     inserts, removes *[][]dns.RR) error {
 	mdb := signer.MusicDB()
 	tokvip := mdb.Tokvip
@@ -295,14 +296,14 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string,
 	return nil
 }
 
-func (u *DesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
+func (u *RLDesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
 
 	fmt.Printf("Desec RemoveRRset: rrsets: %v\n", rrsets)
 	return u.Update(signer, zone, owner, &[][]dns.RR{}, &rrsets)
 }
 
 
-func CreateDesecRRset(zone, owner string,
+func xxCreateDesecRRset(zone, owner string,
 	rrset []dns.RR, remove bool) (DesecRRset, error) {
 	var rdata []string
 	var err error
