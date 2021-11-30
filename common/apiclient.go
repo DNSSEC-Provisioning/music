@@ -295,8 +295,8 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 		return 501, []byte{}, errors.New(fmt.Sprintf("unknown auth method: %s", authmethod))
 	}
 
-	fmt.Printf("Faking the HTTPS PUT op. Not sending anything.\n")
-	return 301, []byte{}, nil
+//	fmt.Printf("Faking the HTTPS PUT op. Not sending anything.\n")
+//	return 301, []byte{}, nil
 
 	resp, err := client.Do(req)
 
