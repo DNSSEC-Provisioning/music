@@ -25,26 +25,6 @@ func init() {
 	Updaters["rldesec-api"] = &RLDesecUpdater{}
 }
 
-func xxDesecSubname(zone, owner string, urluse bool) string {
-	newowner := owner
-	if strings.HasSuffix(owner, zone) {
-		if len(owner) > (len(zone) + 1) {
-			newowner = owner[:len(owner)-len(zone)-1]
-		} else if len(owner) == len(zone) {
-			if urluse {
-				newowner = "@"
-			} else {
-				newowner = ""
-			}
-		}
-		//fmt.Printf("DesecSubname: removing zone %s from owner name %s returning '%s'\n",
-		// zone, owner, newowner)
-		// owner = strings.TrimSuffix(owner, zone)
-	}
-
-	return newowner
-}
-
 func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
@@ -130,97 +110,6 @@ func DesecBFetchRRset(s *Signer, zone, owner string,
 	return status, nil, DNSFilterRRsetOnType(rrs, rrtype)
 }
 
-type xxDesecRRset struct {
-	// Domain    string     `json:"domain"`
-	Subname string   `json:"subname"`
-	RRtype  string   `json:"type"`
-	TTL     int      `json:"ttl"`
-	RData   []string `json:"records"`
-}
-
-type xxDesecResponseRRset struct {
-	Created string   `json:"created"`
-	Touched string   `json:"touched"`
-	Domain  string   `json:"domain"`
-	Subname string   `json:"subname"`
-	Name    string   `json:"name"`
-	RRtype  string   `json:"type"`
-	TTL     int      `json:"ttl"`
-	RData   []string `json:"records"`
-}
-
-func xxDesecBuildRData(rrs []dns.RR) (error, []string) {
-	var parts, rdata []string
-	for _, r := range rrs {
-		parts = strings.Split(r.String(), "\t")
-
-		if len(parts) < 5 {
-			return errors.New(fmt.Sprintf("DesecBuildRData: danger: parts: %v\n", parts)),
-				[]string{}
-		}
-		parts = parts[4:]
-		rdata = append(rdata, strings.Join(parts, " "))
-	}
-	return nil, rdata
-}
-
-func xxDesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR) (error, string) {
-	mdb := s.MusicDB()
-	tokvip := mdb.Tokvip
-	// address := s.Address
-	verbose := viper.GetBool("common.verbose")
-	debug := viper.GetBool("common.debug")
-
-	// log.Printf("DesecUpdateRRset: sending update of RRset '%s IN %s' to %s\n", owner,
-	//    dns.TypeToString[rrtype], s.Address)
-
-	urldetails := fmt.Sprintf("/domains/%s/rrsets/", zone)
-
-	DesecTokenRefreshIfNeeded(tokvip)
-
-	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
-	apikey := tokvip.GetString("desec.token")
-	tokvip.Set("desec.touched", time.Now().Format(layout))
-
-	err, rdata := DesecBuildRData(rrs)
-	if err != nil {
-		fmt.Printf("Error from DesecBuildRData: %v\n", err)
-	}
-
-	data := DesecRRset{
-		Subname: DesecSubname(zone, owner, false),
-		RRtype:  dns.TypeToString[rrtype],
-		TTL:     3600,
-		RData:   rdata,
-	}
-
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	fmt.Printf("DesecUpdateRRset: deSEC API url: %s. token: %s Data: %v\n",
-		apiurl, apikey, data)
-
-	status, buf, err := GenericAPIpost(apiurl, apikey, "Authorization",
-		bytebuf.Bytes(), true, verbose,
-		debug, nil)
-	if status == 429 { // we have been rate-limited
-	   fmt.Printf("desec.UpdateRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
-	}
-
-	if err != nil {
-		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
-		return errors.New(fmt.Sprintf("Error from deSEC API for %s: %v",
-			urldetails, err)), ""
-	}
-
-	if verbose {
-		fmt.Printf("DesecUpdateRRset: status: %d\n", status)
-	}
-
-	fmt.Printf("DesecUpdateRRset: buf: %v\n", string(buf))
-	return nil, ""
-}
-
 func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string, 
      		       		     inserts, removes *[][]dns.RR) error {
 	mdb := signer.MusicDB()
@@ -303,39 +192,3 @@ func (u *RLDesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets 
 }
 
 
-func xxCreateDesecRRset(zone, owner string,
-	rrset []dns.RR, remove bool) (DesecRRset, error) {
-	var rdata []string
-	var err error
-	subname := "" // most common case
-	if owner != zone {
-	   subname = DesecSubname(zone, owner, false)
-	}
-
-	rr := rrset[0]
-	rrtype := rr.Header().Rrtype
-
-	if remove {
-		rdata = []string{}
-	} else {
-		err, rdata = DesecBuildRData(rrset)
-		if err != nil {
-			log.Printf("Error from DesecBuildRData: %v\n", err)
-			return DesecRRset{}, err
-		}
-	}
-	
-	log.Printf("CreateDesecRRset: creating update of RRset '%s IN %s\n",
-		owner, dns.TypeToString[rrtype])
-
-	data := DesecRRset{
-		Subname: subname,
-		RRtype:  dns.TypeToString[rrtype],
-		TTL:     3600,
-		RData:   rdata,
-	}
-
-	fmt.Printf("CreateDesecRRset: data: %v\n", data)
-
-	return data, nil
-}
