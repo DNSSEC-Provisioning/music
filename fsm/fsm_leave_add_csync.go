@@ -9,7 +9,7 @@ import (
 )
 
 func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -92,8 +92,13 @@ func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
 	return true
 }
 
+<<<<<<< HEAD:fsm/fsm_leave_add_csync.go
 func fsmLeaveAddCsyncAction(z *music.Zone) bool {
 	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+=======
+func fsmLeaveAddCsyncAction(z *Zone) bool {
+	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+>>>>>>> main:common/fsm_leave_add_csync.go
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
