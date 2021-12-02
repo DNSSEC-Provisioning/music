@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+        // "github.com/DNSSEC-Provisioning/music/common"
 )
 
 func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
@@ -27,7 +28,7 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 
 	var exist bool
 	var process FSM
-	if process, exist = FSMlist[fsm]; !exist {
+	if process, exist = mdb.FSMlist[fsm]; !exist {
 		return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
 	}
 
@@ -75,7 +76,7 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 			""
 	}
 
-	CurrentFsm := FSMlist[fsmname]
+	CurrentFsm := mdb.FSMlist[fsmname]
 
 	state := dbzone.State
 	var CurrentState FSMState
@@ -206,7 +207,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 
 func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
 	var resp []Process
-	for name, fsm := range FSMlist {
+	for name, fsm := range mdb.FSMlist {
 		resp = append(resp, Process{
 			Name: name,
 			Desc: fsm.Desc,
@@ -239,7 +240,7 @@ func (mdb *MusicDB) GraphProcess(fsm string) (string, error) {
 	var exist bool
 	var process FSM
 
-	if process, exist = FSMlist[fsm]; !exist {
+	if process, exist = mdb.FSMlist[fsm]; !exist {
 		return "", fmt.Errorf("Process %s unknown. Sorry.", fsm)
 	}
 
@@ -264,7 +265,7 @@ func MermaidFlowChart(process *FSM) (string, error) {
 	statenum := 0
 	var stateToId = map[string]string{}
 	//    var process FSM
-	//    if process, exist = FSMlist[fsm]; !exist {
+	//    if process, exist = mdb.FSMlist[fsm]; !exist {
 	//        return "", fmt.Errorf("Process %s unknown. Sorry.", process.Name)
 	//    }
 

@@ -114,7 +114,15 @@ func NewDB(force bool) *MusicDB {
 		}
 	}
 	dbSetupTables(db)
-	return &MusicDB{db: db}
+	var mdb = MusicDB{
+			db: db,
+			FSMlist: map[string]FSM{},
+		  }
+        return &mdb
+}
+
+func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
+     return mdb.db.Prepare(sqlq)
 }
 
 func CheckSQLError(caller, sqlcmd string, err error, abort bool) bool {

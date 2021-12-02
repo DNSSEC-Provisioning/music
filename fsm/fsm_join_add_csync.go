@@ -1,12 +1,13 @@
-package music
+package fsm
 
 import (
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-var FsmJoinAddCsync = FSMTransition{
+var FsmJoinAddCsync = music.FSMTransition{
 	Description: "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
 
 	MermaidCriteriaDesc: "Wait for NS RRset to be consistent",
@@ -17,15 +18,15 @@ var FsmJoinAddCsync = FSMTransition{
 	Criteria:      fsmJoinAddCsyncCriteria,
 	PreCondition:  fsmJoinAddCsyncCriteria,
 	Action:        fsmJoinAddCsyncAction,
-	PostCondition: func(z *Zone) bool { return true },
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func fsmJoinAddCsyncCriteria(z *Zone) bool {
+func fsmJoinAddCsyncCriteria(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
-	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.sgroup.Name)
+	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		//        m := new(dns.Msg)
 		//        m.SetQuestion(z.Name, dns.TypeNS)
 		//        c := new(dns.Client)
@@ -35,7 +36,7 @@ func fsmJoinAddCsyncCriteria(z *Zone) bool {
 		//            return false
 		//        }
 
-		updater := GetUpdater(s.Method)
+		updater := music.GetUpdater(s.Method)
 		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
@@ -92,13 +93,13 @@ func fsmJoinAddCsyncCriteria(z *Zone) bool {
 	return true
 }
 
-func fsmJoinAddCsyncAction(z *Zone) bool {
+func fsmJoinAddCsyncAction(z *music.Zone) bool {
 	// TODO: configurable TTL for created CSYNC records
 	ttl := 300
 
 	log.Printf("%s: Creating CSYNC record sets", z.Name)
 
-	for _, signer := range z.sgroup.SignerMap {
+	for _, signer := range z.SGroup.SignerMap {
 		//        m := new(dns.Msg)
 		//        m.SetQuestion(z.Name, dns.TypeSOA)
 		//        c := new(dns.Client)
@@ -108,7 +109,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
 		//            return false
 		//        }
 
-		updater := GetUpdater(signer.Method)
+		updater := music.GetUpdater(signer.Method)
 		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeSOA)
 		if err != nil {
@@ -132,7 +133,7 @@ func fsmJoinAddCsyncAction(z *Zone) bool {
 			csync.Flags = 3
 			csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
-			updater := GetUpdater(signer.Method)
+			updater := music.GetUpdater(signer.Method)
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
 				log.Printf("%s: Unable to update %s with CSYNC record sets: %s",

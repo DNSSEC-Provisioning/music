@@ -1,13 +1,14 @@
-package music
+package fsm
 
 import (
 	// "fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-var FsmJoinAddCdscdnskeys = FSMTransition{
+var FsmJoinAddCdscdnskeys = music.FSMTransition{
 	// XXX: what is the *criteria* for making this transition?
 	Description:         "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
 	MermaidCriteriaDesc: "Wait for DNSKEY RRset to be consistent",
@@ -20,15 +21,15 @@ var FsmJoinAddCdscdnskeys = FSMTransition{
 	PostCondition:       fsmVerifyCdsPublished,
 }
 
-func fsmJoinAddCdscdnskeysCriteria(z *Zone) bool {
+func fsmJoinAddCdscdnskeysCriteria(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
 
 	log.Printf("Add CDS/CDNSKEY:\n")
-	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.sgroup.Name)
+	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.SGroup.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 
-		updater := GetUpdater(s.Method)
+		updater := music.GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
@@ -100,15 +101,15 @@ func fsmJoinAddCdscdnskeysCriteria(z *Zone) bool {
 	return true
 }
 
-func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
+func fsmJoinAddCdscdnskeysAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	cdses := []dns.RR{}
 	cdnskeys := []dns.RR{}
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 
-		updater := GetUpdater(s.Method)
+		updater := music.GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
@@ -131,8 +132,8 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
 	}
 
 	// Publish CDS/CDNSKEY RRsets
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
 			log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
@@ -147,7 +148,7 @@ func fsmJoinAddCdscdnskeysAction(z *Zone) bool {
 	return true
 }
 
-func fsmVerifyCdsPublished(z *Zone) bool {
+func fsmVerifyCdsPublished(z *music.Zone) bool {
 	log.Printf("%s: Verifying Publication of CDS/CDNSKEY record sets", z.Name)
 
 	// cdses := []dns.RR{}
@@ -158,8 +159,8 @@ func fsmVerifyCdsPublished(z *Zone) bool {
 	cdnskeymap := map[uint16]*dns.CDNSKEY{}
 	cdnskeymap2 := map[uint16]*dns.CDNSKEY{}
 
-	for _, s := range z.sgroup.SignerMap {
-		updater := GetUpdater(s.Method)
+	for _, s := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
@@ -181,8 +182,8 @@ func fsmVerifyCdsPublished(z *Zone) bool {
 	}
 
 	// Check against published CDS/CDNSKEY RRsets.
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		err, cdsrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDS)
 		if err != nil {
 			log.Printf("%s: Unable to fetch CDS RRset from %s: %v",

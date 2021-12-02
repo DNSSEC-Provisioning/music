@@ -1,4 +1,4 @@
-package music
+package fsm
 
 import (
 	// "fmt"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var zoneWaitNs map[string]time.Time // Issue #34: using local store for now
@@ -14,7 +15,7 @@ func init() {
 	zoneWaitNs = make(map[string]time.Time)
 }
 
-func fsmLeaveWaitNsCriteria(z *Zone) bool {
+func fsmLeaveWaitNsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
@@ -37,7 +38,7 @@ func fsmLeaveWaitNsCriteria(z *Zone) bool {
 
 	log.Printf("%s: Fetching NSes to calculate NS wait until", z.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeNS)
 		c := new(dns.Client)
@@ -117,13 +118,13 @@ func fsmLeaveWaitNsCriteria(z *Zone) bool {
 	return false
 }
 
-func fsmLeaveWaitNsAction(z *Zone) bool {
+func fsmLeaveWaitNsAction(z *music.Zone) bool {
 	z.StateTransition(FsmStateParentNsSynced, FsmStateNsPropagated)
 	delete(zoneWaitNs, z.Name)
 	return true
 }
 
-var FsmLeaveWaitNs = FSMTransition{
+var FsmLeaveWaitNs = music.FSMTransition{
 	Description: "Wait enough time for parent NS records to propagate (criteria), then continue (NO action)",
 	Criteria:    fsmLeaveWaitNsCriteria,
 	Action:      fsmLeaveWaitNsAction,

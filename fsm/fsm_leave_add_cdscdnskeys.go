@@ -1,13 +1,14 @@
-package music
+package fsm
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveAddCdscdnskeysCriteria(z *Zone) bool {
+func fsmLeaveAddCdscdnskeysCriteria(z *music.Zone) bool {
 	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -19,7 +20,7 @@ func fsmLeaveAddCdscdnskeysCriteria(z *Zone) bool {
 
 	log.Printf("%s: Verifying that leaving signer %s DNSKEYs has been removed from all signers", z.Name, leavingSigner.Name)
 
-	stmt, err := z.MusicDB.db.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
+	stmt, err := z.MusicDB.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
 	if err != nil {
 		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 		return false
@@ -43,7 +44,7 @@ func fsmLeaveAddCdscdnskeysCriteria(z *Zone) bool {
 		dnskeys[dnskey] = true
 	}
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
@@ -69,13 +70,13 @@ func fsmLeaveAddCdscdnskeysCriteria(z *Zone) bool {
 	return true
 }
 
-func fsmLeaveAddCdscdnskeysAction(z *Zone) bool {
+func fsmLeaveAddCdscdnskeysAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	cdses := []dns.RR{}
 	cdnskeys := []dns.RR{}
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
@@ -101,8 +102,8 @@ func fsmLeaveAddCdscdnskeysAction(z *Zone) bool {
 	}
 
 	// Create CDS/CDNSKEY records sets
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
 			log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
@@ -116,7 +117,7 @@ func fsmLeaveAddCdscdnskeysAction(z *Zone) bool {
 	return true
 }
 
-var FsmLeaveAddCdscdnskeys = FSMTransition{
+var FsmLeaveAddCdscdnskeys = music.FSMTransition{
 	Description: "Once all DNSKEYs are correct in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
 	Criteria:    fsmLeaveAddCdscdnskeysCriteria,
 	Action:      fsmLeaveAddCdscdnskeysAction,

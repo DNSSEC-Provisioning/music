@@ -26,7 +26,7 @@ type Zone struct {
 	Statestamp time.Time
 	NextState  map[string]bool
 	FSM        string
-	sgroup     *SignerGroup
+	SGroup     *SignerGroup
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
@@ -75,5 +75,6 @@ type AuthData struct {
 type MusicDB struct {
 	mu     sync.Mutex
 	db     *sql.DB
+        FSMlist	map[string]FSM
 	Tokvip *viper.Viper
 }

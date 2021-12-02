@@ -6,6 +6,8 @@ package music
 import (
 	"fmt"
 	"time"
+
+	// "github.com/DNSSEC-Provisioning/music/fsm"
 )
 
 const (
@@ -137,7 +139,7 @@ var FSMT_ZR_3 = FsmTransitionFactory("zsks-synced", "signers-synced")
 var FSMT_ZR_4 = FsmTransitionFactory("signers-synced", FsmStateStop)
 var FSMT_ZR_5 = FsmTransitionFactory(FsmStateStop, FsmStateStop)
 
-var FSMlist = map[string]FSM{
+var xxxFSMlist = map[string]FSM{
 	// PROCESS: ADD-ZONE: This is a bogus process, only for testing.
 	"add-zone": FSM{
 		Type:         "single-run",
@@ -157,86 +159,6 @@ var FSMlist = map[string]FSM{
 			},
 			"foobar": FSMState{
 				Next: map[string]FSMTransition{"ready": FSMT_AZ_4},
-			},
-		},
-	},
-
-	// PROCESS: ADD-SIGNER: This is a real process, from the draft doc.
-	"add-signer": FSM{
-		Name:         "add-signer",
-		Type:         "single-run",
-		InitialState: FsmStateSignerUnsynced,
-		Desc: `
-ADD-SIGNER is the process that all zones attached to a signer group
-must execute when a new signer is added to the group. It contains
-steps for synching DNSKEYs among signers as well as updating the
-DS and NS RRsets in the parent.`,
-		States: map[string]FSMState{
-			FsmStateSignerUnsynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateDnskeysSynced: FsmJoinSyncDnskeys},
-			},
-			FsmStateDnskeysSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateCdscdnskeysAdded: FsmJoinAddCdscdnskeys},
-			},
-			FsmStateCdscdnskeysAdded: FSMState{
-				Next: map[string]FSMTransition{FsmStateParentDsSynced: FsmJoinParentDsSynced},
-			},
-			FsmStateParentDsSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateDsPropagated: FsmJoinWaitDs},
-			},
-			FsmStateDsPropagated: FSMState{
-				Next: map[string]FSMTransition{FsmStateCsyncAdded: FsmJoinAddCsync},
-			},
-			FsmStateCsyncAdded: FSMState{
-				Next: map[string]FSMTransition{FsmStateParentNsSynced: FsmJoinParentNsSynced},
-			},
-			FsmStateParentNsSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateStop: FsmTransitionStopFactory(FsmStateParentNsSynced)},
-			},
-			FsmStateStop: FSMState{
-				Next: map[string]FSMTransition{FsmStateStop: FsmGenericStop},
-			},
-		},
-	},
-
-	"remove-signer": FSM{
-		Name:         "remove-signer",
-		Type:         "single-run",
-		InitialState: FsmStateSignerUnsynced,
-		Desc: `
-REMOVE-SIGNER is the process that all zones attached to a signer group
-must execute when an existing signer is removed from the group. It contains
-steps for synching DNSKEYs among signers as well as updating the
-DS and NS RRsets in the parent.
-
-Note that it is not possible to remove the last signer in a group, as that would cause the attached zones to have to go unsigned.`,
-		States: map[string]FSMState{
-			FsmStateSignerUnsynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateNsesSynced: FsmLeaveSyncNses},
-			},
-			FsmStateNsesSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateCsyncAdded: FsmLeaveAddCsync},
-			},
-			FsmStateCsyncAdded: FSMState{
-				Next: map[string]FSMTransition{FsmStateParentNsSynced: FsmLeaveParentNsSynced},
-			},
-			FsmStateParentNsSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateNsPropagated: FsmLeaveWaitNs},
-			},
-			FsmStateNsPropagated: FSMState{
-				Next: map[string]FSMTransition{FsmStateDnskeysSynced: FsmLeaveSyncDnskeys},
-			},
-			FsmStateDnskeysSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateCdscdnskeysAdded: FsmLeaveAddCdscdnskeys},
-			},
-			FsmStateCdscdnskeysAdded: FSMState{
-				Next: map[string]FSMTransition{FsmStateParentDsSynced: FsmLeaveParentDsSynced},
-			},
-			FsmStateParentDsSynced: FSMState{
-				Next: map[string]FSMTransition{FsmStateStop: FsmTransitionStopFactory(FsmStateParentDsSynced)},
-			},
-			FsmStateStop: FSMState{
-				Next: map[string]FSMTransition{FsmStateStop: FsmGenericStop},
 			},
 		},
 	},

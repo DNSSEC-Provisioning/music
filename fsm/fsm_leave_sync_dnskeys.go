@@ -1,17 +1,18 @@
-package music
+package fsm
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveSyncDnskeysCriteria(z *Zone) bool {
+func fsmLeaveSyncDnskeysCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveSyncDnskeysAction(z *Zone) bool {
+func fsmLeaveSyncDnskeysAction(z *music.Zone) bool {
 	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -23,7 +24,7 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 
 	log.Printf("%s: Removing DNSKEYs originating from leaving signer %s", z.Name, leavingSigner.Name)
 
-	stmt, err := z.MusicDB.db.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
+	stmt, err := z.MusicDB.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
 	if err != nil {
 		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 		return false
@@ -47,7 +48,7 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 		dnskeys[dnskey] = true
 	}
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
@@ -71,7 +72,7 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 		}
 
 		if len(rem) > 0 {
-			updater := GetUpdater(s.Method)
+			updater := music.GetUpdater(s.Method)
 			if err := updater.Update(s, z.Name, z.Name, nil, &[][]dns.RR{rem}); err != nil {
 				log.Printf("%s: Unable to remove DNSKEYs from %s: %s", z.Name, s.Name, err)
 				return false
@@ -84,7 +85,7 @@ func fsmLeaveSyncDnskeysAction(z *Zone) bool {
 	return true
 }
 
-var FsmLeaveSyncDnskeys = FSMTransition{
+var FsmLeaveSyncDnskeys = music.FSMTransition{
 	Description: "Once NSes has been propagated (NO criteria), remove DNSKEYs that originated from the leaving signer (Action)",
 	Criteria:    fsmLeaveSyncDnskeysCriteria,
 	Action:      fsmLeaveSyncDnskeysAction,
