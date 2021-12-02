@@ -133,20 +133,21 @@ func (s *Signer) UpdateRRset(zone, owner string, rrtype uint16, rrs []dns.RR) er
 			"Signer %s has method=ddns, which is not yet implemented.",
 			s.Name)
 	case "desec-api":
-		err, _ := DesecUpdateRRset(s, StripDot(zone), StripDot(owner), rrtype, rrs)
-		return err
+// XXX: old code that should be ripped out
+//		err, _ := DesecUpdateRRset(s, StripDot(zone), StripDot(owner), rrtype, rrs)
+//		return err
 	default:
 		return fmt.Errorf("Unknown RRset retrieval method: %s", s.Method)
 	}
 	return nil
 }
 
-func DNSRetrieveRRset(s *Signer, owner, zone string, rrtype uint16) (error, []dns.RR) {
-	mdb := s.MusicDB()
-	address := s.Address
-	log.Printf("DNSRetrieveRRset: looking up '%s IN %s' from %s\n", owner,
-		dns.TypeToString[rrtype], s.Address)
-
+// func DNSRetrieveRRset(s *Signer, owner, zone string, rrtype uint16) (error, []dns.RR) {
+// 	mdb := s.MusicDB()
+// 	address := s.Address
+// 	log.Printf("DNSRetrieveRRset: looking up '%s IN %s' from %s\n", owner,
+// 		dns.TypeToString[rrtype], s.Address)
+// 
 	//    authservers := LookupZoneServers(zonename, imr, verbose)
 	//    if len(authservers) == 0 {
 	//       if verbose {
@@ -156,23 +157,23 @@ func DNSRetrieveRRset(s *Signer, owner, zone string, rrtype uint16) (error, []dn
 	//       return errors.New("No auth nameservers")
 	//    }
 
-	r := AuthoritativeDNSQuery(owner, address, rrtype, false)
-	if r != nil {
-		fmt.Printf("DNSRetrieveRRset: got a response msg for auth query with %d RRs:\n",
-			len(r.Answer))
-		if len(r.Answer) == 0 {
-			//
-		} else {
-			// if RRs in Answer, they must be CDS + RRSIG(CDS)
-			// rr := response.Answer[0].(*dns.CDS)
-			mdb.WriteRRs(s, owner, zone, rrtype, r.Answer)
-			return nil, DNSFilterRRsetOnType(r.Answer, rrtype)
-		}
-	} else {
-		log.Printf("ScanGroup: Answer section is empty.")
-	}
-	return nil, []dns.RR{}
-}
+// 	r := AuthoritativeDNSQuery(owner, address, rrtype, false)
+// 	if r != nil {
+// 		fmt.Printf("DNSRetrieveRRset: got a response msg for auth query with %d RRs:\n",
+// 			len(r.Answer))
+// 		if len(r.Answer) == 0 {
+// 			//
+// 		} else {
+// 			// if RRs in Answer, they must be CDS + RRSIG(CDS)
+// 			// rr := response.Answer[0].(*dns.CDS)
+// 			mdb.WriteRRs(s, owner, zone, rrtype, r.Answer)
+// 			return nil, DNSFilterRRsetOnType(r.Answer, rrtype)
+// 		}
+// 	} else {
+// 		log.Printf("ScanGroup: Answer section is empty.")
+// 	}
+// 	return nil, []dns.RR{}
+// }
 
 func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 	var out []dns.RR

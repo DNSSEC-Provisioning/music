@@ -6,10 +6,8 @@ package music
 
 import (
 	"database/sql"
-	// "errors"
 	"fmt"
 	"log"
-	// "strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
@@ -119,11 +117,11 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
-func (mdb *MusicDB) GetSignerByName(signername string) (*Signer, error) {
+func (mdb *MusicDB) xxGetSignerByName(signername string) (*Signer, error) {
 	return mdb.GetSigner(&Signer{Name: signername})
 }
 
-func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
+func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlcmd)
 	if err != nil {

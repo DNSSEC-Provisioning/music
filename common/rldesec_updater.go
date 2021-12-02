@@ -25,7 +25,7 @@ func init() {
 	Updaters["rldesec-api"] = &RLDesecUpdater{}
 }
 
-type DesecOp struct {
+type xxDesecOp struct {
 	Command  string
 	Signer   *Signer
 	Zone     string
@@ -36,7 +36,7 @@ type DesecOp struct {
 	Response chan DesecResponse
 }
 
-type DesecResponse struct {
+type xxDesecResponse struct {
 	Status   int
 	RRs      []dns.RR
 	Error    error

@@ -125,6 +125,52 @@ func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
      return mdb.db.Prepare(sqlq)
 }
 
+func (mdb *MusicDB) GetSignerByName(signername string) (*Signer, error) {
+	return mdb.GetSigner(&Signer{Name: signername})
+}
+
+func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
+	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
+	stmt, err := mdb.db.Prepare(sqlcmd)
+	if err != nil {
+		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
+	}
+
+	row := stmt.QueryRow(s.Name)
+
+	var name, method, auth, address, signergroup string
+	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
+	case sql.ErrNoRows:
+		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
+		return &Signer{
+			Name:    s.Name,
+			Exists:  false,
+			Method:  s.Method,
+			Auth:    s.Auth,
+			Address: s.Address,
+		}, fmt.Errorf("Signer %s is unknown.", s.Name)
+
+	case nil:
+		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name, method, auth, address, signergroup)
+		return &Signer{
+			Name:        name,
+			Exists:      true,
+			Method:      method,
+			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
+			Address:     address,
+			SignerGroup: signergroup,
+			DB:          mdb,
+		}, nil
+
+	default:
+		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s, err)
+	}
+	return &Signer{
+		Name:   s.Name,
+		Exists: false,
+	}, err
+}
+
 func CheckSQLError(caller, sqlcmd string, err error, abort bool) bool {
 	if err != nil {
 		if abort {

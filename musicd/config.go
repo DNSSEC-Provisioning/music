@@ -13,7 +13,7 @@ import (
 	"github.com/go-playground/validator/v10"
 
 	"github.com/DNSSEC-Provisioning/music/common"
-	// "github.com/DNSSEC-Provisioning/music/fsm"
+	// "github.com/DNSSEC-Provisioning/music/signer"
 )
 
 var cfgFile string
