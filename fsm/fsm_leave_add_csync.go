@@ -1,13 +1,14 @@
-package music
+package fsm
 
 import (
 	// "fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveAddCsyncCriteria(z *Zone) bool {
+func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -19,7 +20,7 @@ func fsmLeaveAddCsyncCriteria(z *Zone) bool {
 
 	nses := make(map[string]bool)
 
-	stmt, err := z.MusicDB.db.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
+	stmt, err := z.MusicDB.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
 	if err != nil {
 		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 		return false
@@ -43,7 +44,7 @@ func fsmLeaveAddCsyncCriteria(z *Zone) bool {
 
 	log.Printf("%s: Verifying that leaving signer %s NSes has been removed from all signers", z.Name, leavingSigner.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeNS)
 		c := new(dns.Client)
@@ -91,8 +92,13 @@ func fsmLeaveAddCsyncCriteria(z *Zone) bool {
 	return true
 }
 
+<<<<<<< HEAD:fsm/fsm_leave_add_csync.go
+func fsmLeaveAddCsyncAction(z *music.Zone) bool {
+	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+=======
 func fsmLeaveAddCsyncAction(z *Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+>>>>>>> main:common/fsm_leave_add_csync.go
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
@@ -106,7 +112,7 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 
 	log.Printf("%s: Creating CSYNC record sets", z.Name)
 
-	for _, signer := range z.sgroup.SignerMap {
+	for _, signer := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeSOA)
 		c := new(dns.Client)
@@ -128,7 +134,7 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 			csync.Flags = 3
 			csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
-			updater := GetUpdater(signer.Method)
+			updater := music.GetUpdater(signer.Method)
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
 				log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, signer.Name, err)
@@ -159,7 +165,7 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 		csync.Flags = 3
 		csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
-		updater := GetUpdater(leavingSigner.Method)
+		updater := music.GetUpdater(leavingSigner.Method)
 		if err := updater.Update(leavingSigner, z.Name, z.Name,
 			&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
 			log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
@@ -173,7 +179,7 @@ func fsmLeaveAddCsyncAction(z *Zone) bool {
 	return true
 }
 
-var FsmLeaveAddCsync = FSMTransition{
+var FsmLeaveAddCsync = music.FSMTransition{
 	Description: "Once all NS are correct in all signers (criteria), build CSYNC record and push to all signers (action)",
 	Criteria:    fsmLeaveAddCsyncCriteria,
 	Action:      fsmLeaveAddCsyncAction,

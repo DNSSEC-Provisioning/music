@@ -1,18 +1,19 @@
-package music
+package fsm
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveParentDsSyncedCriteria(z *Zone) bool {
+func fsmLeaveParentDsSyncedCriteria(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeCDS)
 
@@ -65,7 +66,7 @@ func fsmLeaveParentDsSyncedCriteria(z *Zone) bool {
 	return true
 }
 
-func fsmLeaveParentDsSyncedAction(z *Zone) bool {
+func fsmLeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	cds := new(dns.CDS)
@@ -74,8 +75,8 @@ func fsmLeaveParentDsSyncedAction(z *Zone) bool {
 	ccds := new(dns.CDNSKEY)
 	ccds.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCDNSKEY, Class: dns.ClassINET, Ttl: 0}
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
 			log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
@@ -91,7 +92,7 @@ func fsmLeaveParentDsSyncedAction(z *Zone) bool {
 	//       tables: zone_dnskeys, zone_nses
 }
 
-var FsmLeaveParentDsSynced = FSMTransition{
+var FsmLeaveParentDsSynced = music.FSMTransition{
 	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers and STOP (action)",
 	Criteria:    fsmLeaveParentDsSyncedCriteria,
 	Action:      fsmLeaveParentDsSyncedAction,

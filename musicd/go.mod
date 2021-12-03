@@ -2,7 +2,11 @@ module musicd
 
 go 1.17
 
-replace github.com/DNSSEC-Provisioning/music/common => ../common
+replace (
+	github.com/DNSSEC-Provisioning/music/common => ../common
+	github.com/DNSSEC-Provisioning/music/fsm => ../fsm
+	github.com/DNSSEC-Provisioning/music/signer => ../signer
+)
 
 require (
 	github.com/DNSSEC-Provisioning/music/common v0.0.0-00010101000000-000000000000

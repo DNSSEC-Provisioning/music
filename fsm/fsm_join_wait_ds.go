@@ -1,10 +1,11 @@
-package music
+package fsm
 
 import (
 	"log"
 	"time"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var zoneWaitDs map[string]time.Time // Issue #34: using local store for now
@@ -13,7 +14,7 @@ func init() {
 	zoneWaitDs = make(map[string]time.Time)
 }
 
-var FsmJoinWaitDs = FSMTransition{
+var FsmJoinWaitDs = music.FSMTransition{
 	Description: "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
 
 	MermaidCriteriaDesc: "Wait for DS to propagate",
@@ -24,10 +25,10 @@ var FsmJoinWaitDs = FSMTransition{
 	Criteria:      fsmJoinWaitDsCriteria,
 	PreCondition:  fsmJoinWaitDsCriteria,
 	Action:        fsmJoinWaitDsAction,
-	PostCondition: func(z *Zone) bool { return true },
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func fsmJoinWaitDsCriteria(z *Zone) bool {
+func fsmJoinWaitDsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
@@ -41,9 +42,9 @@ func fsmJoinWaitDsCriteria(z *Zone) bool {
 
 	var ttl uint32
 
-	for _, signer := range z.sgroup.SignerMap {
+	for _, signer := range z.SGroup.SignerMap {
 
-		updater := GetUpdater(signer.Method)
+		updater := music.GetUpdater(signer.Method)
 		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
@@ -100,13 +101,13 @@ func fsmJoinWaitDsCriteria(z *Zone) bool {
 	return false
 }
 
-func fsmJoinWaitDsAction(z *Zone) bool {
+func fsmJoinWaitDsAction(z *music.Zone) bool {
 	log.Printf("%s: Fetch all NS records from all signers", z.Name)
 
 	nses := make(map[string][]*dns.NS)
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		log.Printf("JoinWaitDsAction: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
@@ -123,7 +124,7 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 
 			nses[signer.Name] = append(nses[signer.Name], ns)
 
-			stmt, err := z.MusicDB.db.Prepare("INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)")
+			stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)")
 			if err != nil {
 				log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 				return false
@@ -171,8 +172,8 @@ func fsmJoinWaitDsAction(z *Zone) bool {
 	//     }
 	// }
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
 			log.Printf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
 			return false

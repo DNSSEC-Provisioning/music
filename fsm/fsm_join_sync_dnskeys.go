@@ -1,10 +1,11 @@
-package music
+package fsm
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 // Transition SIGNERS-UNSYNCHED --> DNSKEYS-SYNCHED:
@@ -13,19 +14,19 @@ import (
 // ACTION: get all ZSKs for all signers included in the DNSKEY RRset on all signers
 // POST-CONDITION: verify that all ZSKs are included in all DNSKEY RRsets on all signers
 
-var FsmJoinSyncDnskeys = FSMTransition{
+var FsmJoinSyncDnskeys = music.FSMTransition{
 	Description:         "First step when joining, this transistion has no criteria and will sync DNSKEYs between all signers (action)",
 	MermaidCriteriaDesc: "",
 	MermaidPreCondDesc:  "",
 	MermaidActionDesc:   "Update all signer DNSKEY RRsets with all ZSKs",
 	MermaidPostCondDesc: "Verify that all ZSKs are published in signer DNSKEY RRsets",
-	Criteria:            func(z *Zone) bool { return true },
-	PreCondition:        func(z *Zone) bool { return true },
+	Criteria:            func(z *music.Zone) bool { return true },
+	PreCondition:        func(z *music.Zone) bool { return true },
 	Action:              fsmJoinSyncDnskeys,
 	PostCondition:       fsmVerifyDnskeysSynched,
 }
 
-func fsmVerifyDnskeysSynched(z *Zone) bool {
+func fsmVerifyDnskeysSynched(z *music.Zone) bool {
 	// 1: for each signer:
 	// 1.a. get DNSKEY RRset, extract all ZSKs,
 	// 1.b. store all zsks in a map[keyid]key per signer
@@ -43,9 +44,9 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 
 	log.Printf("VerifyDnskeysSynched: Fetching all ZSKs for %s.\n", z.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 
-		updater := GetUpdater(s.Method)
+		updater := music.GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
 			dns.TypeDNSKEY)
@@ -65,7 +66,7 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 			if f := dnskey.Flags & 0x101; f == 256 {
 				signerzsks[s.Name][dnskey.KeyTag()] = dnskey
 				allzsks[dnskey.KeyTag()] = dnskey
-				stmt, err := z.MusicDB.db.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
+				stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
 				if err != nil {
 					log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 					return false
@@ -85,7 +86,7 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 	}
 
 	log.Printf("VerifyDnskeysSynched: Comparing ZSK RRs for %s... ", z.Name)
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		if len(allzsks) != len(signerzsks[s.Name]) {
 			log.Printf("%s: Signer %s has %d ZSKs (should be %d)\n",
 				z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks))
@@ -111,12 +112,12 @@ func fsmVerifyDnskeysSynched(z *Zone) bool {
 	return true
 }
 
-func fsmJoinSyncDnskeys(z *Zone) bool {
+func fsmJoinSyncDnskeys(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
 
-	log.Printf("%s: Syncing DNSKEYs in group %s", z.Name, z.sgroup.Name)
+	log.Printf("%s: Syncing DNSKEYs in group %s", z.Name, z.SGroup.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 
 		//		m := new(dns.Msg)
 		//		m.SetQuestion(z.Name, dns.TypeDNSKEY)
@@ -129,7 +130,7 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 		//			return false
 		//		}
 
-		updater := GetUpdater(s.Method)
+		updater := music.GetUpdater(s.Method)
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
 			dns.TypeDNSKEY)
@@ -150,7 +151,7 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 			dnskeys[s.Name] = append(dnskeys[s.Name], dnskey)
 
 			if f := dnskey.Flags & 0x101; f == 256 {
-				stmt, err := z.MusicDB.db.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
+				stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
 				if err != nil {
 					log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 					return false
@@ -209,8 +210,8 @@ func fsmJoinSyncDnskeys(z *Zone) bool {
 
 					if !found {
 						// add a DNSKEY that we had but other signer did not
-						s := z.sgroup.SignerMap[other_signer]
-						updater := GetUpdater(s.Method)
+						s := z.SGroup.SignerMap[other_signer]
+						updater := music.GetUpdater(s.Method)
 						if err := updater.Update(s, z.Name, z.Name,
 							&[][]dns.RR{[]dns.RR{key}}, nil); err != nil {
 							log.Printf("%s: Unable to update %s with new DNSKEY %s: %s", z.Name, other_signer, key.PublicKey, err)

@@ -5,7 +5,6 @@
 package main
 
 import (
-	// "database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -16,10 +15,6 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-
-	// "github.com/jinzhu/gorm"
-	// _ "github.com/jinzhu/gorm/dialects/sqlite"
-
 	"github.com/DNSSEC-Provisioning/music/common"
 )
 
@@ -126,24 +121,6 @@ func LoadConfig(conf *Config, safemode bool) error {
 	return nil
 }
 
-// func initialMigration() {
-//     db, err := gorm.Open("sqlite3", viper.GetString("common.gormdb"))
-//     if err != nil {
-//         fmt.Println(err.Error())
-//         panic("failed to connect to gorm database")
-//     }
-//     defer db.Close()
-//
-//     // Migrate the schema
-//     // db.AutoMigrate(&music.Zone{})
-//     db.AutoMigrate(&music.Signer{})
-//     db.AutoMigrate(&music.GormSignerGroup{})
-//     // Gorm barfs on FSMState, because that contains a func() which is unsupported in sqlite
-//     // db.AutoMigrate(&music.FSMState{})
-//     // Gorm barfs on FSMState, because that contains a map[] which is unsupported in sqlite
-//     // db.AutoMigrate(&music.FSM{})
-// }
-
 func main() {
 	var conf Config
 	flag.Usage = func() {
@@ -161,7 +138,15 @@ func main() {
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 
+	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
+	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
+	rldu := music.Updaters["rldesec-api"]
+	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
+	
+	var done = make(chan struct{}, 1)
+
 	// initialMigration()
 	go APIdispatcher(&conf)
+	go deSECmgr(&conf, done)
 	mainloop(&conf, apistopper)
 }

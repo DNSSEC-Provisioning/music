@@ -61,7 +61,16 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("APIping: error decoding ping post:", err)
 		}
+		
 		pongs += 1
+
+		for i := 1 ; i < pp.Fetches ; i++ {
+		    conf.Internal.DesecFetch <- music.DesecOp{}
+		}
+		for i := 1 ; i < pp.Updates ; i++ {
+		    conf.Internal.DesecUpdate <- music.DesecOp{}
+		}
+
 		response := music.PingResponse{
 			Time:    time.Now(),
 			Client:  r.RemoteAddr,

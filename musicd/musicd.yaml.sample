@@ -9,7 +9,9 @@ signers:
       email:       johan.stenstam@internetstiftelsen.se
       password:    Blurg99,123
       baseurl:     https://desec.io/api/v1
-
+      limits:
+         fetch:	   5 # ops/s
+ 	 update:   2 # ops/s
 common:
    db:		/var/tmp/music.db
    tokenfile:	../etc/musicd.tokens.yaml

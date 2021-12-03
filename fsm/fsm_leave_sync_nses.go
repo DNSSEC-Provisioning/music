@@ -1,17 +1,18 @@
-package music
+package fsm
 
 import (
 	// "fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveSyncNsesCriteria(z *Zone) bool {
+func fsmLeaveSyncNsesCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveSyncNsesAction(z *Zone) bool {
+func fsmLeaveSyncNsesAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -23,7 +24,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 
 	log.Printf("%s: Removing NSes originating from leaving signer %s", z.Name, leavingSigner.Name)
 
-	stmt, err := z.MusicDB.db.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
+	stmt, err := z.MusicDB.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
 	if err != nil {
 		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
 		return false
@@ -50,8 +51,8 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 		nsrem = append(nsrem, rr)
 	}
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
 			log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, signer.Name, err)
 			return false
@@ -59,7 +60,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 		log.Printf("%s: Removed NSes from %s successfully", z.Name, signer.Name)
 	}
 
-	updater := GetUpdater(leavingSigner.Method)
+	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.Update(leavingSigner, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
 		log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
@@ -70,7 +71,7 @@ func fsmLeaveSyncNsesAction(z *Zone) bool {
 	return true
 }
 
-var FsmLeaveSyncNses = FSMTransition{
+var FsmLeaveSyncNses = music.FSMTransition{
 	Description: "First step when leaving, this transistion has no critera and will remove NSes that originated from the leaving signer (Action)",
 	Criteria:    fsmLeaveSyncNsesCriteria,
 	Action:      fsmLeaveSyncNsesAction,

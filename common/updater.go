@@ -14,6 +14,8 @@ import (
 // array.
 //
 type Updater interface {
+	SetChannels(fetch, update chan DesecOp)
+
 	Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
 	RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error
 	FetchRRset(signer *Signer, zone, fqdn string, rrtype uint16) (error, []dns.RR)

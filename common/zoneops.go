@@ -16,7 +16,7 @@ import (
 )
 
 func (z *Zone) SignerGroup() *SignerGroup {
-	return z.sgroup
+	return z.SGroup
 }
 
 func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
@@ -164,7 +164,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 		}
 
 		sg, _ := mdb.GetSignerGroup(signergroup)
-		nexttransitions := FSMlist[fsm].States[state].Next
+		nexttransitions := mdb.FSMlist[fsm].States[state].Next
 		next := map[string]bool{}
 		for k, _ := range nexttransitions {
 			next[k] = true
@@ -177,7 +177,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			Statestamp: t,
 			NextState:  next,
 			FSM:        fsm,
-			sgroup:     sg,
+			SGroup:     sg,
 			SGname:     sg.Name,
 			MusicDB:    mdb,
 		}, true
@@ -224,7 +224,7 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 				State:      state,
 				Statestamp: t,
 				FSM:        fsm,
-				sgroup:     sg,
+				SGroup:     sg,
 				MusicDB:    mdb,
 			})
 			rowcounter++
@@ -361,7 +361,7 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 			}
 
 			sg, _ := mdb.GetSignerGroup(signergroup)
-			nexttransitions := FSMlist[fsm].States[state].Next
+			nexttransitions := mdb.FSMlist[fsm].States[state].Next
 			next := map[string]bool{}
 			for k, _ := range nexttransitions {
 				next[k] = true
@@ -373,7 +373,7 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 				Statestamp: t,
 				NextState:  next,
 				FSM:        fsm,
-				sgroup:     sg,
+				SGroup:     sg,
 				SGname:     sg.Name,
 			}
 			rowcounter++

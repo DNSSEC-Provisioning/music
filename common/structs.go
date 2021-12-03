@@ -5,9 +5,11 @@ package music
 
 import (
 	"database/sql"
-	"github.com/spf13/viper"
 	"sync"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/miekg/dns"
 )
 
 type CliConfig struct {
@@ -26,7 +28,7 @@ type Zone struct {
 	Statestamp time.Time
 	NextState  map[string]bool
 	FSM        string
-	sgroup     *SignerGroup
+	SGroup     *SignerGroup
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
@@ -75,5 +77,24 @@ type AuthData struct {
 type MusicDB struct {
 	mu     sync.Mutex
 	db     *sql.DB
+        FSMlist	map[string]FSM
 	Tokvip *viper.Viper
+}
+
+type DesecOp struct {
+        Command  string
+        Signer   *Signer
+        Zone     string
+        Owner    string
+        RRtype   uint16
+        Inserts  *[][]dns.RR
+        Removes  *[][]dns.RR
+        Response chan DesecResponse
+}
+
+type DesecResponse struct {
+        Status   int
+        RRs      []dns.RR
+        Error    error
+        Response string
 }

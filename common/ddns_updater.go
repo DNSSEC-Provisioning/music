@@ -16,6 +16,10 @@ func init() {
 	Updaters["ddns"] = &DdnsUpdater{}
 }
 
+func (u *DdnsUpdater) SetChannels(fetch, update chan DesecOp) {
+     // no-op
+}
+
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
@@ -147,6 +151,10 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	log.Printf("Length of Answer from %s: %d RRs\n", signer.Name, len(r.Answer))
 
 	var rrs []dns.RR
+
+	// XXX: Here we want to filter out all RRs that are of other types than the
+	//      rrtype we're looking for. It would be much better to have a general
+	//      check for a.(type) == rrtype, but I have not figured out how.
 
 	for _, a := range r.Answer {
 		switch dns.TypeToString[rrtype] {

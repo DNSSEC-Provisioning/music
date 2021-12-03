@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var pings int
+var pings, fetches, updates int
 
 // pingCmd represents the ping command
 var pingCmd = &cobra.Command{
@@ -37,12 +37,16 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	pingCmd.Flags().IntVarP(&pings, "count", "c", 1, "ping counter to send to server")
+	pingCmd.Flags().IntVarP(&fetches, "fetches", "F", 1, "number of fetches to send to deSEC mgr")
+	pingCmd.Flags().IntVarP(&updates, "updates", "U", 1, "number of updates to send to deSEC mgr")
 }
 
 func PingMusicdServer() {
 
 	data := music.PingPost{
 		Pings: pings,
+		Fetches: fetches,
+		Updates: updates,
 	}
 
 	bytebuf := new(bytes.Buffer)

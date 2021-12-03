@@ -1,13 +1,14 @@
-package music
+package fsm
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
+        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-var FsmJoinParentDsSynced = FSMTransition{
+var FsmJoinParentDsSynced = music.FSMTransition{
 	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
 
 	MermaidCriteriaDesc: "Verify that parent DS RRset is updated",
@@ -21,12 +22,12 @@ var FsmJoinParentDsSynced = FSMTransition{
 	PostCondition: fsmVerifyCdsRemoved,
 }
 
-func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
+func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
 	cdses := make(map[string][]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
-	for _, s := range z.sgroup.SignerMap {
+	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeCDS)
 
@@ -114,7 +115,7 @@ func fsmJoinParentDsSyncedCriteria(z *Zone) bool {
 	return true
 }
 
-func fsmJoinParentDsSyncedAction(z *Zone) bool {
+func fsmJoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	cds := new(dns.CDS)
@@ -123,8 +124,8 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 	ccds := new(dns.CDNSKEY)
 	ccds.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCDNSKEY, Class: dns.ClassINET, Ttl: 0}
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name, [][]dns.RR{[]dns.RR{cds},
 			[]dns.RR{ccds}}); err != nil {
 			log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
@@ -136,11 +137,11 @@ func fsmJoinParentDsSyncedAction(z *Zone) bool {
 	return true
 }
 
-func fsmVerifyCdsRemoved(z *Zone) bool {
+func fsmVerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
 
-	for _, signer := range z.sgroup.SignerMap {
-		updater := GetUpdater(signer.Method)
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
 		err, cdsrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDS)
 		if err != nil {
 			log.Printf("Error from FetchRRset: %v\n", err)

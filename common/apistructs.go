@@ -30,6 +30,8 @@ type ShowAPIresponse struct {
 type PingPost struct {
 	Message string
 	Pings   int
+	Fetches	int
+	Updates	int
 }
 
 type PingResponse struct {
