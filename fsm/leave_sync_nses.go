@@ -8,6 +8,12 @@ import (
         music "github.com/DNSSEC-Provisioning/music/common"
 )
 
+var FsmLeaveSyncNses = music.FSMTransition{
+	Description: "First step when leaving, this transistion has no critera and will remove NSes that originated from the leaving signer (Action)",
+	Criteria:    fsmLeaveSyncNsesCriteria,
+	Action:      fsmLeaveSyncNsesAction,
+}
+
 func fsmLeaveSyncNsesCriteria(z *music.Zone) bool {
 	return true
 }
@@ -16,7 +22,7 @@ func fsmLeaveSyncNsesAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
 		return false
@@ -71,8 +77,3 @@ func fsmLeaveSyncNsesAction(z *music.Zone) bool {
 	return true
 }
 
-var FsmLeaveSyncNses = music.FSMTransition{
-	Description: "First step when leaving, this transistion has no critera and will remove NSes that originated from the leaving signer (Action)",
-	Criteria:    fsmLeaveSyncNsesCriteria,
-	Action:      fsmLeaveSyncNsesAction,
-}

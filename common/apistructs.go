@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/spf13/viper"
 )
 
 type APIstatus struct {
@@ -30,8 +31,8 @@ type ShowAPIresponse struct {
 type PingPost struct {
 	Message string
 	Pings   int
-	Fetches	int
-	Updates	int
+	Fetches int
+	Updates int
 }
 
 type PingResponse struct {
@@ -102,11 +103,16 @@ type SignerGroupResponse struct {
 
 type Api struct {
 	Client     *http.Client
-	Apiurl     string
+	BaseUrl    string
 	apiKey     string
 	Authmethod string
 	Verbose    bool
 	Debug      bool
+
+	// deSEC stuff
+	Email    string
+	Password string
+	TokViper *viper.Viper
 }
 
 type ProcessPost struct {

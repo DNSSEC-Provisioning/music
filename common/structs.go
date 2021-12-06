@@ -41,13 +41,6 @@ type SignerGroup struct {
 	DB        *MusicDB
 }
 
-type GormSignerGroup struct {
-	Name      string
-	SignerMap []Signer
-	State     string
-	DB        *MusicDB
-}
-
 func (sg *SignerGroup) Signers() map[string]*Signer {
 	return sg.SignerMap
 }

@@ -424,28 +424,39 @@ func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug 
 }
 
 // api client
-func NewClient(verbose, debug bool) *Api {
-	api := Api{}
-
-	api.Apiurl = viper.GetString("musicd.baseurl")
-	api.apiKey = viper.GetString("musicd.apikey")
-	api.Authmethod = viper.GetString("musicd.authmethod")
-
-	rootCAPool := x509.NewCertPool()
-	rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
-
-	if err != nil {
-		log.Fatalf("reading cert failed : %v", err)
+func NewClient(name, baseurl, apikey, authmethod,
+     		     rootcafile string, verbose, debug bool) *Api {
+	api := Api{
+	       BaseUrl:		baseurl,
+	       apiKey:		apikey,
+	       Authmethod:	authmethod,
 	}
 
-	rootCAPool.AppendCertsFromPEM(rootCA)
+	if rootcafile == "insecure" {
+	  api.Client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	  }
+	} else {
+	  rootCAPool := x509.NewCertPool()
+	  rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
 
-	api.Client = &http.Client{
+	  if err != nil {
+		log.Fatalf("reading cert failed : %v", err)
+	  }
+
+	  rootCAPool.AppendCertsFromPEM(rootCA)
+
+	  api.Client = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: rootCAPool,
 			},
 		},
+	  }
 	}
 	// api.Client = &http.Client{}
 	api.Debug = debug
@@ -453,7 +464,9 @@ func NewClient(verbose, debug bool) *Api {
 	// log.Printf("client is a: %T\n", api.Client)
 
 	if debug {
-		fmt.Printf("apiurl is: %s \napikey is: %s \nauthmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)
+	   	fmt.Printf("Setting up %s API client:\n", name)
+		fmt.Printf("* baseurl is: %s \n* apikey is: %s \n* authmethod is: %s \n",
+				    api.BaseUrl, api.apiKey, api.Authmethod)
 	}
 
 	return &api
@@ -502,7 +515,8 @@ func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
 			len(data), string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPost, api.Apiurl+endpoint, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, api.BaseUrl+endpoint,
+	     	    				     bytes.NewBuffer(data))
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
@@ -512,7 +526,7 @@ func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
 // api Delete
 // not tested
 func (api *Api) Delete(endpoint string, data []byte) (int, []byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, api.Apiurl, nil)
+	req, err := http.NewRequest(http.MethodDelete, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
@@ -523,7 +537,7 @@ func (api *Api) Delete(endpoint string, data []byte) (int, []byte, error) {
 // not tested
 func (api *Api) Get(endpoint string) (int, []byte, error) {
 
-	req, err := http.NewRequest(http.MethodGet, api.Apiurl+endpoint, nil)
+	req, err := http.NewRequest(http.MethodGet, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
@@ -532,3 +546,17 @@ func (api *Api) Get(endpoint string) (int, []byte, error) {
 
 // api Put
 // coming soon to a code base nere you.
+func (api *Api) Put(endpoint string, data []byte) (int, []byte, error) {
+
+	if api.Debug {
+		fmt.Printf("api.Put: posting %d bytes of data: %v\n",
+			len(data), string(data))
+	}
+
+	req, err := http.NewRequest(http.MethodPut, api.BaseUrl+endpoint,
+	     	    				    bytes.NewBuffer(data))
+	if err != nil {
+		log.Fatalf("Error from http.NewRequest: Error: %v", err)
+	}
+	return api.requestHelper(req)
+}

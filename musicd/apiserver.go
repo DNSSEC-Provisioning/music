@@ -107,7 +107,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch zp.Command {
 		case "list":
-
 		case "add":
 			err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
 			if err != nil {
@@ -245,11 +244,12 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error from ListZones: %v", err)
 		}
 		resp.Zones = zs
-
 		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 
-		// w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -273,7 +273,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		dbsigner, _ := mdb.GetSigner(&sp.Signer)
+		dbsigner, _ := mdb.GetSigner(&sp.Signer, false) // not apisafe
 
 		//        if sp.Command != "list" {
 		//            dbsigner, err = mdb.GetSigner(sp.Signer.Name)
@@ -354,7 +354,10 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("APIsigner: resp struct error field: %v\n", resp.Error)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -406,7 +409,10 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		resp.SignerGroups = ss
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 

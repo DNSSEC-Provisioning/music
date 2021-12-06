@@ -20,6 +20,15 @@ func (u *DdnsUpdater) SetChannels(fetch, update chan DesecOp) {
      // no-op
 }
 
+func (u *DdnsUpdater) SetApi(api Api) {
+     // no-op
+}
+
+func (u *DdnsUpdater) GetApi() Api {
+     // no-op
+     return Api{}
+}
+
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",

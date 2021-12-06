@@ -96,5 +96,12 @@ func initConfig() {
 }
 
 func initApi() {
-	api = music.NewClient(cliconf.Verbose, cliconf.Debug)
+
+	baseurl := viper.GetString("musicd.baseurl")
+	apikey 	:= viper.GetString("musicd.apikey")
+	authmethod := viper.GetString("musicd.authmethod")
+	rootcafile := viper.GetString("musicd.rootCApem")
+
+	api = music.NewClient("musicd", baseurl, apikey, authmethod, rootcafile,
+	      			        cliconf.Verbose, cliconf.Debug)
 }

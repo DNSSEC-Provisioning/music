@@ -12,7 +12,7 @@ func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
 		return false
@@ -97,7 +97,7 @@ func fsmLeaveAddCsyncAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
 		return false

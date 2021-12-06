@@ -163,7 +163,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			log.Fatal("GetZone: Error from time.Parse():", err)
 		}
 
-		sg, _ := mdb.GetSignerGroup(signergroup)
+		sg, _ := mdb.GetSignerGroup(signergroup, false) // not apisafe
 		nexttransitions := mdb.FSMlist[fsm].States[state].Next
 		next := map[string]bool{}
 		for k, _ := range nexttransitions {
@@ -249,7 +249,7 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
 
-	if _, err := mdb.GetSignerGroup(g); err != nil {
+	if _, err := mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
@@ -296,7 +296,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
 
-	if _, err := mdb.GetSignerGroup(g); err != nil {
+	if _, err := mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
@@ -329,13 +329,19 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 		dbzone.Name, sg.Name)
 }
 
-const layout = "2006-01-02 15:04:05"
+const (
+      layout = "2006-01-02 15:04:05"
+      LZsqlq = `
+SELECT name, state, fsm,
+  COALESCE(statestamp, datetime('now')) AS timestamp,
+  COALESCE(sgroup, '') AS signergroup
+FROM zones`
+)
 
 func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	var zl = make(map[string]Zone, 10)
 
-	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.db.Prepare(LZsqlq)
 	if err != nil {
 		fmt.Printf("ListZones: Error from db.Prepare: %v\n", err)
 	}
@@ -343,7 +349,7 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	rows, err := stmt.Query()
 	defer rows.Close()
 
-	if CheckSQLError("ListZones", sqlq, err, false) {
+	if CheckSQLError("ListZones", LZsqlq, err, false) {
 		return zl, err
 	} else {
 		rowcounter := 0
@@ -351,7 +357,7 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 		var timestamp string
 		var signergroup string
 		for rows.Next() {
-			err := rows.Scan(&name, &state, &timestamp, &fsm, &signergroup)
+			err := rows.Scan(&name, &state, &fsm, &timestamp, &signergroup)
 			if err != nil {
 				log.Fatal("ListZones: Error from rows.Next():", err)
 			}
@@ -360,12 +366,18 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 				log.Fatal("ListZones: Error from time.Parse():", err)
 			}
 
-			sg, _ := mdb.GetSignerGroup(signergroup)
+			sg, _ := mdb.GetSignerGroup(signergroup, true) // apisafe
+			// for _, s := range sg.SignerMap {
+			//    s.DB = nil // can not be json encoded
+			// }
 			nexttransitions := mdb.FSMlist[fsm].States[state].Next
 			next := map[string]bool{}
 			for k, _ := range nexttransitions {
 				next[k] = true
 			}
+
+			// fmt.Printf("ListZones: got [zone=%s, next=%v, SGroup=%s sg=%v]\n",
+			//		       name, next, signergroup, sg)
 
 			zl[name] = Zone{
 				Name:       name,

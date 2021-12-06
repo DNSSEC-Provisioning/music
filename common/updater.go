@@ -15,6 +15,8 @@ import (
 //
 type Updater interface {
 	SetChannels(fetch, update chan DesecOp)
+	SetApi(api Api)
+	GetApi() Api
 
 	Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
 	RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error

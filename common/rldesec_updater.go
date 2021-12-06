@@ -19,33 +19,26 @@ import (
 type RLDesecUpdater struct {
      FetchCh	    chan DesecOp
      UpdateCh	    chan DesecOp
+     Api	    Api
 }
 
 func init() {
-	Updaters["rldesec-api"] = &RLDesecUpdater{}
-}
-
-type xxDesecOp struct {
-	Command  string
-	Signer   *Signer
-	Zone     string
-	Owner    string
-	RRtype   uint16
-	Inserts  *[][]dns.RR
-	Removes  *[][]dns.RR
-	Response chan DesecResponse
-}
-
-type xxDesecResponse struct {
-	Status   int
-	RRs      []dns.RR
-	Error    error
-	Response string
+	Updaters["rldesec-api"] = &RLDesecUpdater{
+					Api:	Api{},
+				   }
 }
 
 func (u *RLDesecUpdater) SetChannels(fetch, update chan DesecOp) {
      u.FetchCh = fetch
      u.UpdateCh = update
+}
+
+func (u *RLDesecUpdater) SetApi(api Api) {
+     u.Api = api
+}
+
+func (u *RLDesecUpdater) GetApi() Api {
+     return u.Api
 }
 
 func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
@@ -73,38 +66,42 @@ func RLDesecFetchRRset(s *Signer, zone, owner string,
 	mdb := s.MusicDB()
 	tokvip := mdb.Tokvip
 	verbose := viper.GetBool("common.verbose")
-	debug := viper.GetBool("common.debug")
 	// log.Printf("FetchRRset: looking up '%s IN %s' from %s\n", owner,
 	//    dns.TypeToString[rrtype], s.Address)
 
 	zone = StripDot(zone)
 	owner = StripDot(owner)
 
-	urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
+	endpoint := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
 		      		  zone, DesecSubname(zone, owner, true),
 				  dns.TypeToString[rrtype])
 
 	DesecTokenRefreshIfNeeded(tokvip)
 
-	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
+	// apiurl := viper.GetString("signers.desec.baseurl") + endpoint
 	apikey := tokvip.GetString("desec.token")
 	tokvip.Set("desec.touched", time.Now().Format(layout))
 	// Let's not do this every time:
 	// tokvip.WriteConfig()
 
-	fmt.Printf("FetchRRset: deSEC API url: %s. token: %s\n", apiurl, apikey)
+	fmt.Printf("FetchRRset: deSEC API endpoint: %s. token: %s\n", endpoint, apikey)
 
-	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization",
-		true, verbose, debug, nil)
+	// temporary kludge
+	api := GetUpdater("rldesec-api").GetApi()
+
+//	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization",
+//		true, verbose, debug, nil)
+	status, buf, err := api.Get(endpoint)
+
 	if status == 429 { // we have been rate-limited
 	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
 	   return true, status, nil, []dns.RR{}
 	}
 
 	if err != nil {
-		log.Printf("Error from GenericAPIget (desec): %v\n", err)
-		return false, status, fmt.Errorf("Error from deSEC API for %s: %v", urldetails, err),
-			[]dns.RR{}
+		log.Printf("Error from api.Get (desec): %v\n", err)
+		return false, status, fmt.Errorf("Error from deSEC API for %s: %v",
+		       endpoint, err), []dns.RR{}
 	}
 
 	fmt.Printf("FetchRRset: got a response from deSEC:\n%v\n", string(buf))
@@ -141,18 +138,18 @@ func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string,
 	tokvip := mdb.Tokvip
 	// address := signer.Address
 	verbose := viper.GetBool("common.verbose")
-	debug := viper.GetBool("common.debug")
+	// debug := viper.GetBool("common.debug")
 
 	zone = StripDot(zone)
 	fmt.Printf("DesecUpdater: inserts: %v removes: %v\n", inserts, removes)
 
 	DesecTokenRefreshIfNeeded(tokvip)
-	urldetails := fmt.Sprintf("/domains/%s/rrsets/", zone)
-	//urldetails := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
+	endpoint := fmt.Sprintf("/domains/%s/rrsets/", zone)
+	//endpoint := fmt.Sprintf("/domains/%s/rrsets/%s/%s/", 
 	//	      		  zone, DesecSubname(zone, owner, true),
 	//			  dns.TypeToString[rrtype])
 
-	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
+	// apiurl := viper.GetString("signers.desec.baseurl") + endpoint
 	apikey := tokvip.GetString("desec.token")
 	tokvip.Set("desec.touched", time.Now().Format(layout))
 
@@ -191,15 +188,18 @@ func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string,
 	bytebuf := new(bytes.Buffer)
 	json.NewEncoder(bytebuf).Encode(desecRRsets)
 
-	fmt.Printf("DesecUpdater: deSEC API url: %s. token: %s Data: %v\n",
-		apiurl, apikey, desecRRsets)
+	fmt.Printf("DesecUpdater: deSEC API endpoint: %s. token: %s Data: %v\n",
+		endpoint, apikey, desecRRsets)
 
-	status, buf, err := GenericAPIput(apiurl, apikey, "Authorization",
-		bytebuf.Bytes(), true, verbose, debug, nil)
+	api := GetUpdater("rldesec-api").GetApi()
+
+//	status, buf, err := GenericAPIput(apiurl, apikey, "Authorization",
+//		bytebuf.Bytes(), true, verbose, debug, nil)
+	status, buf, err := api.Put(endpoint, bytebuf.Bytes())
 	if err != nil {
-		log.Printf("Error from GenericAPIpost (desec): %v\n", err)
+		log.Printf("Error from api.Post (desec): %v\n", err)
 		return fmt.Errorf("Error from deSEC API for %s: %v",
-			urldetails, err)
+			endpoint, err)
 	}
 
 	if verbose {

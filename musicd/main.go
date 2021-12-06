@@ -142,11 +142,21 @@ func main() {
 	conf.Internal.Processes = fsml
 	conf.Internal.MusicDB.FSMlist = fsml
 
+	// deSEC stuff
 	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
 	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
+	desecapi, err := music.DesecSetupClient(cliconf.Verbose, cliconf.Debug)
+	if err != nil {
+	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
+	}
+	desecapi.TokViper = tokvip
+
 	rldu := music.Updaters["rldesec-api"]
 	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
-	
+	rldu.SetApi(*desecapi)
+	du := music.Updaters["desec-api"]
+	du.SetApi(*desecapi)			// it is ok to reuse the same object here
+
 	var done = make(chan struct{}, 1)
 
 	// initialMigration()

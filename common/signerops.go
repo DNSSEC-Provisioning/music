@@ -5,7 +5,7 @@
 package music
 
 import (
-	"database/sql"
+	// "database/sql"
 	"fmt"
 	"log"
 
@@ -117,51 +117,51 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
-func (mdb *MusicDB) xxGetSignerByName(signername string) (*Signer, error) {
-	return mdb.GetSigner(&Signer{Name: signername})
-}
+// func (mdb *MusicDB) xxGetSignerByName(signername string) (*Signer, error) {
+//	return mdb.GetSigner(&Signer{Name: signername})
+// }
 
-func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
-	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
-	if err != nil {
-		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
-	}
-
-	row := stmt.QueryRow(s.Name)
-
-	var name, method, auth, address, signergroup string
-	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
-	case sql.ErrNoRows:
-		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
-		return &Signer{
-			Name:    s.Name,
-			Exists:  false,
-			Method:  s.Method,
-			Auth:    s.Auth,
-			Address: s.Address,
-		}, fmt.Errorf("Signer %s is unknown.", s.Name)
-
-	case nil:
-		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name, method, auth, address, signergroup)
-		return &Signer{
-			Name:        name,
-			Exists:      true,
-			Method:      method,
-			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
-			Address:     address,
-			SignerGroup: signergroup,
-			DB:          mdb,
-		}, nil
-
-	default:
-		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s, err)
-	}
-	return &Signer{
-		Name:   s.Name,
-		Exists: false,
-	}, err
-}
+// func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
+// 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
+// 	stmt, err := mdb.db.Prepare(sqlcmd)
+// 	if err != nil {
+// 		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
+// 	}
+// 
+// 	row := stmt.QueryRow(s.Name)
+// 
+// 	var name, method, auth, address, signergroup string
+// 	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
+// 	case sql.ErrNoRows:
+// 		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
+// 		return &Signer{
+// 			Name:    s.Name,
+// 			Exists:  false,
+// 			Method:  s.Method,
+// 			Auth:    s.Auth,
+// 			Address: s.Address,
+// 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
+// 
+// 	case nil:
+// 		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name, method, auth, address, signergroup)
+// 		return &Signer{
+// 			Name:        name,
+// 			Exists:      true,
+// 			Method:      method,
+// 			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
+// 			Address:     address,
+// 			SignerGroup: signergroup,
+// 			DB:          mdb,
+// 		}, nil
+// 
+// 	default:
+// 		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s, err)
+// 	}
+// 	return &Signer{
+// 		Name:   s.Name,
+// 		Exists: false,
+// 	}, err
+// }
 
 // SignerJoinGroup(): add an already defined signer to an already
 // defined signer group.
@@ -177,7 +177,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		return fmt.Errorf("Signer %s is unknown.", dbsigner.Name), ""
 	}
 
-	if sg, err = mdb.GetSignerGroup(g); err != nil {
+	if sg, err = mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
@@ -195,7 +195,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	mdb.mu.Unlock()
 
 	fmt.Printf("SignerJoinGroup: signers in group %s: %v\n", sg.Name, sg.SignerMap)
-	if sg, err = mdb.GetSignerGroup(g); err != nil {
+	if sg, err = mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
@@ -229,7 +229,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		return fmt.Errorf("Signer %s is unknown.", dbsigner.Name), ""
 	}
 
-	if sg, err = mdb.GetSignerGroup(g); err != nil {
+	if sg, err = mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
