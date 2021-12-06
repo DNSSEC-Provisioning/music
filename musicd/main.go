@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/fsm"
 )
 
 func usage() {
@@ -137,6 +138,9 @@ func main() {
 	conf.Internal.MusicDB = music.NewDB(false) // Don't drop status tables if they exist
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
+	fsml := fsm.NewFSMlist()
+	conf.Internal.Processes = fsml
+	conf.Internal.MusicDB.FSMlist = fsml
 
 	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
 	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)

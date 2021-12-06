@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/DNSSEC-Provisioning/music/fsm v0.0.0-20211206093248-86ccac6a2561
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect

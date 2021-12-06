@@ -66,6 +66,10 @@ var FSMT_ZR_3 = music.FsmTransitionFactory("zsks-synced", "signers-synced")
 var FSMT_ZR_4 = music.FsmTransitionFactory("signers-synced", FsmStateStop)
 var FSMT_ZR_5 = music.FsmTransitionFactory(FsmStateStop, FsmStateStop)
 
+func NewFSMlist() map[string]music.FSM {
+     return FSMlist
+}
+
 var FSMlist = map[string]music.FSM{
 	// PROCESS: ADD-ZONE: This is a bogus process, only for testing.
 	"add-zone": music.FSM{

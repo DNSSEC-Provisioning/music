@@ -71,6 +71,7 @@ type InternalConf struct {
 	TokViper   *viper.Viper
 	DesecFetch chan music.DesecOp
 	DesecUpdate chan music.DesecOp
+	Processes   map[string]music.FSM
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile string, safemode bool) error {

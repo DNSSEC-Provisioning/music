@@ -104,13 +104,8 @@ func fsmLeaveParentNsSyncedCriteria(z *music.Zone) bool {
 	return true
 }
 
-<<<<<<< HEAD:fsm/fsm_leave_parent_ns_synced.go
 func fsmLeaveParentNsSyncedAction(z *music.Zone) bool {
-	leavingSignerName := "ns1.msg2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
-=======
-func fsmLeaveParentNsSyncedAction(z *Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
->>>>>>> main:common/fsm_leave_parent_ns_synced.go
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)

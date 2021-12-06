@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -291,7 +293,7 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 	} else if authmethod == "none" {
 		// do not add any authentication header at all
 	} else {
-		log.Printf("Error: GenericAPIpost: unknown auth method: %s. Aborting.\n", authmethod)
+		log.Printf("Error: GenericAPIput: unknown auth method: %s. Aborting.\n", authmethod)
 		return 501, []byte{}, errors.New(fmt.Sprintf("unknown auth method: %s", authmethod))
 	}
 
@@ -303,15 +305,40 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 	if err != nil {
 		return 501, nil, err
 	}
-
+	status := resp.StatusCode
 	defer resp.Body.Close()
 	buf, err := ioutil.ReadAll(resp.Body)
+
+	if status == 429 {
+		var de DesecError
+		err = json.Unmarshal(buf, &de)
+		if err != nil {
+		   log.Fatalf("Error from unmarshal DesecError: %v\n", err)
+		}
+		// "Request was throttled. Expected available in 1 second."
+		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+		de.Detail = strings.TrimLeft(de.Detail, "Request was throttled. Expected available in ")
+		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+		de.Detail = strings.TrimRight(de.Detail, " second.")
+		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+		de.Hold, err = strconv.Atoi(de.Detail)
+		if err != nil {
+		   log.Printf("Error from Atoi: %v\n", err)
+		}
+		fmt.Printf("Rate-limited. Hold period: %d\n", de.Hold)
+	}
+
 	if debug {
-		fmt.Printf("GenericAPIputt: response from api:\n%s\n\n", string(buf))
+		fmt.Printf("GenericAPIput: response from api:\n%s\n\n", string(buf))
 	}
 
 	// not bothering to copy buf, this is a one-off
 	return resp.StatusCode, buf, err
+}
+
+type DesecError struct {
+     Detail	string
+     Hold	int
 }
 
 func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug bool,
