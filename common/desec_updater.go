@@ -73,13 +73,8 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	// time.Sleep(1 * time.Second)
 	// resp := <- op.Response
 	// return resp.Error, resp.RRs
-//	return nil, []dns.RR{} // no-op
-//}
-
-// func DesecBFetchRRset(s *Signer, zone, owner string,
-//			rrtype uint16) (int, error, []dns.RR) {
 	mdb := s.MusicDB()
-	tokvip := mdb.Tokvip
+	// tokvip := mdb.Tokvip
 	verbose := viper.GetBool("common.verbose")
 	// debug := viper.GetBool("common.debug")
 	// log.Printf("FetchRRset: looking up '%s IN %s' from %s\n", owner,
@@ -92,18 +87,12 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		      		  zone, DesecSubname(zone, owner, true),
 				  dns.TypeToString[rrtype])
 
-
-//	apiurl := viper.GetString("signers.desec.baseurl") + urldetails
-	apikey := tokvip.GetString("desec.token")
-//	tokvip.Set("desec.touched", time.Now().Format(layout))
-
-	fmt.Printf("FetchRRset: deSEC API url: %s. token: %s\n", endpoint, apikey)
+	// apikey := tokvip.GetString("desec.token")
+	fmt.Printf("FetchRRset: deSEC API url: %s. token: %s\n", endpoint)
 
 	api := GetUpdater("desec-api").GetApi() // kludge
 	api.DesecTokenRefresh()
 
-//	status, buf, err := GenericAPIget(apiurl, apikey, "Authorization",
-//		true, verbose, debug, nil)
 	status, buf, err := api.Get(endpoint)
 	if status == 429 { // we have been rate-limited
 	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)

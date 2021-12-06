@@ -473,21 +473,31 @@ func NewClient(name, baseurl, apikey, authmethod,
 }
 
 // request helper function
-func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
+func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, error) {
 
 	req.Header.Add("Content-Type", "application/json")
 
-	if api.Authmethod == "X-API-Key" {
+	if api.Authmethod == "" || noauth {
+		// do not add any authentication header at all
+	} else if api.Authmethod == "X-API-Key" {
 		req.Header.Add("X-API-Key", api.apiKey)
 	} else if api.Authmethod == "Authorization" {
 		req.Header.Add("Authorization", fmt.Sprintf("token %s", api.apiKey))
-	} else if api.Authmethod == "" {
-		// do not add any authentication header at all
 	} else {
-		log.Printf("Error: Client API Post: unknown auth method: %s. Aborting.\n", api.Authmethod)
+		log.Printf("Error: Client API Post: unknown auth method: %s. Aborting.\n",
+				   api.Authmethod)
 		return 501, []byte{}, fmt.Errorf("unknown auth method: %s", api.Authmethod)
 	}
 
+	if api.Debug {
+		fmt.Printf("requestHelper: about to send request using auth method '%s' and key '%s'\n",
+			api.Authmethod, api.apiKey)
+	}
+
+	if api.apiKey == "" {
+	   log.Fatalf("api.requestHelper: Error: apikey not set.\n")
+	}
+	
 	resp, err := api.Client.Do(req)
 
 	if err != nil {
@@ -508,11 +518,11 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 }
 
 // api Post
-func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
+func (api *Api) Post(endpoint string, data []byte, opts ...string) (int, []byte, error) {
 
 	if api.Debug {
-		fmt.Printf("api.Post: posting %d bytes of data: %v\n",
-			len(data), string(data))
+		fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint, len(data), string(data))
 	}
 
 	req, err := http.NewRequest(http.MethodPost, api.BaseUrl+endpoint,
@@ -520,37 +530,49 @@ func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	noauth := (len(opts) > 0 && opts[0] == "noauth")
+	fmt.Printf("api.Post: noauth requested, turning off authentication for this request\n")
+	return api.requestHelper(req, noauth)
 }
 
 // api Delete
 // not tested
-func (api *Api) Delete(endpoint string, data []byte) (int, []byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, api.BaseUrl+endpoint, nil)
+// func (api *Api) Delete(endpoint string, data []byte, opts ...string) (int, []byte, error) {
+func (api *Api) Delete(endpoint string, opts ...string) (int, []byte, error) {
+
+	if api.Debug {
+		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint) // , len(data), string(data))
+	}
+
+     	req, err := http.NewRequest(http.MethodDelete, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	return api.requestHelper(req, false)
 }
 
 // api Get
 // not tested
-func (api *Api) Get(endpoint string) (int, []byte, error) {
+func (api *Api) Get(endpoint string, opts ...string) (int, []byte, error) {
 
+	if api.Debug {
+		fmt.Printf("api.Get: GET URL '%s'\n", api.BaseUrl+endpoint)
+	}
 	req, err := http.NewRequest(http.MethodGet, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	return api.requestHelper(req, false)
 }
 
 // api Put
 // coming soon to a code base nere you.
-func (api *Api) Put(endpoint string, data []byte) (int, []byte, error) {
+func (api *Api) Put(endpoint string, data []byte, opts ...string) (int, []byte, error) {
 
 	if api.Debug {
-		fmt.Printf("api.Put: posting %d bytes of data: %v\n",
-			len(data), string(data))
+		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint, len(data), string(data))
 	}
 
 	req, err := http.NewRequest(http.MethodPut, api.BaseUrl+endpoint,
@@ -558,5 +580,5 @@ func (api *Api) Put(endpoint string, data []byte) (int, []byte, error) {
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	return api.requestHelper(req, false)
 }

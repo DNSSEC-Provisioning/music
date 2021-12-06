@@ -77,7 +77,7 @@ func (api *Api) DesecLogin() (DesecLResponse, error) {
 	bytebuf := new(bytes.Buffer)
 	json.NewEncoder(bytebuf).Encode(dlp)
 
-	status, buf, err := api.Post(endpoint, bytebuf.Bytes()) // need to arrange no auth
+	status, buf, err := api.Post(endpoint, bytebuf.Bytes(), "noauth") // need to arrange no auth
 	if err != nil {
 		log.Println("Error from api.Post:", err)
 	}
@@ -94,6 +94,8 @@ func (api *Api) DesecLogin() (DesecLResponse, error) {
 	// fmt.Printf("Response from Desec login: %v\n", dlr)
 	dlr.MaxUnused = ParseDesecDuration(dlr.MaxUnusedRaw)
 	dlr.MaxAge = ParseDesecDuration(dlr.MaxAgeRaw)
+
+	api.apiKey = dlr.Token // store this token inside the api object
 
 	tokvip := api.TokViper
 	if tokvip == nil {
@@ -142,7 +144,7 @@ func DesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
 	fmt.Printf("Time remaining before this token expires: %v\n", remaining)
 
 	if remaining.Minutes() < 2 {
-		fmt.Printf("Less than 2 minutes remain. Need to login again.\n")
+		fmt.Printf("DesecTokenRefresh: Less than 2 minutes remain. Need to login again.\n")
 		cc := CliConfig{
 			Verbose: true,
 			Debug:   false,
@@ -160,14 +162,20 @@ func DesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
 
 func (api *Api) DesecTokenRefresh() bool {
 	tokvip := api.TokViper
+	apikey := api.apiKey
+	// perhaps the token is only on disk (due to restart), if so store it in api again
+	if apikey == "" {
+	   apikey = tokvip.GetString("desec.token")
+	   api.apiKey = apikey
+	}
 	maxdur, _ := time.ParseDuration(tokvip.GetString("desec.maxunused"))
 	lasttouch, _ := time.Parse(layout, tokvip.GetString("desec.touched"))
 	remaining := time.Until(lasttouch.Add(maxdur))
 
-	fmt.Printf("Time remaining before this token expires: %v\n", remaining)
+	fmt.Printf("Time remaining before token '%s' expires: %v\n", apikey, remaining)
 
 	if remaining.Minutes() < 2 {
-		fmt.Printf("Less than 2 minutes remain. Need to login again.\n")
+		fmt.Printf("api.DesecTokenRefresh: Less than 2 minutes remain. Need to login again.\n")
 
 		_, err := api.DesecLogin()
 		if err != nil {

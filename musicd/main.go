@@ -110,7 +110,10 @@ func LoadConfig(conf *Config, safemode bool) error {
 	}
 
 	tokvip.SetConfigFile(tokenfile)
-	if err := tokvip.ReadInConfig(); err == nil {
+	err = tokvip.ReadInConfig()
+	if err != nil {
+	       log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
+	} else {
 		if cliconf.Verbose {
 			fmt.Println("Using token store file:", tokvip.ConfigFileUsed())
 		}
