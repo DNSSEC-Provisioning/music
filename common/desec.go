@@ -17,7 +17,7 @@ import (
 // available throughout package music
 var validate = validator.New()
 
-func DesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
+func xxDesecLogin(cc *CliConfig, tokvip *viper.Viper) (DesecLResponse, error) {
 	apiurl := viper.GetString("signers.desec.baseurl") + "/auth/login/"
 	if err := validate.Var(apiurl, "required,url"); err != nil {
 		log.Fatalf("deSEC base URL configured as signers.desec.baseurl required: %v", err)
@@ -136,7 +136,7 @@ func DesecSetupClient(verbose, debug bool) (*Api, error) {
 	return desecapi, nil
 }
 
-func DesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
+func xxDesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
 	maxdur, _ := time.ParseDuration(tokvip.GetString("desec.maxunused"))
 	lasttouch, _ := time.Parse(layout, tokvip.GetString("desec.touched"))
 	remaining := time.Until(lasttouch.Add(maxdur))
@@ -149,7 +149,7 @@ func DesecTokenRefreshIfNeeded(tokvip *viper.Viper) bool {
 			Verbose: true,
 			Debug:   false,
 		}
-		_, err := DesecLogin(&cc, tokvip)
+		_, err := xxDesecLogin(&cc, tokvip)
 		if err != nil {
 			fmt.Printf("DesecTokenStillOk: deSEC login failed. Error: %v\n", err)
 		} else {

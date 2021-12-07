@@ -330,6 +330,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	return sl, nil
 }
 
+// XXX: not used anymore, should die
 func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
 	tokvip *viper.Viper) (error, string) {
 	var err error
@@ -342,7 +343,8 @@ func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
 			dbsigner.Name), ""
 
 	case "desec-api":
-		dlr, err = DesecLogin(cliconf, tokvip)
+		api := GetUpdater("desec-api").GetApi()
+		dlr, err = api.DesecLogin()
 		if err != nil {
 			return fmt.Errorf("SignerLogin: error from DesecLogin: %v",
 				err), ""
