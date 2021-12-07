@@ -165,5 +165,6 @@ func main() {
 	// initialMigration()
 	go APIdispatcher(&conf)
 	go deSECmgr(&conf, done)
+	go ddnsmgr(&conf, done)
 	mainloop(&conf, apistopper)
 }

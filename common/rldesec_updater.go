@@ -56,15 +56,18 @@ func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	time.Sleep(1 * time.Second)
 	resp := <- op.Response
 	return resp.Error, resp.RRs
-	// return nil, []dns.RR{} // no-op
 }
 
 // Returns: rrl=true if reate-limited, int=seconds penalty (now testing with status),
 //          error (if any), []dns.RR data
-func RLDesecFetchRRset(s *Signer, zone, owner string,
-			rrtype uint16) (bool, int, error, []dns.RR) {
-	mdb := s.MusicDB()
-	// tokvip := mdb.Tokvip
+//func RLDesecFetchRRset(s *Signer, zone, owner string,
+//			rrtype uint16) (bool, int, error, []dns.RR) {
+func RLDesecFetchRRset(fdop DesecOp) (bool, int, error) {
+     signer := fdop.Signer
+     zone := fdop.Zone
+     owner := fdop.Owner
+     rrtype := fdop.RRtype
+	mdb := signer.MusicDB()
 	verbose := viper.GetBool("common.verbose")
 	// log.Printf("FetchRRset: looking up '%s IN %s' from %s\n", owner,
 	//    dns.TypeToString[rrtype], s.Address)
@@ -83,16 +86,20 @@ func RLDesecFetchRRset(s *Signer, zone, owner string,
 	fmt.Printf("FetchRRset: deSEC API endpoint: %s. token: %s\n", endpoint, api.apiKey)	
 	status, buf, err := api.Get(endpoint)
 
-	if status == 429 { // we have been rate-limited
-	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
-	   return true, status, nil, []dns.RR{}
-	}
-
 	if err != nil {
 		log.Printf("Error from api.Get (desec): %v\n", err)
-		return false, status, fmt.Errorf("Error from deSEC API for %s: %v",
-		       endpoint, err), []dns.RR{}
+		// not rate-limited, no hold, but error from API transaction
+		return false, 0, fmt.Errorf("Error from deSEC API for %s: %v",
+		       	      	 		   endpoint, err)
 	}
+
+	if status == 429 { // we have been rate-limited
+	   fmt.Printf("desec.FetchRRset: rate-limit. This is what we got: '%v'. Retry in %d seconds.\n", string(buf), 10)
+	   // return true, status, nil, []dns.RR{}
+	   hold := ExtractHoldPeriod(buf)
+	   // rate-limited, hold period, no error
+	   return false, hold, nil  // API should be (RL success, hold period, error)
+	} 
 
 	fmt.Printf("FetchRRset: got a response from deSEC:\n%v\n", string(buf))
 	if verbose {
@@ -111,15 +118,23 @@ func RLDesecFetchRRset(s *Signer, zone, owner string,
 		rrstr := fmt.Sprintf("%s %d IN %s %s", dr.Name, dr.TTL, dr.RRtype, r)
 		rr, err := dns.NewRR(rrstr)
 		if err != nil {
-			return false, status, 
+		        // not rate-limited, no hold, but error return for parse error
+			return true, 0,
 			       fmt.Errorf("FetchRRset: Error parsing RR into dns.RR: %v\n",
-			       			       err), []dns.RR{}
+			       			       err)
 		}
 		rrs = append(rrs, rr)
 	}
 
-	mdb.WriteRRs(s, dns.Fqdn(owner), zone, rrtype, rrs)
-	return false, status, nil, DNSFilterRRsetOnType(rrs, rrtype)
+	mdb.WriteRRs(signer, dns.Fqdn(owner), zone, rrtype, rrs)
+	// return false, status, nil, DNSFilterRRsetOnType(rrs, rrtype)
+	fdop.Response <- DesecResponse{
+				Status: status,
+				RRs:	DNSFilterRRsetOnType(rrs, rrtype),
+				Error:	err,
+				Response:	"Obladi, oblada!",
+		      	 }
+	return true, 0, nil // all is good, we're done with this request
 }
 
 func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string, 

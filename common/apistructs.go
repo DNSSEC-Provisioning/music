@@ -102,6 +102,7 @@ type SignerGroupResponse struct {
 }
 
 type Api struct {
+     	Name	   string
 	Client     *http.Client
 	BaseUrl    string
 	apiKey     string

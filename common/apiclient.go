@@ -310,22 +310,7 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 	buf, err := ioutil.ReadAll(resp.Body)
 
 	if status == 429 {
-		var de DesecError
-		err = json.Unmarshal(buf, &de)
-		if err != nil {
-		   log.Fatalf("Error from unmarshal DesecError: %v\n", err)
-		}
-		// "Request was throttled. Expected available in 1 second."
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Detail = strings.TrimLeft(de.Detail, "Request was throttled. Expected available in ")
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Detail = strings.TrimRight(de.Detail, " second.")
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Hold, err = strconv.Atoi(de.Detail)
-		if err != nil {
-		   log.Printf("Error from Atoi: %v\n", err)
-		}
-		fmt.Printf("Rate-limited. Hold period: %d\n", de.Hold)
+	   // hold := ExtractHoldPeriod(buf)
 	}
 
 	if debug {
@@ -334,6 +319,26 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 
 	// not bothering to copy buf, this is a one-off
 	return resp.StatusCode, buf, err
+}
+
+func ExtractHoldPeriod(buf []byte) int {
+	var de DesecError
+	err := json.Unmarshal(buf, &de)
+	if err != nil {
+	   log.Fatalf("Error from unmarshal DesecError: %v\n", err)
+	}
+	// "Request was throttled. Expected available in 1 second."
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Detail = strings.TrimLeft(de.Detail, "Request was throttled. Expected available in ")
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Detail = strings.TrimRight(de.Detail, " second.")
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Hold, err = strconv.Atoi(de.Detail)
+	if err != nil {
+	   log.Printf("Error from Atoi: %v\n", err)
+	}
+	fmt.Printf("Rate-limited. Hold period: %d\n", de.Hold)
+	return de.Hold
 }
 
 type DesecError struct {
@@ -427,6 +432,7 @@ func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug 
 func NewClient(name, baseurl, apikey, authmethod,
      		     rootcafile string, verbose, debug bool) *Api {
 	api := Api{
+	       Name:		name,
 	       BaseUrl:		baseurl,
 	       apiKey:		apikey,
 	       Authmethod:	authmethod,
@@ -497,7 +503,7 @@ func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, erro
 	if api.apiKey == "" {
 	   log.Fatalf("api.requestHelper: Error: apikey not set.\n")
 	}
-	
+
 	resp, err := api.Client.Do(req)
 
 	if err != nil {
@@ -514,7 +520,6 @@ func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, erro
 
 	//not bothering to copy buf, this is a one-off
 	return resp.StatusCode, buf, err
-
 }
 
 // api Post

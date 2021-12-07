@@ -71,6 +71,8 @@ type InternalConf struct {
 	TokViper   *viper.Viper
 	DesecFetch chan music.DesecOp
 	DesecUpdate chan music.DesecOp
+	DdnsFetch chan music.DesecOp
+	DdnsUpdate chan music.DesecOp
 	Processes   map[string]music.FSM
 }
 
