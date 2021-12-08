@@ -43,6 +43,22 @@ type PingResponse struct {
 	Pongs   int
 }
 
+type TestPost struct {
+	Command string
+	Updater	string
+	Signer	string
+	Zone	string
+	Qname	string
+	RRtype	string
+	Count	int
+}
+
+type TestResponse struct {
+	Time    time.Time
+	Client  string
+	Message string
+}
+
 type ZonePost struct {
 	Command      string
 	Zone         Zone

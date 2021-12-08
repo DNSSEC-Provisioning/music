@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	// "github.com/miekg/dns"
+	"github.com/miekg/dns"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
 
@@ -82,6 +82,49 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 	}
 }
+
+func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
+	mdb := conf.Internal.MusicDB
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		decoder := json.NewDecoder(r.Body)
+		var tp music.TestPost
+		err := decoder.Decode(&tp)
+		if err != nil {
+			log.Println("APIzone: error decoding zone post:", err)
+		}
+
+		log.Printf("APIzone: received /zone request (command: %s) from %s.\n",
+			tp.Command, r.RemoteAddr)
+
+		var resp = music.TestResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		switch tp.Command {
+		case "dnsquery":
+		     updater := music.GetUpdater(tp.Updater)
+		     signer, _ := mdb.GetSigner(&music.Signer{ Name: tp.Signer}, false)
+		     rrtype :=  dns.StringToType[tp.RRtype]
+		     i := 0
+		     for i = 0; i < tp.Count ; i++ {
+		     	 _, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+		     }
+		     resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+
+		default:
+		}
+
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
+	}
+}
+
 
 func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB

@@ -235,7 +235,7 @@ var zoneStepFsmCmd = &cobra.Command{
 			Zone: music.Zone{
 				Name: zone,
 			},
-			FsmNextState: fsmnextstate,
+			FsmNextState: fsmnextstate, // may be empty
 		}
 
 		zr, _ = SendZoneCommand(zone, data)
