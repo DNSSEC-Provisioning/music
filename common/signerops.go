@@ -35,16 +35,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
 	fmt.Printf("AddSigner: err: %v\n", err)
 
 	// dbsigner.Method = strings.ToLower(dbsigner.Method)
-	ok := false
-
-	switch dbsigner.Method {
-	case "ddns", "desec-api":
-		ok = true
-	}
+	updatermap := ListUpdaters()
+	_, ok := updatermap[dbsigner.Method]
 
 	if !ok {
 		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: 'ddns' and 'desec-api'", dbsigner.Method), ""
+			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
 	delstmt, err := mdb.db.Prepare("DELETE FROM signers WHERE name=?")
@@ -86,16 +82,13 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 	}
 
 	// s.Method = strings.ToLower(s.Method)
-	ok := false
 
-	switch dbsigner.Method {
-	case "ddns", "desec-api":
-		ok = true
-	}
+	updatermap := ListUpdaters()
+	_, ok := updatermap[dbsigner.Method]
 
 	if !ok {
 		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: 'ddns' and 'desec-api'", dbsigner.Method), ""
+			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
 	stmt, err := mdb.db.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")

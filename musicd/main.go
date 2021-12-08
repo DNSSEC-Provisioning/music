@@ -148,6 +148,8 @@ func main() {
 	// deSEC stuff
 	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
 	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
+	conf.Internal.DdnsFetch = make(chan music.DesecOp, 100)
+	conf.Internal.DdnsUpdate = make(chan music.DesecOp, 100)
 	desecapi, err := music.DesecSetupClient(cliconf.Verbose, cliconf.Debug)
 	if err != nil {
 	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
@@ -159,6 +161,9 @@ func main() {
 	rldu.SetApi(*desecapi)
 	du := music.Updaters["desec-api"]
 	du.SetApi(*desecapi)			// it is ok to reuse the same object here
+
+	rlddu := music.Updaters["rlddns"]
+	rlddu.SetChannels(conf.Internal.DdnsFetch, conf.Internal.DdnsUpdate)
 
 	var done = make(chan struct{}, 1)
 

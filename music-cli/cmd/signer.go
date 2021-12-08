@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var signername, signermethod, signerauth, signeraddress string
+var signermethod, signerauth, signeraddress string
 
 // signerCmd represents the signer command
 var signerCmd = &cobra.Command{
@@ -130,8 +130,6 @@ func init() {
 		loginSignerCmd, logoutSignerCmd)
 
 	// promoting signername to root to make it available also for zone cmd
-	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
-		"name of signer")
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",

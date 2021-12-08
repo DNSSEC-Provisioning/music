@@ -94,7 +94,7 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Println("APIzone: error decoding zone post:", err)
 		}
 
-		log.Printf("APIzone: received /zone request (command: %s) from %s.\n",
+		log.Printf("APItest: received /test request (command: %s) from %s.\n",
 			tp.Command, r.RemoteAddr)
 
 		var resp = music.TestResponse{
@@ -106,14 +106,34 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch tp.Command {
 		case "dnsquery":
-		     updater := music.GetUpdater(tp.Updater)
-		     signer, _ := mdb.GetSigner(&music.Signer{ Name: tp.Signer}, false)
-		     rrtype :=  dns.StringToType[tp.RRtype]
-		     i := 0
-		     for i = 0; i < tp.Count ; i++ {
-		     	 _, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+		     signer, err := mdb.GetSigner(&music.Signer{ Name: tp.Signer}, false)
+		     if err != nil {
+		     	resp.Error = true
+			resp.ErrorMsg = err.Error()
 		     }
-		     resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+		     updater := music.GetUpdater(signer.Method)
+		     if updater == nil {
+		     	resp.Error = true
+		     	resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
+			
+		     } 
+		     rrtype :=  dns.StringToType[tp.RRtype]
+		     if !resp.Error {
+		     	i := 0
+			fmt.Printf("Test DNS Query: will send %d queries for '%s %s'\n",
+					 tp.Count, tp.Qname, tp.RRtype)
+		     	for i = 0; i < tp.Count ; i++ {
+		     	     // err, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+		     	     go updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+			     if err != nil {
+			     	resp.Error = true
+				resp.ErrorMsg = err.Error()
+				break
+			     }
+			     fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
+		     	}
+		     	resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+		     }
 
 		default:
 		}
@@ -553,6 +573,7 @@ func SetupRouter(conf *Config) *mux.Router {
 	sr.HandleFunc("/signer", APIsigner(conf)).Methods("POST")
 	sr.HandleFunc("/zone", APIzone(conf)).Methods("POST")
 	sr.HandleFunc("/signergroup", APIsignergroup(conf)).Methods("POST")
+	sr.HandleFunc("/test", APItest(conf)).Methods("POST")
 	sr.HandleFunc("/process", APIprocess(conf)).Methods("POST")
 	sr.HandleFunc("/show/api", APIshowAPI(conf, r)).Methods("POST", "GET")
 

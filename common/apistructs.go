@@ -57,6 +57,8 @@ type TestResponse struct {
 	Time    time.Time
 	Client  string
 	Message string
+	Error	bool
+	ErrorMsg	string
 }
 
 type ZonePost struct {

@@ -32,3 +32,11 @@ func GetUpdater(type_ string) Updater {
 	}
 	return updater
 }
+
+func ListUpdaters() map[string]bool {
+     res := map[string]bool{}
+     for u, _ := range Updaters {
+     	 res[u] = true
+     }
+     return res
+}

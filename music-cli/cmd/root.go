@@ -15,7 +15,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-var cfgFile, zonename string
+var cfgFile, zonename, signername string
+
 var tokvip *viper.Viper
 var cliconf = music.CliConfig{}
 var api *music.Api
@@ -49,6 +50,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
+	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
+		"name of signer")
 
 }
 

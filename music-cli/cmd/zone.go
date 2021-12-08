@@ -295,10 +295,14 @@ var listZonesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// zr, err := ListZones()
 
+		zone := "fluffmunk.se." // must have something, not used
 		data := music.ZonePost{
 			Command: "list",
+			Zone:	 music.Zone{
+					Name: zone,  
+				 },
 		}
-		zr, err := SendZoneCommand("", data)
+		zr, err := SendZoneCommand(zone, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("Error from ListZones: %v\n", err)

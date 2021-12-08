@@ -9,7 +9,7 @@ import (
 	//	"net/http"
 	"time"
 
-	// "github.com/miekg/dns"
+	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -39,7 +39,8 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 
 	log.Println("Starting DDNS Manager. Will rate-limit DDNS requests (queries and updates).")
 
-	fetch_ticker := time.NewTicker(time.Minute)
+	// fetch_ticker := time.NewTicker(time.Minute)
+	fetch_ticker := time.NewTicker(5 * time.Second)
 	update_ticker := time.NewTicker(time.Minute)
 
 	var fetch_ops, update_ops int
@@ -56,31 +57,33 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 			select {
 			case op = <-ddnsfetch:
 			     	 fetchOpQueue = append(fetchOpQueue, op)
+				 fmt.Printf("ddnsmgr: request for '%s %s' (length of fetch channel: %d)\n", op.Owner, dns.TypeToString[op.RRtype], len(ddnsfetch))
 
 			case <-fetch_ticker.C:
 				fmt.Printf("%v: DDNS fetch_ticker: Total fetch ops last period: %d. Ops in queue: %d\n", time.Now(), fetch_ops, len(fetchOpQueue))
 				fetch_ops = 0
 
 				for _, fdop = range fetchOpQueue {
-					fetch_ops++
-					if fetch_ops > fetch_limit {
-					   	fetchOpQueue = append(fetchOpQueue, fdop)
-						break // the loop for this minute
-					}
 					// Do stuff
-					fmt.Printf("DDNS Fetch channel: %v\n", fdop)
+					fmt.Printf("ddnsmgr: about to issue fetch for '%s %s'\n", fdop.Owner, dns.TypeToString[fdop.RRtype])
 					rl = false // "rate-limited"
 					var hold int
 					for {
 					    rl, hold, err = music.RLDdnsFetchRRset(fdop)
-					    fmt.Printf("DDNS Mgr: rate-limited: %v hold: %d err: %v\n", rl, hold, err)
+					    fmt.Printf("ddnsmgr: response from RLDdnsFetchRRset: rl: %v hold: %d err: %v\n", rl, hold, err)
 					    if !rl {
+					       fmt.Printf("ddnsmgr: all ok, done with this request\n")
 					       break
 					    } else {
-					      fmt.Printf("DDNS Mgr: fetch rate-limited. Will sleep for %d seconds\n", hold)
+					      fmt.Printf("ddnsmgr: fetch was rate-limited. Will sleep for %d seconds\n", hold)
 					      time.Sleep(time.Duration(hold))
 					    }
 					}
+					fetch_ops++
+					if fetch_ops > fetch_limit {
+						break // the loop for this minute
+					}
+
 				}
 
 			case <-done:

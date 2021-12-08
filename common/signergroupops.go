@@ -99,7 +99,7 @@ func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
-	_, err = stmt.Exec(group, group)
+	_, err = stmt.Exec("", group)
 	mdb.mu.Unlock()
 
 	if CheckSQLError("DeleteSignerGroup", "UPDATE signers SET ...", err, false) {
