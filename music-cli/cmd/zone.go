@@ -34,10 +34,19 @@ var addZoneCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new zone to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := AddZone(dns.Fqdn(zonename), sgroupname) // for addzone it is ok if sgroupname==""
-		if err != nil {
-			fmt.Printf("Error from AddZone: %v\n", err)
+		zonename = dns.Fqdn(zonename)
+		data := music.ZonePost{
+			Command: "add",
+			Zone: music.Zone{
+				Name: zonename,
+			},
+			SignerGroup: sgroupname, // may be unspecified
 		}
+		zr, err := SendZoneCommand(zonename, data)
+		if err != nil {
+			fmt.Printf("Error from SendZoneCommand: %v\n", err)
+		}
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
 
@@ -45,7 +54,30 @@ var zoneJoinGroupCmd = &cobra.Command{
 	Use:   "join",
 	Short: "Join a zone to a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, _ = ZoneJoinGroup(dns.Fqdn(zonename), sgroupname)
+		// _, _ = ZoneJoinGroup(dns.Fqdn(zonename), sgroupname)
+
+		zone := dns.Fqdn(zonename)
+		if zone == "." {
+			log.Fatalf("ZoneJoinGroup: zone not specified. Terminating.\n")
+		}
+
+		if sgroupname == "" {
+			log.Fatalf("ZoneJoinGroup: signer group not specified. Terminating.\n")
+		}
+
+		data := music.ZonePost{
+			Command: "join",
+			Zone: music.Zone{
+				Name: zone,
+			},
+			SignerGroup: sgroupname,
+		}
+		zr, err := SendZoneCommand(zone, data)
+
+		if err != nil {
+			fmt.Printf("Error from SendZoneCommand: %v\n", err)
+		}
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
 
@@ -53,7 +85,29 @@ var zoneLeaveGroupCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Remove a zone from a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, _ = ZoneLeaveGroup(dns.Fqdn(zonename), sgroupname)
+		//_, _ = ZoneLeaveGroup(dns.Fqdn(zonename), sgroupname)
+
+		zone := dns.Fqdn(zonename)
+		if zone == "" {
+			log.Fatalf("ZoneLeaveGroup: zone not specified. Terminating.\n")
+		}
+
+		if sgroupname == "" {
+			log.Fatalf("ZoneLeaveGroup: signer group not specified. Terminating.\n")
+		}
+
+		data := music.ZonePost{
+			Command: "leave",
+			Zone: music.Zone{
+				Name: zone,
+			},
+			SignerGroup: sgroupname,
+		}
+		zr, err := SendZoneCommand(zone, data)
+		if err != nil {
+			fmt.Printf("Error from SendZoneCommand: %v\n", err)
+		}
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
 
@@ -61,10 +115,19 @@ var deleteZoneCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a zone from MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := DeleteZone()
+		// err := DeleteZone()
+		zonename = dns.Fqdn(zonename)
+		data := music.ZonePost{
+			Command: "delete",
+			Zone: music.Zone{
+				Name: dns.Fqdn(zonename),
+			},
+		}
+		zr, err := SendZoneCommand(zonename, data)
 		if err != nil {
 			fmt.Printf("Error from DeleteZone: %v\n", err)
 		}
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
 
@@ -72,9 +135,36 @@ var zoneMetaCmd = &cobra.Command{
 	Use:   "meta",
 	Short: "Add or update metadata for zone",
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, _ := ZoneMeta(dns.Fqdn(zonename), metakey, metavalue)
-		if failure {
-			// fmt.Printf("Error: %s\n", errmsg)
+		//		failure, _ := ZoneMeta(dns.Fqdn(zonename), metakey, metavalue)
+
+		zone := dns.Fqdn(zonename)
+		if zone == "" {
+			log.Fatalf("ZoneMeta: zone not specified. Terminating.\n")
+		}
+
+		switch metakey {
+		case "":
+			log.Fatalf("ZoneMeta: Metadata key not specified. Terminating.\n")
+
+		case "parentaddr":
+			err := validate.Var(metavalue, "required,hostname_port")
+			if err != nil {
+				log.Fatalf("ZoneMeta: Metadata value not a host:port: %v\n", err)
+			}
+		}
+
+		data := music.ZonePost{
+			Command: "meta",
+			Zone: music.Zone{
+				Name: zone,
+			},
+			Metakey:   metakey,
+			Metavalue: metavalue,
+		}
+
+		zr, _ := SendZoneCommand(zone, data)
+		if zr.Error {
+			fmt.Printf("Error: %s\n", zr.ErrorMsg)
 		}
 	},
 }
@@ -88,9 +178,27 @@ transition. At each stage the current state is presented and manual
 transition may be initiated with the 'music-cli zone step -z {zone}'
 command.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
-		if failure {
-			// fmt.Printf("Error: %s\n", errmsg)
+		// failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
+
+		zone := dns.Fqdn(zonename)
+		if zone == "." {
+			log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
+		}
+
+		if fsmname == "" {
+			log.Fatalf("ZoneFsm: FSM not specified. Terminating.\n")
+		}
+
+		data := music.ZonePost{
+			Command: "fsm",
+			Zone: music.Zone{
+				Name: zone,
+			},
+			FSM: fsmname,
+		}
+		zr, _ := SendZoneCommand(zone, data)
+		if zr.Error {
+			fmt.Printf("Error: %s\n", zr.ErrorMsg)
 		}
 	},
 }
@@ -99,9 +207,41 @@ var zoneStepFsmCmd = &cobra.Command{
 	Use:   "step-fsm",
 	Short: "Try to make the zone transition from one state to the next in the FSM",
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, _, zm := ZoneStepFsm(dns.Fqdn(zonename))
-		if failure {
-			// fmt.Printf("Error: %s\n", errmsg)
+		// failure, _, zm := ZoneStepFsm(dns.Fqdn(zonename))
+
+		zone := dns.Fqdn(zonename)
+		if zone == "." {
+			log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
+		}
+
+		// zm, err := ListZones()
+		data := music.ZonePost{
+			Command: "list",
+		}
+		zr, err := SendZoneCommand("", data)		
+		if err != nil {
+			log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
+		}
+		zm := zr.Zones
+
+		fsm := zr.Zones[zone].FSM
+
+		if fsm == "" || fsm == "none" {
+			log.Fatalf("ZoneStepFsm: Zone %s is not attached to any FSM. Terminating.\n", zone)
+		}
+
+		data = music.ZonePost{
+			Command: "step-fsm",
+			Zone: music.Zone{
+				Name: zone,
+			},
+			FsmNextState: fsmnextstate,
+		}
+
+		zr, _ = SendZoneCommand(zone, data)
+
+		if zr.Error {
+			fmt.Printf("Error: %s\n", zr.ErrorMsg)
 		} else {
 			PrintZones(zm)
 		}
@@ -153,11 +293,17 @@ var listZonesCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all zones known to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		zr, err := ListZones()
+		// zr, err := ListZones()
+
+		data := music.ZonePost{
+			Command: "list",
+		}
+		zr, err := SendZoneCommand("", data)
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("Error from ListZones: %v\n", err)
 		} else {
-			PrintZones(zr)
+			PrintZones(zr.Zones)
 		}
 	},
 }
@@ -190,25 +336,18 @@ func init() {
 	zoneMetaCmd.MarkFlagRequired("metavalue")
 }
 
-func AddZone(zonename, sgroup string) error {
+func SendZoneCommand(zonename string, data music.ZonePost) (music.ZoneResponse, error) {
 	// IsDomainName() is too liberal, we need a stricter test.
 	if _, ok := dns.IsDomainName(zonename); !ok {
-		log.Fatalf("AddZone: Error: '%s' is not a legal domain name. Terminating.\n", zonename)
+		log.Fatalf("SendZoneCommand: Error: '%s' is not a legal domain name. Terminating.\n", zonename)
 	}
 
-	data := music.ZonePost{
-		Command: "add",
-		Zone: music.Zone{
-			Name: zonename,
-		},
-		SignerGroup: sgroup,
-	}
 	bytebuf := new(bytes.Buffer)
 	json.NewEncoder(bytebuf).Encode(data)
 	status, buf, err := api.Post("/zone", bytebuf.Bytes())
 	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return err
+		log.Fatalf("SendZoneCommand: Error from APIpost:", err)
+
 	}
 	if cliconf.Debug {
 		fmt.Printf("Status: %d\n", status)
@@ -219,12 +358,10 @@ func AddZone(zonename, sgroup string) error {
 	if err != nil {
 		log.Fatalf("Error from unmarshal: %v\n", err)
 	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return nil
+	return zr, err
 }
 
-func ZoneMeta(zone, metakey, metavalue string) (bool, string) {
+func xxxZoneMeta(zone, metakey, metavalue string) (bool, string) {
 	if zone == "" {
 		log.Fatalf("ZoneMeta: zone not specified. Terminating.\n")
 	}
@@ -270,7 +407,7 @@ func ZoneMeta(zone, metakey, metavalue string) (bool, string) {
 	return zr.Error, zr.ErrorMsg
 }
 
-func ZoneFsm(zone, fsm string) (bool, string) {
+func xxxZoneFsm(zone, fsm string) (bool, string) {
 	if zone == "" {
 		log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
 	}
@@ -308,13 +445,13 @@ func ZoneFsm(zone, fsm string) (bool, string) {
 	return zr.Error, zr.ErrorMsg
 }
 
-func ZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
+func xxxZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
 	if zone == "" {
 		log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
 	}
 
-	zm, err := ListZones()
-	if err != nil {
+	zm, err := xxxListZones()
+	 if err != nil {
 		log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
 	}
 
@@ -353,7 +490,7 @@ func ZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
 	return zr.Error, zr.ErrorMsg, zr.Zones
 }
 
-func ZoneJoinGroup(zone, group string) (bool, string) {
+func xxxZoneJoinGroup(zone, group string) (bool, string) {
 	if zone == "" {
 		log.Fatalf("ZoneJoinGroup: zone not specified. Terminating.\n")
 	}
@@ -391,7 +528,7 @@ func ZoneJoinGroup(zone, group string) (bool, string) {
 	return zr.Error, zr.ErrorMsg
 }
 
-func ZoneLeaveGroup(zone, group string) (bool, string) {
+func xxxZoneLeaveGroup(zone, group string) (bool, string) {
 	if zone == "" {
 		log.Fatalf("ZoneLeaveGroup: zone not specified. Terminating.\n")
 	}
@@ -429,7 +566,7 @@ func ZoneLeaveGroup(zone, group string) (bool, string) {
 	return zr.Error, zr.ErrorMsg
 }
 
-func DeleteZone() error {
+func xxxDeleteZone() error {
 	data := music.ZonePost{
 		Command: "delete",
 		Zone: music.Zone{
@@ -458,7 +595,7 @@ func DeleteZone() error {
 	return nil
 }
 
-func ListZones() (map[string]music.Zone, error) {
+func xxxListZones() (map[string]music.Zone, error) {
 	data := music.ZonePost{
 		Command: "list",
 	}
