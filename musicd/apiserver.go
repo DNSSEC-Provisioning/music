@@ -65,10 +65,10 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		pongs += 1
 
 		for i := 1 ; i < pp.Fetches ; i++ {
-		    conf.Internal.DesecFetch <- music.DesecOp{}
+		    conf.Internal.DesecFetch <- music.SignerOp{}
 		}
 		for i := 1 ; i < pp.Updates ; i++ {
-		    conf.Internal.DesecUpdate <- music.DesecOp{}
+		    conf.Internal.DesecUpdate <- music.SignerOp{}
 		}
 
 		response := music.PingResponse{
@@ -120,6 +120,18 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		     rrtype :=  dns.StringToType[tp.RRtype]
 		     if !resp.Error {
 		     	i := 0
+			queuedepth := 0
+			switch signer.Method {
+			case "ddns", "desec-api":
+			     queuedepth = 0
+			case "rlddns":
+			     queuedepth = len(conf.Internal.DdnsFetch)
+			case "rldesec":
+			     queuedepth = len(conf.Internal.DesecFetch)
+			}
+			     
+			fmt.Printf("Test DNS Query: currently %d fetch requests in the '%s' fetch queue.\n",
+					 queuedepth, signer.Method)
 			fmt.Printf("Test DNS Query: will send %d queries for '%s %s'\n",
 					 tp.Count, tp.Qname, tp.RRtype)
 		     	for i = 0; i < tp.Count ; i++ {

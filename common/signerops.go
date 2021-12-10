@@ -290,11 +290,16 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 	return nil, fmt.Sprintf("Signer %s deleted.", dbsigner.Name)
 }
 
+const (
+	LSIGsql = `
+SELECT name, method, addr, auth, COALESCE (sgroup, '') AS signergroup
+FROM signers`
+)
+
 func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	var sl = make(map[string]Signer, 2)
 
-	sqlcmd := "SELECT name, method, auth, COALESCE (sgroup, '') AS signergroup FROM signers"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.db.Prepare(LSIGsql)
 	if err != nil {
 		fmt.Printf("ListSigners: Error from db.Prepare: %v\n", err)
 	}
@@ -302,12 +307,12 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	rows, err := stmt.Query()
 	defer rows.Close()
 
-	if CheckSQLError("ListSigners", sqlcmd, err, false) {
+	if CheckSQLError("ListSigners", LSIGsql, err, false) {
 		return sl, err
 	} else {
-		var name, method, auth, signergroup string
+		var name, method, address, auth, signergroup string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &auth, &signergroup)
+			err := rows.Scan(&name, &method, &address, &auth, &signergroup)
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}
@@ -315,6 +320,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 				Name:        name,
 				Exists:      true,
 				Method:      method,
+				Address:     address,
 				Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
 				SignerGroup: signergroup,
 			}

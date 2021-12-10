@@ -16,6 +16,7 @@ import (
 )
 
 var cfgFile, zonename, signername string
+var showheaders bool
 
 var tokvip *viper.Viper
 var cliconf = music.CliConfig{}
@@ -49,6 +50,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
+	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
 	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
 		"name of signer")

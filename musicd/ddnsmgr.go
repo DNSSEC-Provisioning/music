@@ -9,7 +9,7 @@ import (
 	//	"net/http"
 	"time"
 
-	"github.com/miekg/dns"
+	// "github.com/miekg/dns"
 	"github.com/spf13/viper"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -43,41 +43,51 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 	fetch_ticker := time.NewTicker(5 * time.Second)
 	update_ticker := time.NewTicker(time.Minute)
 
-	var fetch_ops, update_ops int
-	var fdop, udop music.DesecOp
+	var fdop, udop music.SignerOp
 
-	var fetchOpQueue []music.DesecOp
-	var updateOpQueue []music.DesecOp
-
+	//	go Recoverer("DDNS fetch routine", func() {
+	// ddns fetcher
 	go func() {
-	   	var rl bool
+		var fetchOpQueue = []music.SignerOp{}
+		var rl bool
 		var err error
-		var op music.DesecOp
+		var op music.SignerOp
+		var fetch_ops, fql, hold int
 		for {
 			select {
 			case op = <-ddnsfetch:
-			     	 fetchOpQueue = append(fetchOpQueue, op)
-				 fmt.Printf("ddnsmgr: request for '%s %s' (length of fetch channel: %d)\n", op.Owner, dns.TypeToString[op.RRtype], len(ddnsfetch))
+				fetchOpQueue = append(fetchOpQueue, op)
+				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-fetch_ticker.C:
-				fmt.Printf("%v: DDNS fetch_ticker: Total fetch ops last period: %d. Ops in queue: %d\n", time.Now(), fetch_ops, len(fetchOpQueue))
+				fql = len(fetchOpQueue)
+				fmt.Printf("%v: DDNS fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
+					time.Now(), fetch_ops, fql)
 				fetch_ops = 0
+				for {
+					fql = len(fetchOpQueue)
+					if fql == 0 {
+						// fmt.Printf("DDNS fetch: queue empty, nothing to do\n")
+						break
+					}
+					fdop = fetchOpQueue[0]
+					fetchOpQueue = fetchOpQueue[1:]
 
-				for _, fdop = range fetchOpQueue {
-					// Do stuff
-					fmt.Printf("ddnsmgr: about to issue fetch for '%s %s'\n", fdop.Owner, dns.TypeToString[fdop.RRtype])
-					rl = false // "rate-limited"
-					var hold int
+					// fmt.Printf("ddnsmgr: issuing fetch for '%s %s'\n",
+					// 			fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
-					    rl, hold, err = music.RLDdnsFetchRRset(fdop)
-					    fmt.Printf("ddnsmgr: response from RLDdnsFetchRRset: rl: %v hold: %d err: %v\n", rl, hold, err)
-					    if !rl {
-					       fmt.Printf("ddnsmgr: all ok, done with this request\n")
-					       break
-					    } else {
-					      fmt.Printf("ddnsmgr: fetch was rate-limited. Will sleep for %d seconds\n", hold)
-					      time.Sleep(time.Duration(hold))
-					    }
+						rl, hold, err = music.RLDdnsFetchRRset(fdop)
+						if err != nil {
+							log.Printf("ddnsmgr: Error from RLDdnsFetchRRset: %v\n", err)
+						}
+						// fmt.Printf("ddnsmgr: response from RLDdnsFetchRRset: rl: %v hold: %d err: %v\n", rl, hold, err)
+						if !rl {
+							// fmt.Printf("ddnsmgr: all ok, done with this request\n")
+							break
+						} else {
+							fmt.Printf("ddnsmgr: fetch was rate-limited. Will sleep for %d seconds\n", hold)
+							time.Sleep(time.Duration(hold) * time.Second)
+						}
 					}
 					fetch_ops++
 					if fetch_ops > fetch_limit {
@@ -92,46 +102,64 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 			}
 		}
 	}()
+	//	},
+	//		func(interface{}) {
+	//		   log.Printf("*** DDNS fetch routine bombed\n")
+	//		   } )
 
+	// ddns updater
 	go func() {
-	   	var rl bool
+		var updateOpQueue = []music.SignerOp{}
+		var rl bool
 		var err error
-		var op music.DesecOp
+		var op music.SignerOp
+		var update_ops, uql, hold int
 		for {
 			select {
 			case op = <-ddnsupdate:
-			     	 updateOpQueue = append(updateOpQueue, op)
+				updateOpQueue = append(updateOpQueue, op)
+				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
-				fmt.Printf("%v: DDNS update_ticker: Total fetch ops last period: %d. Ops in queue: %d\n", time.Now(), update_ops, len(updateOpQueue))
+				uql = len(updateOpQueue)
+				fmt.Printf("%v: DDNS update_ticker: Total ops last period: %d. Ops in queue: %d\n",
+					time.Now(), update_ops, uql)
 				update_ops = 0
-
-				for _, udop = range updateOpQueue {
-					update_ops++
-					if update_ops > fetch_limit {
-					   	updateOpQueue = append(updateOpQueue,
-									udop)
-						break // the loop for this minute
+				for {
+					uql = len(updateOpQueue)
+					if uql == 0 {
+						// fmt.Printf("DDNS update: queue empty, nothing to do\n")
+						break
 					}
-					// Do stuff
-					fmt.Printf("DDNS Update channel: %v\n", udop)
-					rl = false // "rate-limited"
-					var hold int
+					udop = updateOpQueue[0]
+					updateOpQueue = updateOpQueue[1:]
+
+					// fmt.Printf("ddnsmgr: issuing update for '%s %s'\n",
+					// 			udop.Owner, dns.TypeToString[udop.RRtype])
 					for {
-					    rl, hold, err = music.RLDdnsUpdate(udop)
-					    fmt.Printf("DDNS Mgr: rate-limited: %v hold: %d err: %v\n", rl, hold, err)
-					    if !rl {
-					       break
-					    } else {
-					      fmt.Printf("DDNS Mgr: update rate-limited. Will sleep for %d seconds\n", hold)
-					      time.Sleep(time.Duration(hold))
-					    }
+						rl, hold, err = music.RLDdnsUpdate(udop)
+						if err != nil {
+							log.Printf("ddnsmgr: Error from RLDdnsUpdate: %v\n", err)
+						}
+						// fmt.Printf("ddnsmgr: response from RLDdnsUpdate: rl: %v hold: %d err: %v\n", rl, hold, err)
+						if !rl {
+							// fmt.Printf("ddnsmgr: all ok, done with this request\n")
+							break
+						} else {
+							fmt.Printf("ddnsmgr: update was rate-limited. Will sleep for %d seconds\n", hold)
+							time.Sleep(time.Duration(hold) * time.Second)
+						}
+					}
+					update_ops++
+					if update_ops > update_limit {
+						break // the loop for this minute
 					}
 				}
 
 			case <-done:
 				update_ticker.Stop()
 				log.Println("DDNS Mgr update ticker: stop signal received.")
+
 			}
 		}
 	}()

@@ -17,8 +17,8 @@ import (
 )
 
 type RLDesecUpdater struct {
-     FetchCh	    chan DesecOp
-     UpdateCh	    chan DesecOp
+     FetchCh	    chan SignerOp
+     UpdateCh	    chan SignerOp
      Api	    Api
 }
 
@@ -28,7 +28,7 @@ func init() {
 				   }
 }
 
-func (u *RLDesecUpdater) SetChannels(fetch, update chan DesecOp) {
+func (u *RLDesecUpdater) SetChannels(fetch, update chan SignerOp) {
      u.FetchCh = fetch
      u.UpdateCh = update
 }
@@ -45,12 +45,12 @@ func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
 	// what we want:
-	op := DesecOp{
+	op := SignerOp{
 			Signer:	s,
 			Zone:	zone,
 			Owner:	owner,
 			RRtype:	rrtype,
-			Response: make(chan DesecResponse),
+			Response: make(chan SignerOpResult),
 	}
 	u.FetchCh <- op
 	time.Sleep(1 * time.Second)
@@ -60,9 +60,7 @@ func (u *RLDesecUpdater) FetchRRset(s *Signer, zone, owner string,
 
 // Returns: rrl=true if reate-limited, int=seconds penalty (now testing with status),
 //          error (if any), []dns.RR data
-//func RLDesecFetchRRset(s *Signer, zone, owner string,
-//			rrtype uint16) (bool, int, error, []dns.RR) {
-func RLDesecFetchRRset(fdop DesecOp) (bool, int, error) {
+func RLDesecFetchRRset(fdop SignerOp) (bool, int, error) {
      signer := fdop.Signer
      zone := fdop.Zone
      owner := fdop.Owner
@@ -128,7 +126,7 @@ func RLDesecFetchRRset(fdop DesecOp) (bool, int, error) {
 
 	mdb.WriteRRs(signer, dns.Fqdn(owner), zone, rrtype, rrs)
 	// return false, status, nil, DNSFilterRRsetOnType(rrs, rrtype)
-	fdop.Response <- DesecResponse{
+	fdop.Response <- SignerOpResult{
 				Status: status,
 				RRs:	DNSFilterRRsetOnType(rrs, rrtype),
 				Error:	err,

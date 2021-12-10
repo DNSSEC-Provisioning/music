@@ -16,7 +16,7 @@ func init() {
 	Updaters["ddns"] = &DdnsUpdater{}
 }
 
-func (u *DdnsUpdater) SetChannels(fetch, update chan DesecOp) {
+func (u *DdnsUpdater) SetChannels(fetch, update chan SignerOp) {
      // no-op
 }
 

@@ -14,7 +14,7 @@ import (
 // array.
 //
 type Updater interface {
-	SetChannels(fetch, update chan DesecOp)
+	SetChannels(fetch, update chan SignerOp)
 	SetApi(api Api)
 	GetApi() Api
 
@@ -40,3 +40,5 @@ func ListUpdaters() map[string]bool {
      }
      return res
 }
+
+

@@ -146,10 +146,10 @@ func main() {
 	conf.Internal.MusicDB.FSMlist = fsml
 
 	// deSEC stuff
-	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
-	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
-	conf.Internal.DdnsFetch = make(chan music.DesecOp, 100)
-	conf.Internal.DdnsUpdate = make(chan music.DesecOp, 100)
+	conf.Internal.DesecFetch = make(chan music.SignerOp, 100)
+	conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
+	conf.Internal.DdnsFetch = make(chan music.SignerOp, 100)
+	conf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
 	desecapi, err := music.DesecSetupClient(cliconf.Verbose, cliconf.Debug)
 	if err != nil {
 	   log.Fatalf("Error from DesecSetupClient: %v\n", err)

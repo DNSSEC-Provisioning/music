@@ -10,8 +10,8 @@ import (
 )
 
 type RLDdnsUpdater struct {
-	FetchCh  chan DesecOp
-	UpdateCh chan DesecOp
+	FetchCh  chan SignerOp
+	UpdateCh chan SignerOp
 	Api      Api
 }
 
@@ -19,7 +19,7 @@ func init() {
 	Updaters["rlddns"] = &RLDdnsUpdater{}
 }
 
-func (u *RLDdnsUpdater) SetChannels(fetch, update chan DesecOp) {
+func (u *RLDdnsUpdater) SetChannels(fetch, update chan SignerOp) {
 	u.FetchCh = fetch
 	u.UpdateCh = update
 }
@@ -36,7 +36,7 @@ func (u *RLDdnsUpdater) GetApi() Api {
 
 func (u *RLDdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
-	op := DesecOp{}
+	op := SignerOp{}
 	u.UpdateCh <- op
 	time.Sleep(1 * time.Second)
 	resp := <-op.Response
@@ -47,7 +47,7 @@ func (u *RLDdnsUpdater) Update(signer *Signer, zone, fqdn string,
 // voluntary restriction to the limits set in the config). But we keep the same interface with
 // rate-limited (bool), hold in seconds (int), error (error) as for deSEC and other APIs.
 //
-func RLDdnsUpdate(udop DesecOp) (bool, int, error) {
+func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 	signer := udop.Signer
 	owner := udop.Owner
 	inserts := udop.Inserts
@@ -81,7 +81,7 @@ func RLDdnsUpdate(udop DesecOp) (bool, int, error) {
 		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
 	}
 	if err != nil {
-		udop.Response <- DesecResponse{Error: err}
+		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 
@@ -99,20 +99,21 @@ func RLDdnsUpdate(udop DesecOp) (bool, int, error) {
 	}
 	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	c := new(dns.Client)
+	// c := new(dns.Client)
+	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
 	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
-		udop.Response <- DesecResponse{Error: err}
+		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 	if in.MsgHdr.Rcode != dns.RcodeSuccess {
-		udop.Response <- DesecResponse{
+		udop.Response <- SignerOpResult{
 			Error: fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode]),
 		}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
-	udop.Response <- DesecResponse{Error: nil}
+	udop.Response <- SignerOpResult{Error: nil}
 	return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 }
 
@@ -159,32 +160,29 @@ func (u *RLDdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets []
 func (u *RLDdnsUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
-	fmt.Printf("rlddns.FetchRRset: received query for '%s %s'\n", owner, dns.TypeToString[rrtype])
+	// fmt.Printf("rlddns.FetchRRset: received query for '%s %s'\n", owner, dns.TypeToString[rrtype])
 
-	// what we want:
-	op := DesecOp{
+	op := SignerOp{
 		Signer:   s,
 		Zone:     zone,
 		Owner:    owner,
 		RRtype:   rrtype,
-		Response: make(chan DesecResponse, 2),
+		Response: make(chan SignerOpResult, 2),
 	}
 	u.FetchCh <- op
 	time.Sleep(1 * time.Second)
 	resp := <-op.Response
-	fmt.Printf("rlddns.FetchRRset: response received, returning\n")
+	// fmt.Printf("rlddns.FetchRRset: response received, returning\n")
 	return resp.Error, resp.RRs
 }
 
-// func (u *RLDdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
-// 	rrtype uint16) (error, []dns.RR) {
-func RLDdnsFetchRRset(fdop DesecOp) (bool, int, error) {
+func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	signer := fdop.Signer
 	owner := fdop.Owner
 	rrtype := fdop.RRtype
 	var err error
 
-	fmt.Printf("RLDdnsFetchRRset: received query for '%s %s'\n", owner, dns.TypeToString[rrtype])
+	// fmt.Printf("RLDdnsFetchRRset: received query for '%s %s'\n", owner, dns.TypeToString[rrtype])
 	if signer.Address == "" {
 		err = fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
@@ -197,8 +195,8 @@ func RLDdnsFetchRRset(fdop DesecOp) (bool, int, error) {
 	}
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Pre-req error: %v. Returning response chan + call stack\n", err)
-		fdop.Response <- DesecResponse{Error: err}
-		fmt.Printf("RLDdnsFetchRRset: post response chan after prereq error\n", err)
+		fdop.Response <- SignerOpResult{Error: err}
+		// fmt.Printf("RLDdnsFetchRRset: post response chan after prereq error\n", err)
 		return false, 0, nil
 	}
 
@@ -213,16 +211,17 @@ func RLDdnsFetchRRset(fdop DesecOp) (bool, int, error) {
 	r, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Error from Exchange: %v. Returning response chan + call stack\n", err)
-		fdop.Response <- DesecResponse{ Error: err}
-		fmt.Printf("RLDdnsFetchRRset: post response chan after exchange error\n", err)
+		fdop.Response <- SignerOpResult{ Error: err}
+		// fmt.Printf("RLDdnsFetchRRset: post response chan after exchange error\n", err)
 		return false, 0, nil
 	}
 
 	if r.MsgHdr.Rcode != dns.RcodeSuccess {
-		err = fmt.Errorf("Fetch of %s RRset failed, RCODE = %s", dns.TypeToString[rrtype], dns.RcodeToString[r.MsgHdr.Rcode])
+		err = fmt.Errorf("Fetch of %s RRset failed, RCODE = %s", dns.TypeToString[rrtype],
+		      			      	    	    	    	 dns.RcodeToString[r.MsgHdr.Rcode])
 		fmt.Printf("RLDdnsFetchRRset: Rcode error: %v. Returning response chan + call stack\n", err)
-		fdop.Response <- DesecResponse{Error: err}
-		fmt.Printf("RLDdnsFetchRRset: post response chan after rcode error\n", err)
+		fdop.Response <- SignerOpResult{Error: err}
+		// fmt.Printf("RLDdnsFetchRRset: post response chan after rcode error\n", err)
 		return false, 0, nil
 	}
 
@@ -289,14 +288,14 @@ func RLDdnsFetchRRset(fdop DesecOp) (bool, int, error) {
 		}
 	}
 
-	fmt.Printf("RLDdnsFetchRRset: All ok. Returning result ->response chan + call stack\n", err)
-	fdop.Response <- DesecResponse{
+	// fmt.Printf("RLDdnsFetchRRset: All ok. Returning result ->response chan + call stack\n", err)
+	fdop.Response <- SignerOpResult{
 		Status:   0, // should perhaps use DNS Rcodes?
 		RRs:      rrs,
 		Error:    nil,
 		Response: "Tjolahopp",
 	}
-	fmt.Printf("RLDdnsFetchRRset: post response chan\n", err)
+	// fmt.Printf("RLDdnsFetchRRset: post response chan\n", err)
 
 	return false, 0, nil
 }

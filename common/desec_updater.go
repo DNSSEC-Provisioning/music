@@ -26,7 +26,7 @@ func init() {
 	Updaters["desec-api"] = &DesecUpdater{}
 }
 
-func (u *DesecUpdater) SetChannels(fetch, update chan DesecOp) {
+func (u *DesecUpdater) SetChannels(fetch, update chan SignerOp) {
      // no-op
 }
 
@@ -62,12 +62,12 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
 	// what we want:
-	// op := DesecOp{
+	// op := SignerOp{
 	//		Signer:	s,
 	//		Zone:	zone,
 	//		Owner:	owner,
 	//		RRtype:	rrtype,
-	//		Response: make(chan DesecResponse),
+	//		Response: make(chan SignerOpResult),
 	//	}
 	// conf.Internal.DesecFetch <- op
 	// time.Sleep(1 * time.Second)

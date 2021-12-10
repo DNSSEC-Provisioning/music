@@ -69,10 +69,10 @@ type InternalConf struct {
 	DB         *sql.DB
 	MusicDB    *music.MusicDB
 	TokViper   *viper.Viper
-	DesecFetch chan music.DesecOp
-	DesecUpdate chan music.DesecOp
-	DdnsFetch chan music.DesecOp
-	DdnsUpdate chan music.DesecOp
+	DesecFetch chan music.SignerOp
+	DesecUpdate chan music.SignerOp
+	DdnsFetch chan music.SignerOp
+	DdnsUpdate chan music.SignerOp
 	Processes   map[string]music.FSM
 }
 

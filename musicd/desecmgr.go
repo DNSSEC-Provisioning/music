@@ -49,15 +49,15 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 	update_ticker := time.NewTicker(time.Minute)
 
 	var fetch_ops, update_ops int
-	var fdop, udop music.DesecOp
+	var fdop, udop music.SignerOp
 
-	var fetchOpQueue []music.DesecOp
-	var updateOpQueue []music.DesecOp
+	var fetchOpQueue []music.SignerOp
+	var updateOpQueue []music.SignerOp
 
 	go func() {
 	   	var rl bool
 		var err error
-		var op music.DesecOp
+		var op music.SignerOp
 		for {
 			select {
 			case op = <-desecfetch:
