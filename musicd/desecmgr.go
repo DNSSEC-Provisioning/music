@@ -9,29 +9,11 @@ import (
 	//	"net/http"
 	"time"
 
-	"github.com/miekg/dns"
+	// "github.com/miekg/dns"
 	"github.com/spf13/viper"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
 )
-
-type xxDesecOp struct {
-	Command  string
-	Signer   *music.Signer
-	Zone     string
-	Owner    string
-	RRtype   uint16
-	Inserts  *[][]dns.RR
-	Removes  *[][]dns.RR
-	Response chan music.DesecResponse
-}
-
-type xxDesecResponse struct {
-	Status   int
-	RRs      []dns.RR
-	Error    error
-	Response string
-}
 
 // According to https://desec.readthedocs.io/en/latest/rate-limits.html
 // these are the rate limits we have to plan for:
@@ -67,29 +49,44 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 	update_ticker := time.NewTicker(time.Minute)
 
 	var fetch_ops, update_ops int
-	var fdop, udop music.DesecOp
+	var fdop, udop music.SignerOp
+
+	var fetchOpQueue []music.SignerOp
+	var updateOpQueue []music.SignerOp
 
 	go func() {
 	   	var rl bool
-		var status int
-		var rrs []dns.RR
 		var err error
+		var op music.SignerOp
 		for {
 			select {
+			case op = <-desecfetch:
+			     	 fetchOpQueue = append(fetchOpQueue, op)
+
 			case <-fetch_ticker.C:
-				fmt.Printf("%v: This is the fetch_ticker executing.\n", time.Now())
+				fmt.Printf("%v: deSEC fetch_ticker: Total fetch ops last period: %d. Ops in queue: %d\n", time.Now(), fetch_ops, len(fetchOpQueue))
 				fetch_ops = 0
-				for {
-					fdop = <-desecfetch
+
+				for _, fdop := range fetchOpQueue {
 					fetch_ops++
 					if fetch_ops > fetch_limit {
-						break
+					   	fetchOpQueue = append(fetchOpQueue, fdop)
+						break // the loop for this minute
 					}
 					// Do stuff
-					fmt.Printf("Fetch channel: %v\n", fdop)
-					rl, status, err, rrs = music.RLDesecFetchRRset(fdop.Signer,
-						fdop.Zone, fdop.Owner, fdop.RRtype)
-					fmt.Printf("DesecMgr: rate-limitied: %v status: %d err: %v rrs: %v\n", rl, status, err, rrs)
+					fmt.Printf("deSEC fetch channel: %v\n", fdop)
+					rl = false // "rate-limited"
+					var hold int
+					for {
+					    rl, hold, err = music.RLDesecFetchRRset(fdop)
+					    fmt.Printf("deSECMgr: rate-limited: %v hold: %d err: %v\n", rl, hold, err)
+					    if !rl {
+					       break
+					    } else {
+					      fmt.Printf("deSECMgr: fetch rate-limited. Will sleep for %d seconds\n", hold)
+					      time.Sleep(time.Duration(hold))
+					    }
+					}
 				}
 
 			case <-done:
@@ -103,16 +100,17 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 		for {
 			select {
 			case <-update_ticker.C:
-				fmt.Printf("%v: This is the update_ticker executing.\n", time.Now())
+				fmt.Printf("%v: deSEC update_ticker: Total update ops: %d\n", time.Now(), update_ops)
 				update_ops = 0
 				for {
 					udop = <-desecupdate
 					update_ops++
 					if update_ops > update_limit {
-						break
+					   	updateOpQueue = append(updateOpQueue, fdop)
+						break // the loop for this minute
 					}
 					// Do stuff
-					fmt.Printf("Update channel: %v\n", udop)
+					fmt.Printf("deSEC update channel: %v\n", udop)
 				}
 
 			case <-done:

@@ -41,13 +41,6 @@ type SignerGroup struct {
 	DB        *MusicDB
 }
 
-type GormSignerGroup struct {
-	Name      string
-	SignerMap []Signer
-	State     string
-	DB        *MusicDB
-}
-
 func (sg *SignerGroup) Signers() map[string]*Signer {
 	return sg.SignerMap
 }
@@ -81,7 +74,7 @@ type MusicDB struct {
 	Tokvip *viper.Viper
 }
 
-type DesecOp struct {
+type SignerOp struct {
         Command  string
         Signer   *Signer
         Zone     string
@@ -89,11 +82,12 @@ type DesecOp struct {
         RRtype   uint16
         Inserts  *[][]dns.RR
         Removes  *[][]dns.RR
-        Response chan DesecResponse
+        Response chan SignerOpResult
 }
 
-type DesecResponse struct {
+type SignerOpResult struct {
         Status   int
+	Rcode	 uint8      // only relevant for DDNS
         RRs      []dns.RR
         Error    error
         Response string

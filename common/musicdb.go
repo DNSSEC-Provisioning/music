@@ -125,11 +125,11 @@ func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
      return mdb.db.Prepare(sqlq)
 }
 
-func (mdb *MusicDB) GetSignerByName(signername string) (*Signer, error) {
-	return mdb.GetSigner(&Signer{Name: signername})
+func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, error) {
+	return mdb.GetSigner(&Signer{Name: signername}, apisafe)
 }
 
-func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
+func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlcmd)
 	if err != nil {
@@ -151,7 +151,12 @@ func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
 
 	case nil:
-		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name, method, auth, address, signergroup)
+		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name,
+		// 			  method, auth, address, signergroup)
+		dbref := mdb
+		if apisafe {
+	   	   dbref = nil
+		}
 		return &Signer{
 			Name:        name,
 			Exists:      true,
@@ -159,7 +164,7 @@ func (mdb *MusicDB) GetSigner(s *Signer) (*Signer, error) {
 			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
 			Address:     address,
 			SignerGroup: signergroup,
-			DB:          mdb,
+			DB:          dbref,
 		}, nil
 
 	default:

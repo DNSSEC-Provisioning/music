@@ -16,8 +16,17 @@ func init() {
 	Updaters["ddns"] = &DdnsUpdater{}
 }
 
-func (u *DdnsUpdater) SetChannels(fetch, update chan DesecOp) {
+func (u *DdnsUpdater) SetChannels(fetch, update chan SignerOp) {
      // no-op
+}
+
+func (u *DdnsUpdater) SetApi(api Api) {
+     // no-op
+}
+
+func (u *DdnsUpdater) GetApi() Api {
+     // no-op
+     return Api{}
 }
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,

@@ -110,7 +110,10 @@ func LoadConfig(conf *Config, safemode bool) error {
 	}
 
 	tokvip.SetConfigFile(tokenfile)
-	if err := tokvip.ReadInConfig(); err == nil {
+	err = tokvip.ReadInConfig()
+	if err != nil {
+	       log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
+	} else {
 		if cliconf.Verbose {
 			fmt.Println("Using token store file:", tokvip.ConfigFileUsed())
 		}
@@ -142,15 +145,31 @@ func main() {
 	conf.Internal.Processes = fsml
 	conf.Internal.MusicDB.FSMlist = fsml
 
-	conf.Internal.DesecFetch = make(chan music.DesecOp, 100)
-	conf.Internal.DesecUpdate = make(chan music.DesecOp, 100)
+	// deSEC stuff
+	conf.Internal.DesecFetch = make(chan music.SignerOp, 100)
+	conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
+	conf.Internal.DdnsFetch = make(chan music.SignerOp, 100)
+	conf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
+	desecapi, err := music.DesecSetupClient(cliconf.Verbose, cliconf.Debug)
+	if err != nil {
+	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
+	}
+	desecapi.TokViper = tokvip
+
 	rldu := music.Updaters["rldesec-api"]
 	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
-	
+	rldu.SetApi(*desecapi)
+	du := music.Updaters["desec-api"]
+	du.SetApi(*desecapi)			// it is ok to reuse the same object here
+
+	rlddu := music.Updaters["rlddns"]
+	rlddu.SetChannels(conf.Internal.DdnsFetch, conf.Internal.DdnsUpdate)
+
 	var done = make(chan struct{}, 1)
 
 	// initialMigration()
 	go APIdispatcher(&conf)
 	go deSECmgr(&conf, done)
+	go ddnsmgr(&conf, done)
 	mainloop(&conf, apistopper)
 }

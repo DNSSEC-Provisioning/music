@@ -137,12 +137,13 @@ DS and NS RRsets in the parent.`,
 		Type:         "single-run",
 		InitialState: FsmStateSignerUnsynced,
 		Desc: `
-REMOVE-SIGNER is the process that all zones attached to a signer group
-must execute when an existing signer is removed from the group. It contains
-steps for synching DNSKEYs among signers as well as updating the
-DS and NS RRsets in the parent.
+REMOVE-SIGNER is the process that all zones attached to a signer
+group must execute when an existing signer is removed from the group.
+It contains steps for synching DNSKEYs among signers as well as
+updating the DS and NS RRsets in the parent.
 
-Note that it is not possible to remove the last signer in a group, as that would cause the attached zones to have to go unsigned.`,
+Note that it is not possible to remove the last signer in a group,
+as that would cause the attached zones to have to go unsigned.`,
 		States: map[string]music.FSMState{
 			FsmStateSignerUnsynced: music.FSMState{
 				Next: map[string]music.FSMTransition{FsmStateNsesSynced: FsmLeaveSyncNses},

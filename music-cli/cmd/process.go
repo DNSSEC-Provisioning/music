@@ -86,13 +86,20 @@ func ListProcesses() error {
 	}
 
 	var out []string
-	if cliconf.Verbose {
-		out = append(out, "Process|Description")
-	}
+//	if cliconf.Verbose {
+//		out = append(out, "Process|Description")
+//	}
 	for _, p := range pr.Processes {
-		out = append(out, fmt.Sprintf("%s|%s", p.Name, p.Desc))
+		// out = append(out, fmt.Sprintf("%s|%s", p.Name, p.Desc))
+		if p.Desc == "" {
+		   out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
+		} else {
+		  fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
+		}
 	}
-	fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	if len(out) > 0 {
+	   fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	}
 	return nil
 }
 

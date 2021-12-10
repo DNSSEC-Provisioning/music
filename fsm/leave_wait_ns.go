@@ -15,6 +15,12 @@ func init() {
 	zoneWaitNs = make(map[string]time.Time)
 }
 
+var FsmLeaveWaitNs = music.FSMTransition{
+	Description: "Wait enough time for parent NS records to propagate (criteria), then continue (NO action)",
+	Criteria:    fsmLeaveWaitNsCriteria,
+	Action:      fsmLeaveWaitNsAction,
+}
+
 func fsmLeaveWaitNsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
@@ -28,7 +34,7 @@ func fsmLeaveWaitNsCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
 		return false
@@ -124,8 +130,3 @@ func fsmLeaveWaitNsAction(z *music.Zone) bool {
 	return true
 }
 
-var FsmLeaveWaitNs = music.FSMTransition{
-	Description: "Wait enough time for parent NS records to propagate (criteria), then continue (NO action)",
-	Criteria:    fsmLeaveWaitNsCriteria,
-	Action:      fsmLeaveWaitNsAction,
-}

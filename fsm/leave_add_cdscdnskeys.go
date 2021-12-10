@@ -8,11 +8,17 @@ import (
         music "github.com/DNSSEC-Provisioning/music/common"
 )
 
+var FsmLeaveAddCdscdnskeys = music.FSMTransition{
+	Description: "Once all DNSKEYs are correct in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
+	Criteria:    fsmLeaveAddCdscdnskeysCriteria,
+	Action:      fsmLeaveAddCdscdnskeysAction,
+}
+
 func fsmLeaveAddCdscdnskeysCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName)
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
 		return false
@@ -117,8 +123,3 @@ func fsmLeaveAddCdscdnskeysAction(z *music.Zone) bool {
 	return true
 }
 
-var FsmLeaveAddCdscdnskeys = music.FSMTransition{
-	Description: "Once all DNSKEYs are correct in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-	Criteria:    fsmLeaveAddCdscdnskeysCriteria,
-	Action:      fsmLeaveAddCdscdnskeysAction,
-}

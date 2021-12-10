@@ -15,7 +15,9 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-var cfgFile, zonename string
+var cfgFile, zonename, signername string
+var showheaders bool
+
 var tokvip *viper.Viper
 var cliconf = music.CliConfig{}
 var api *music.Api
@@ -48,7 +50,10 @@ func init() {
 	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
+	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
+	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
+		"name of signer")
 
 }
 
@@ -96,5 +101,12 @@ func initConfig() {
 }
 
 func initApi() {
-	api = music.NewClient(cliconf.Verbose, cliconf.Debug)
+
+	baseurl := viper.GetString("musicd.baseurl")
+	apikey 	:= viper.GetString("musicd.apikey")
+	authmethod := viper.GetString("musicd.authmethod")
+	rootcafile := viper.GetString("musicd.rootCApem")
+
+	api = music.NewClient("musicd", baseurl, apikey, authmethod, rootcafile,
+	      			        cliconf.Verbose, cliconf.Debug)
 }

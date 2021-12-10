@@ -310,22 +310,7 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 	buf, err := ioutil.ReadAll(resp.Body)
 
 	if status == 429 {
-		var de DesecError
-		err = json.Unmarshal(buf, &de)
-		if err != nil {
-		   log.Fatalf("Error from unmarshal DesecError: %v\n", err)
-		}
-		// "Request was throttled. Expected available in 1 second."
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Detail = strings.TrimLeft(de.Detail, "Request was throttled. Expected available in ")
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Detail = strings.TrimRight(de.Detail, " second.")
-		fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
-		de.Hold, err = strconv.Atoi(de.Detail)
-		if err != nil {
-		   log.Printf("Error from Atoi: %v\n", err)
-		}
-		fmt.Printf("Rate-limited. Hold period: %d\n", de.Hold)
+	   // hold := ExtractHoldPeriod(buf)
 	}
 
 	if debug {
@@ -334,6 +319,26 @@ func GenericAPIput(apiurl, apikey, authmethod string, data []byte,
 
 	// not bothering to copy buf, this is a one-off
 	return resp.StatusCode, buf, err
+}
+
+func ExtractHoldPeriod(buf []byte) int {
+	var de DesecError
+	err := json.Unmarshal(buf, &de)
+	if err != nil {
+	   log.Fatalf("Error from unmarshal DesecError: %v\n", err)
+	}
+	// "Request was throttled. Expected available in 1 second."
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Detail = strings.TrimLeft(de.Detail, "Request was throttled. Expected available in ")
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Detail = strings.TrimRight(de.Detail, " second.")
+	fmt.Printf("deSEC error detail: '%s'\n", de.Detail)
+	de.Hold, err = strconv.Atoi(de.Detail)
+	if err != nil {
+	   log.Printf("Error from Atoi: %v\n", err)
+	}
+	fmt.Printf("Rate-limited. Hold period: %d\n", de.Hold)
+	return de.Hold
 }
 
 type DesecError struct {
@@ -424,28 +429,40 @@ func GenericAPIdelete(apiurl, apikey, authmethod string, usetls, verbose, debug 
 }
 
 // api client
-func NewClient(verbose, debug bool) *Api {
-	api := Api{}
-
-	api.Apiurl = viper.GetString("musicd.baseurl")
-	api.apiKey = viper.GetString("musicd.apikey")
-	api.Authmethod = viper.GetString("musicd.authmethod")
-
-	rootCAPool := x509.NewCertPool()
-	rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
-
-	if err != nil {
-		log.Fatalf("reading cert failed : %v", err)
+func NewClient(name, baseurl, apikey, authmethod,
+     		     rootcafile string, verbose, debug bool) *Api {
+	api := Api{
+	       Name:		name,
+	       BaseUrl:		baseurl,
+	       apiKey:		apikey,
+	       Authmethod:	authmethod,
 	}
 
-	rootCAPool.AppendCertsFromPEM(rootCA)
+	if rootcafile == "insecure" {
+	  api.Client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	  }
+	} else {
+	  rootCAPool := x509.NewCertPool()
+	  rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
 
-	api.Client = &http.Client{
+	  if err != nil {
+		log.Fatalf("reading cert failed : %v", err)
+	  }
+
+	  rootCAPool.AppendCertsFromPEM(rootCA)
+
+	  api.Client = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: rootCAPool,
 			},
 		},
+	  }
 	}
 	// api.Client = &http.Client{}
 	api.Debug = debug
@@ -453,26 +470,38 @@ func NewClient(verbose, debug bool) *Api {
 	// log.Printf("client is a: %T\n", api.Client)
 
 	if debug {
-		fmt.Printf("apiurl is: %s \napikey is: %s \nauthmethod is: %s \n", api.Apiurl, api.apiKey, api.Authmethod)
+	   	fmt.Printf("Setting up %s API client:\n", name)
+		fmt.Printf("* baseurl is: %s \n* apikey is: %s \n* authmethod is: %s \n",
+				    api.BaseUrl, api.apiKey, api.Authmethod)
 	}
 
 	return &api
 }
 
 // request helper function
-func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
+func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, error) {
 
 	req.Header.Add("Content-Type", "application/json")
 
-	if api.Authmethod == "X-API-Key" {
+	if api.Authmethod == "" || noauth {
+		// do not add any authentication header at all
+	} else if api.Authmethod == "X-API-Key" {
 		req.Header.Add("X-API-Key", api.apiKey)
 	} else if api.Authmethod == "Authorization" {
 		req.Header.Add("Authorization", fmt.Sprintf("token %s", api.apiKey))
-	} else if api.Authmethod == "" {
-		// do not add any authentication header at all
 	} else {
-		log.Printf("Error: Client API Post: unknown auth method: %s. Aborting.\n", api.Authmethod)
+		log.Printf("Error: Client API Post: unknown auth method: %s. Aborting.\n",
+				   api.Authmethod)
 		return 501, []byte{}, fmt.Errorf("unknown auth method: %s", api.Authmethod)
+	}
+
+	if api.Debug {
+		fmt.Printf("requestHelper: about to send request using auth method '%s' and key '%s'\n",
+			api.Authmethod, api.apiKey)
+	}
+
+	if api.apiKey == "" {
+	   log.Fatalf("api.requestHelper: Error: apikey not set.\n")
 	}
 
 	resp, err := api.Client.Do(req)
@@ -491,44 +520,70 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 
 	//not bothering to copy buf, this is a one-off
 	return resp.StatusCode, buf, err
-
 }
 
 // api Post
-func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
+func (api *Api) Post(endpoint string, data []byte, opts ...string) (int, []byte, error) {
 
 	if api.Debug {
-		fmt.Printf("api.Post: posting %d bytes of data: %v\n",
-			len(data), string(data))
+		fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint, len(data), string(data))
 	}
 
-	req, err := http.NewRequest(http.MethodPost, api.Apiurl+endpoint, bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, api.BaseUrl+endpoint,
+	     	    				     bytes.NewBuffer(data))
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	noauth := (len(opts) > 0 && opts[0] == "noauth")
+	fmt.Printf("api.Post: noauth requested, turning off authentication for this request\n")
+	return api.requestHelper(req, noauth)
 }
 
 // api Delete
 // not tested
-func (api *Api) Delete(endpoint string, data []byte) (int, []byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, api.Apiurl, nil)
+// func (api *Api) Delete(endpoint string, data []byte, opts ...string) (int, []byte, error) {
+func (api *Api) Delete(endpoint string, opts ...string) (int, []byte, error) {
+
+	if api.Debug {
+		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint) // , len(data), string(data))
+	}
+
+     	req, err := http.NewRequest(http.MethodDelete, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	return api.requestHelper(req, false)
 }
 
 // api Get
 // not tested
-func (api *Api) Get(endpoint string) (int, []byte, error) {
+func (api *Api) Get(endpoint string, opts ...string) (int, []byte, error) {
 
-	req, err := http.NewRequest(http.MethodGet, api.Apiurl+endpoint, nil)
+	if api.Debug {
+		fmt.Printf("api.Get: GET URL '%s'\n", api.BaseUrl+endpoint)
+	}
+	req, err := http.NewRequest(http.MethodGet, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req)
+	return api.requestHelper(req, false)
 }
 
 // api Put
 // coming soon to a code base nere you.
+func (api *Api) Put(endpoint string, data []byte, opts ...string) (int, []byte, error) {
+
+	if api.Debug {
+		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint, len(data), string(data))
+	}
+
+	req, err := http.NewRequest(http.MethodPut, api.BaseUrl+endpoint,
+	     	    				    bytes.NewBuffer(data))
+	if err != nil {
+		log.Fatalf("Error from http.NewRequest: Error: %v", err)
+	}
+	return api.requestHelper(req, false)
+}

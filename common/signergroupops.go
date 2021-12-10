@@ -41,7 +41,7 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 	return nil
 }
 
-func (mdb *MusicDB) GetSignerGroup(sg string) (*SignerGroup, error) {
+func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
 		return &SignerGroup{}, errors.New("Empty signer group does not exist")
 	}
@@ -60,11 +60,15 @@ func (mdb *MusicDB) GetSignerGroup(sg string) (*SignerGroup, error) {
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
 	case nil:
-		_, sm := mdb.GetGroupSigners(name)
+		_, sm := mdb.GetGroupSigners(name, apisafe)
+		dbref := mdb
+		if apisafe {
+		   dbref = nil
+		}
 		return &SignerGroup{
 			Name:      name,
 			SignerMap: sm,
-			DB:        mdb,
+			DB:        dbref,
 		}, nil
 
 	default:
@@ -95,7 +99,7 @@ func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
-	_, err = stmt.Exec(group, group)
+	_, err = stmt.Exec("", group)
 	mdb.mu.Unlock()
 
 	if CheckSQLError("DeleteSignerGroup", "UPDATE signers SET ...", err, false) {
@@ -104,15 +108,19 @@ func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 	return nil
 }
 
+const (
+	LSGsql = "SELECT name FROM signergroups"
+	LSGsql2 = "SELECT name FROM signers WHERE sgroup=?"
+)
+
 func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 	var sgl = make(map[string]SignerGroup, 2)
 
 	var sgnames []string
 
-	sqlcmd := "SELECT name FROM signergroups"
-	rows, err := mdb.db.Query(sqlcmd)
+	rows, err := mdb.db.Query(LSGsql)
 
-	if CheckSQLError("ListSignerGroups", sqlcmd, err, false) {
+	if CheckSQLError("ListSignerGroups", LSGsql, err, false) {
 		return sgl, err
 	} else {
 		var name string
@@ -129,8 +137,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 	fmt.Printf("LSG: sgnames: %v\n", sgnames)
 
 	for _, sgname := range sgnames {
-		sqlcmd = "SELECT name FROM signers WHERE sgroup=?"
-		stmt, err := mdb.db.Prepare(sqlcmd)
+		stmt, err := mdb.db.Prepare(LSGsql2)
 		if err != nil {
 			fmt.Printf("ListSignerGroup: Error from db.Prepare: %v\n", err)
 		}
@@ -138,7 +145,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 		rows, err := stmt.Query(sgname)
 		defer rows.Close()
 
-		if CheckSQLError("ListSignerGroups", sqlcmd, err, false) {
+		if CheckSQLError("ListSignerGroups", LSGsql2, err, false) {
 			return sgl, err
 		} else {
 			var name string
@@ -150,7 +157,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 						err)
 				} else {
 					fmt.Printf("LSG: got signer name: %s\n", name)
-					s, err := mdb.GetSignerByName(name)
+					s, err := mdb.GetSignerByName(name, true) // apisafe
 					if err != nil {
 						log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
 					} else {
@@ -194,7 +201,7 @@ func (sg *SignerGroup) PopulateSigners() error {
 					err)
 			} else {
 				fmt.Printf("PS: got signer name: %s\n", name)
-				s, err := mdb.GetSignerByName(name)
+				s, err := mdb.GetSignerByName(name, false) // not apisafe
 				if err != nil {
 					log.Fatalf("PopulateSigners: Error from GetSigner: %v", err)
 				} else {
@@ -209,7 +216,7 @@ func (sg *SignerGroup) PopulateSigners() error {
 	return nil
 }
 
-func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]*Signer) {
+func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[string]*Signer) {
 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
 	stmt, err := mdb.db.Prepare(sqlcmd)
 	if err != nil {
@@ -232,7 +239,7 @@ func (mdb *MusicDB) GetGroupSigners(name string) (error, map[string]*Signer) {
 					err)
 			} else {
 				// fmt.Printf("GGS: got signer name: %s\n", name)
-				s, err := mdb.GetSignerByName(name)
+				s, err := mdb.GetSignerByName(name, apisafe)
 				if err != nil {
 					log.Fatalf("GGS: Error from GetSigner: %v", err)
 				} else {

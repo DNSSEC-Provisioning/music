@@ -14,7 +14,9 @@ import (
 // array.
 //
 type Updater interface {
-	SetChannels(fetch, update chan DesecOp)
+	SetChannels(fetch, update chan SignerOp)
+	SetApi(api Api)
+	GetApi() Api
 
 	Update(signer *Signer, zone, fqdn string, inserts, removes *[][]dns.RR) error
 	RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error
@@ -30,3 +32,13 @@ func GetUpdater(type_ string) Updater {
 	}
 	return updater
 }
+
+func ListUpdaters() map[string]bool {
+     res := map[string]bool{}
+     for u, _ := range Updaters {
+     	 res[u] = true
+     }
+     return res
+}
+
+

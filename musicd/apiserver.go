@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	// "github.com/miekg/dns"
+	"github.com/miekg/dns"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
 
@@ -65,10 +65,10 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		pongs += 1
 
 		for i := 1 ; i < pp.Fetches ; i++ {
-		    conf.Internal.DesecFetch <- music.DesecOp{}
+		    conf.Internal.DesecFetch <- music.SignerOp{}
 		}
 		for i := 1 ; i < pp.Updates ; i++ {
-		    conf.Internal.DesecUpdate <- music.DesecOp{}
+		    conf.Internal.DesecUpdate <- music.SignerOp{}
 		}
 
 		response := music.PingResponse{
@@ -82,6 +82,81 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 	}
 }
+
+func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
+	mdb := conf.Internal.MusicDB
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		decoder := json.NewDecoder(r.Body)
+		var tp music.TestPost
+		err := decoder.Decode(&tp)
+		if err != nil {
+			log.Println("APIzone: error decoding zone post:", err)
+		}
+
+		log.Printf("APItest: received /test request (command: %s) from %s.\n",
+			tp.Command, r.RemoteAddr)
+
+		var resp = music.TestResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		switch tp.Command {
+		case "dnsquery":
+		     signer, err := mdb.GetSigner(&music.Signer{ Name: tp.Signer}, false)
+		     if err != nil {
+		     	resp.Error = true
+			resp.ErrorMsg = err.Error()
+		     }
+		     updater := music.GetUpdater(signer.Method)
+		     if updater == nil {
+		     	resp.Error = true
+		     	resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
+			
+		     } 
+		     rrtype :=  dns.StringToType[tp.RRtype]
+		     if !resp.Error {
+		     	i := 0
+			queuedepth := 0
+			switch signer.Method {
+			case "ddns", "desec-api":
+			     queuedepth = 0
+			case "rlddns":
+			     queuedepth = len(conf.Internal.DdnsFetch)
+			case "rldesec":
+			     queuedepth = len(conf.Internal.DesecFetch)
+			}
+			     
+			fmt.Printf("Test DNS Query: currently %d fetch requests in the '%s' fetch queue.\n",
+					 queuedepth, signer.Method)
+			fmt.Printf("Test DNS Query: will send %d queries for '%s %s'\n",
+					 tp.Count, tp.Qname, tp.RRtype)
+		     	for i = 0; i < tp.Count ; i++ {
+		     	     // err, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+		     	     go updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+			     if err != nil {
+			     	resp.Error = true
+				resp.ErrorMsg = err.Error()
+				break
+			     }
+			     fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
+		     	}
+		     	resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+		     }
+
+		default:
+		}
+
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
+	}
+}
+
 
 func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
@@ -107,7 +182,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch zp.Command {
 		case "list":
-
 		case "add":
 			err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
 			if err != nil {
@@ -245,11 +319,12 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error from ListZones: %v", err)
 		}
 		resp.Zones = zs
-
 		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 
-		// w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -273,7 +348,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		dbsigner, _ := mdb.GetSigner(&sp.Signer)
+		dbsigner, _ := mdb.GetSigner(&sp.Signer, false) // not apisafe
 
 		//        if sp.Command != "list" {
 		//            dbsigner, err = mdb.GetSigner(sp.Signer.Name)
@@ -354,7 +429,10 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("APIsigner: resp struct error field: %v\n", resp.Error)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -406,7 +484,10 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		resp.SignerGroups = ss
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -504,6 +585,7 @@ func SetupRouter(conf *Config) *mux.Router {
 	sr.HandleFunc("/signer", APIsigner(conf)).Methods("POST")
 	sr.HandleFunc("/zone", APIzone(conf)).Methods("POST")
 	sr.HandleFunc("/signergroup", APIsignergroup(conf)).Methods("POST")
+	sr.HandleFunc("/test", APItest(conf)).Methods("POST")
 	sr.HandleFunc("/process", APIprocess(conf)).Methods("POST")
 	sr.HandleFunc("/show/api", APIshowAPI(conf, r)).Methods("POST", "GET")
 

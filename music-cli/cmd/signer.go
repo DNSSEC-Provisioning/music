@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var signername, signermethod, signerauth, signeraddress string
+var signermethod, signerauth, signeraddress string
 
 // signerCmd represents the signer command
 var signerCmd = &cobra.Command{
@@ -130,8 +130,6 @@ func init() {
 		loginSignerCmd, logoutSignerCmd)
 
 	// promoting signername to root to make it available also for zone cmd
-	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
-		"name of signer")
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
@@ -391,8 +389,8 @@ func ListSigners() error {
 	}
 
 	var out []string
-	if cliconf.Verbose {
-		out = append(out, "Signer|Method|SignerGroup")
+	if cliconf.Verbose || showheaders {
+		out = append(out, "Signer|Method|Address|SignerGroup")
 	}
 
 	for _, v := range sr.Signers {
@@ -400,7 +398,7 @@ func ListSigners() error {
 		if v.SignerGroup != "" {
 			group = v.SignerGroup
 		}
-		out = append(out, fmt.Sprintf("%s|%s|%s", v.Name, v.Method, group))
+		out = append(out, fmt.Sprintf("%s|%s|%s|%s", v.Name, v.Method, v.Address, group))
 	}
 	fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	return nil
