@@ -34,9 +34,16 @@ func (u *RLDdnsUpdater) GetApi() Api {
 	return Api{}
 }
 
-func (u *RLDdnsUpdater) Update(signer *Signer, zone, fqdn string,
+func (u *RLDdnsUpdater) Update(signer *Signer, zone, owner string,
 	inserts, removes *[][]dns.RR) error {
-	op := SignerOp{}
+	op := SignerOp{
+		Signer:   signer,
+		Zone:     zone,
+		Owner:    owner,
+		Inserts:  inserts,
+		Removes:  removes,
+		Response: make(chan SignerOpResult, 2),
+	}
 	u.UpdateCh <- op
 	time.Sleep(1 * time.Second)
 	resp := <-op.Response
@@ -113,48 +120,76 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 		}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
-	udop.Response <- SignerOpResult{Error: nil}
+	udop.Response <- SignerOpResult{Error: nil, Rcode: dns.RcodeSuccess }
 	return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 }
 
-func (u *RLDdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]dns.RR) error {
+// Why is RemoveRRset using [][]dns.RR when all other methods use *[][]dns.RR? Intentionally or a mistake?
+func (u *RLDdnsUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
+	op := SignerOp{
+		Signer:   signer,
+		Zone:     zone,
+		Owner:    owner,
+		Removes:  &rrsets,
+		Response: make(chan SignerOpResult, 2),
+	}
+	u.UpdateCh <- op
+	time.Sleep(1 * time.Second)
+	resp := <-op.Response
+	return resp.Error
+}
+
+func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
+     signer := udop.Signer
+     rrsets := *udop.Removes
 	rrsets_len := 0
 	for _, rrset := range rrsets {
 		rrsets_len += len(rrset)
 	}
+
+	var err error
 	if rrsets_len == 0 {
-		return fmt.Errorf("rrset(s) is empty, nothing to do")
+		err = fmt.Errorf("rrset(s) is empty, nothing to do")
 	}
 
 	if signer.Address == "" {
-		return fmt.Errorf("No ip|host for signer %s", signer.Name)
+		err = fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
 	if signer.Auth == "" {
-		return fmt.Errorf("No TSIG for signer %s", signer.Name)
+		err = fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
 	tsig := strings.SplitN(signer.Auth, ":", 2)
 	if len(tsig) != 2 {
-		return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
+		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
+	}
+	if err != nil {
+		udop.Response <- SignerOpResult{Error: err }
+		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 
 	m := new(dns.Msg)
-	m.SetUpdate(fqdn)
+	m.SetUpdate(udop.Owner)
 	for _, rrset := range rrsets {
 		m.RemoveRRset(rrset)
 	}
 	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	c := new(dns.Client)
+	// c := new(dns.Client)
+	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
 	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
-		return err
+		udop.Response <- SignerOpResult{Error: err }
+		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 	if in.MsgHdr.Rcode != dns.RcodeSuccess {
-		return fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode])
+		udop.Response <- SignerOpResult{
+			Error: fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode]),
+		}
+		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
-
-	return nil
+	udop.Response <- SignerOpResult{ Error: nil, Rcode: dns.RcodeSuccess }
+	return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 }
 
 func (u *RLDdnsUpdater) FetchRRset(s *Signer, zone, owner string,
@@ -291,6 +326,7 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	// fmt.Printf("RLDdnsFetchRRset: All ok. Returning result ->response chan + call stack\n", err)
 	fdop.Response <- SignerOpResult{
 		Status:   0, // should perhaps use DNS Rcodes?
+		Rcode:	  dns.RcodeSuccess,
 		RRs:      rrs,
 		Error:    nil,
 		Response: "Tjolahopp",
