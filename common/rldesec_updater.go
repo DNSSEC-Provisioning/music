@@ -137,9 +137,29 @@ func RLDesecFetchRRset(fdop SignerOp) (bool, int, error) {
 
 func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string, 
      		       		     inserts, removes *[][]dns.RR) error {
+	op := SignerOp{
+		Signer:   signer,
+		Zone:     zone,
+		Owner:    owner,
+		Inserts:  inserts,
+		Removes:  removes,
+		Response: make(chan SignerOpResult, 2),
+	}
+	u.UpdateCh <- op
+	time.Sleep(1 * time.Second)
+	resp := <-op.Response
+	return resp.Error
+}
+
+func RLDesecUpdate(udop SignerOp) (bool, int, error) {
+     // signer := udop.Signer
+     zone := StripDot(udop.Zone)
+     owner := udop.Owner
+     inserts := udop.Inserts
+     removes := udop.Removes
+     
 	verbose := viper.GetBool("common.verbose")
 
-	zone = StripDot(zone)
 	fmt.Printf("DesecUpdater: inserts: %v removes: %v\n", inserts, removes)
 
 	endpoint := fmt.Sprintf("/domains/%s/rrsets/", zone)
@@ -184,22 +204,28 @@ func (u *RLDesecUpdater) Update(signer *Signer, zone, owner string,
 
 	api := GetUpdater("rldesec-api").GetApi()
 	api.DesecTokenRefresh()
-	fmt.Printf("DesecUpdater: deSEC API endpoint: %s. token: %s Data: %v\n",
-		endpoint, api.apiKey, desecRRsets)
+	fmt.Printf("RLdeSECUpdater: deSEC API endpoint: %s. token: %s Data: %v\n",
+		endpoint, desecRRsets)
 
 	status, buf, err := api.Put(endpoint, bytebuf.Bytes())
 	if err != nil {
 		log.Printf("Error from api.Post (desec): %v\n", err)
-		return fmt.Errorf("Error from deSEC API for %s: %v",
-			endpoint, err)
+		udop.Response <- SignerOpResult{
+			      Error: fmt.Errorf("Error from deSEC API for %s: %v",
+			endpoint, err),
+		}
+		return false, 0, nil
 	}
 
 	if verbose {
 		fmt.Printf("DesecUpdateRRset: status: %d\n", status)
 	}
 
+	udop.Response <- SignerOpResult{
+		      Error: nil, // + send back some sort of desec status code?
+	}
 	fmt.Printf("DesecUpdateRRset: buf: %v\n", string(buf))
-	return nil
+	return false, 0, nil
 }
 
 func (u *RLDesecUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [][]dns.RR) error {
