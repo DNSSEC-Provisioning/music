@@ -61,24 +61,8 @@ func DesecSubname(zone, owner string, urluse bool) string {
 func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 	rrtype uint16) (error, []dns.RR) {
 
-	// what we want:
-	// op := SignerOp{
-	//		Signer:	s,
-	//		Zone:	zone,
-	//		Owner:	owner,
-	//		RRtype:	rrtype,
-	//		Response: make(chan SignerOpResult),
-	//	}
-	// conf.Internal.DesecFetch <- op
-	// time.Sleep(1 * time.Second)
-	// resp := <- op.Response
-	// return resp.Error, resp.RRs
 	mdb := s.MusicDB()
-	// tokvip := mdb.Tokvip
 	verbose := viper.GetBool("common.verbose")
-	// debug := viper.GetBool("common.debug")
-	// log.Printf("FetchRRset: looking up '%s IN %s' from %s\n", owner,
-	//    dns.TypeToString[rrtype], s.Address)
 
 	zone = StripDot(zone)
 	owner = StripDot(owner)

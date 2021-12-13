@@ -157,5 +157,4 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 			}
 		}
 	}()
-
 }
