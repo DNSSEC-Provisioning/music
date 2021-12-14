@@ -150,7 +150,9 @@ func main() {
 	conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
 	conf.Internal.DdnsFetch = make(chan music.SignerOp, 100)
 	conf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
-	desecapi, err := music.DesecSetupClient(cliconf.Verbose, cliconf.Debug)
+
+	rootcafile := viper.GetString("common.rootCA")
+	desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
 	if err != nil {
 	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
 	}

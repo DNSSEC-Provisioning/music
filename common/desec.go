@@ -77,7 +77,7 @@ func (api *Api) DesecLogin() (DesecLResponse, error) {
 	bytebuf := new(bytes.Buffer)
 	json.NewEncoder(bytebuf).Encode(dlp)
 
-	status, buf, err := api.Post(endpoint, bytebuf.Bytes(), "noauth") // need to arrange no auth
+	status, buf, err := api.NoAuthPost(endpoint, bytebuf.Bytes())
 	if err != nil {
 		log.Println("Error from api.Post:", err)
 	}
@@ -109,7 +109,7 @@ func (api *Api) DesecLogin() (DesecLResponse, error) {
 	return dlr, nil
 }
 
-func DesecSetupClient(verbose, debug bool) (*Api, error) {
+func DesecSetupClient(rootcafile string, verbose, debug bool) (*Api, error) {
 	baseurl := viper.GetString("signers.desec.baseurl")
 	email := viper.GetString("signers.desec.email")
 	password := viper.GetString("signers.desec.password")
@@ -120,7 +120,7 @@ func DesecSetupClient(verbose, debug bool) (*Api, error) {
 
 	desecapi := NewClient("deSEC", baseurl,
 		"",                          // deSEC uses a dynamic token rather than a static key
-		"Authorization", "insecure", // XXX: should use real CA cert
+		"Authorization", rootcafile, // XXX: should use real CA cert
 		verbose, debug)
 
 	if err := validate.Var(email, "required,email"); err != nil {

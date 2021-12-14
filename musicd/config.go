@@ -57,6 +57,7 @@ type TsigConf struct {
 type CommonConf struct {
 	DB        string `validate:"file"`
 	TokenFile string `validate:"file,required"`
+	RootCA	  string `validate:"file,required"`
 	//    GormDB  string   `validate:"file"`
 	//    Command string   `validate:"file"`
 }

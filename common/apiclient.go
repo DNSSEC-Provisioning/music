@@ -448,10 +448,14 @@ func NewClient(name, baseurl, apikey, authmethod,
 	  }
 	} else {
 	  rootCAPool := x509.NewCertPool()
-	  rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
-
+	  // rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
+	  rootCA, err := ioutil.ReadFile(rootcafile)
 	  if err != nil {
 		log.Fatalf("reading cert failed : %v", err)
+	  }
+	  if debug {
+	     fmt.Printf("NewClient: Creating '%s' API client based on root CAs in file '%s'\n",
+	     			    name, rootcafile)
 	  }
 
 	  rootCAPool.AppendCertsFromPEM(rootCA)
@@ -479,11 +483,11 @@ func NewClient(name, baseurl, apikey, authmethod,
 }
 
 // request helper function
-func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, error) {
+func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 
 	req.Header.Add("Content-Type", "application/json")
 
-	if api.Authmethod == "" || noauth {
+	if api.Authmethod == "" {
 		// do not add any authentication header at all
 	} else if api.Authmethod == "X-API-Key" {
 		req.Header.Add("X-API-Key", api.apiKey)
@@ -523,7 +527,7 @@ func (api *Api) requestHelper(req *http.Request, noauth bool) (int, []byte, erro
 }
 
 // api Post
-func (api *Api) Post(endpoint string, data []byte, opts ...string) (int, []byte, error) {
+func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
 
 	if api.Debug {
 		fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %v\n",
@@ -535,15 +539,46 @@ func (api *Api) Post(endpoint string, data []byte, opts ...string) (int, []byte,
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	noauth := (len(opts) > 0 && opts[0] == "noauth")
-	fmt.Printf("api.Post: noauth requested, turning off authentication for this request\n")
-	return api.requestHelper(req, noauth)
+	return api.requestHelper(req)
+}
+
+// api NoAuthPost
+func (api *Api) NoAuthPost(endpoint string, data []byte) (int, []byte, error) {
+
+	req, err := http.NewRequest(http.MethodPost, api.BaseUrl+endpoint,
+	     	    				     bytes.NewBuffer(data))
+	if err != nil {
+		log.Fatalf("Error from http.NewRequest: Error: %v", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	if api.Debug {
+		fmt.Printf("api.NoAuthPost: posting to URL '%s' %d bytes of data: %v\n",
+			api.BaseUrl+endpoint, len(data), string(data))
+	}
+
+	resp, err := api.Client.Do(req)
+	if err != nil {
+		return 501, nil, err
+	}
+
+	defer resp.Body.Close()
+	buf, err := ioutil.ReadAll(resp.Body)
+
+	if api.Debug {
+		fmt.Printf("api.NoAuthPost: received %d bytes of response data: %v\n",
+			len(buf), string(buf))
+	}
+
+	//not bothering to copy buf, this is a one-off
+	return resp.StatusCode, buf, err
 }
 
 // api Delete
 // not tested
 // func (api *Api) Delete(endpoint string, data []byte, opts ...string) (int, []byte, error) {
-func (api *Api) Delete(endpoint string, opts ...string) (int, []byte, error) {
+func (api *Api) Delete(endpoint string) (int, []byte, error) {
 
 	if api.Debug {
 		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
@@ -554,12 +589,12 @@ func (api *Api) Delete(endpoint string, opts ...string) (int, []byte, error) {
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req, false)
+	return api.requestHelper(req)
 }
 
 // api Get
 // not tested
-func (api *Api) Get(endpoint string, opts ...string) (int, []byte, error) {
+func (api *Api) Get(endpoint string) (int, []byte, error) {
 
 	if api.Debug {
 		fmt.Printf("api.Get: GET URL '%s'\n", api.BaseUrl+endpoint)
@@ -568,12 +603,12 @@ func (api *Api) Get(endpoint string, opts ...string) (int, []byte, error) {
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req, false)
+	return api.requestHelper(req)
 }
 
 // api Put
 // coming soon to a code base nere you.
-func (api *Api) Put(endpoint string, data []byte, opts ...string) (int, []byte, error) {
+func (api *Api) Put(endpoint string, data []byte) (int, []byte, error) {
 
 	if api.Debug {
 		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
@@ -585,5 +620,5 @@ func (api *Api) Put(endpoint string, data []byte, opts ...string) (int, []byte, 
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
 	}
-	return api.requestHelper(req, false)
+	return api.requestHelper(req)
 }

@@ -23,6 +23,7 @@ install: ${PROG}
 	@touch ../etc/musicd.tokens.yaml
 	@touch ${DB}
 	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
+	if [ ! -e ../etc/certs/PublicRootCAs.pem ] ; then install -c PublicRootCAs.pem ../etc/certs/; fi
 
 test:
 	$(GO) test -v -cover
