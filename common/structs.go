@@ -27,6 +27,7 @@ type Zone struct {
 	State      string
 	Statestamp time.Time
 	NextState  map[string]bool
+	StopReason string	// possible reason for a state transition not to be possible
 	FSM        string
 	SGroup     *SignerGroup
 	SGname     string

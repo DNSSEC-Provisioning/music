@@ -100,8 +100,10 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 	if len(CurrentState.Next) == 1 {
 		nextname := transitions[0]
 		t := CurrentState.Next[nextname]
-		// success, err, msg := dbzone.AttemptStateTransition(nextname, t)
-		return dbzone.AttemptStateTransition(nextname, t)
+		success, err, msg := dbzone.AttemptStateTransition(nextname, t)
+		// return dbzone.AttemptStateTransition(nextname, t)
+		log.Printf("ZoneStepFsm debug: result from AttemptStateTransition: success: %v, err: %v, msg: '%s'\n", success, err, msg)
+		return success, err, msg
 	}
 
 	// More than one possible next state: this can happen. Right now we can
@@ -169,10 +171,14 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	t FSMTransition) (bool, error, string) {
 	currentstate := z.State
 
+	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
+
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
+	// XXX: This should be changed to t.PreCondition once all states have pre conditions
 	if t.Criteria(z) {
+	        log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
 		t.Action(z)
 		if t.PostCondition != nil {
 			postcond := t.PostCondition(z)
@@ -187,7 +193,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 				}
 				return false, nil,
-					fmt.Sprintf("Zone %s did not transition from %s to %s.%s",
+					fmt.Sprintf("Zone %s did not transition from %s to %s.",
 						z.Name, currentstate, nextstate)
 			}
 
@@ -220,9 +226,9 @@ func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var parentAddress string
 	var exist bool
 	if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
-		err, _ := z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
+		err, _ := z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
 		if err != nil {
-			log.Printf("GetParentAddressOrStop: Error from ZoneMeta: %v\n", err)
+			log.Printf("GetParentAddressOrStop: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("GetParentAddressOrStop: Zone %s has no parent address registered.",
 			z.Name)

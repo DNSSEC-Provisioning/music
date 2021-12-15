@@ -40,8 +40,9 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 	log.Println("Starting DDNS Manager. Will rate-limit DDNS requests (queries and updates).")
 
 	// fetch_ticker := time.NewTicker(time.Minute)
+	// update_ticker := time.NewTicker(time.Minute)
 	fetch_ticker := time.NewTicker(5 * time.Second)
-	update_ticker := time.NewTicker(time.Minute)
+	update_ticker := time.NewTicker(5 * time.Second)
 
 	//	go Recoverer("DDNS fetch routine", func() {
 	// ddns fetcher
