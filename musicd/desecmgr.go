@@ -43,40 +43,42 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 	update_ticker := time.NewTicker(time.Minute)
 
 	go func() {
-	   	var fetchOpQueue = []music.SignerOp{}
-	   	var rl bool
+		var fetchOpQueue = []music.SignerOp{}
+		var rl bool
 		var err error
 		var fdop, op music.SignerOp
 		var fetch_ops, hold int
 		for {
 			select {
 			case op = <-desecfetch:
-			     	 fetchOpQueue = append(fetchOpQueue, op)
+				fetchOpQueue = append(fetchOpQueue, op)
 
 			case <-fetch_ticker.C:
-				fmt.Printf("%v: deSEC fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
+				if cliconf.Debug {
+					fmt.Printf("%v: deSEC fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
 						time.Now(), fetch_ops, len(fetchOpQueue))
+				}
 				fetch_ops = 0
 
 				for {
 					if len(fetchOpQueue) == 0 {
-					   // nothing in queue
-					   break
+						// nothing in queue
+						break
 					}
 					fdop = fetchOpQueue[0]
 					fetchOpQueue = fetchOpQueue[1:]
 
 					fmt.Printf("ddnsmgr: issuing fetch for '%s %s'\n",
-					 			fdop.Owner, dns.TypeToString[fdop.RRtype])
+						fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
-					    rl, hold, err = music.RLDesecFetchRRset(fdop)
-					    if err != nil {
-					       log.Printf("deSECmgr: Error from RLDesecFetchRRset: rl: %v hold: %d err: %v\n", rl , hold, err)
-					    }
-					    if !rl {
-					       // fmt.Printf("deSECmgr: fetch was rate-limited. Will sleep for %d seconds.\n", hold)
-					       time.Sleep(time.Duration(hold) * time.Second)
-					    }
+						rl, hold, err = music.RLDesecFetchRRset(fdop)
+						if err != nil {
+							log.Printf("deSECmgr: Error from RLDesecFetchRRset: rl: %v hold: %d err: %v\n", rl, hold, err)
+						}
+						if !rl {
+							// fmt.Printf("deSECmgr: fetch was rate-limited. Will sleep for %d seconds.\n", hold)
+							time.Sleep(time.Duration(hold) * time.Second)
+						}
 					}
 					fetch_ops++
 					if fetch_ops >= fetch_limit {
@@ -105,8 +107,10 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 				// fmt.Printf("deSEC Mgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
-				fmt.Printf("%v: deSEC update_ticker: Total ops last period: %d. Ops in queue: %d\n",
-					time.Now(), update_ops, len(updateOpQueue))
+				if cliconf.Debug {
+					fmt.Printf("%v: deSEC update_ticker: Total ops last period: %d. Ops in queue: %d\n",
+						time.Now(), update_ops, len(updateOpQueue))
+				}
 				update_ops = 0
 				for {
 					if len(updateOpQueue) == 0 {

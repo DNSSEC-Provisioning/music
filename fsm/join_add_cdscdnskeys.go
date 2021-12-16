@@ -179,6 +179,11 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			}
 		}
 	}
+	keyids := []uint16{}
+	for k, _ := range cdsmap {
+	    keyids = append(keyids, k)
+	}
+	log.Printf("Verify Publication of CDS: there are KSKs at the signers with the following keytags: %v\n", keyids)
 
 	// Check against published CDS/CDNSKEY RRsets.
 	for _, signer := range z.SGroup.SignerMap {
