@@ -20,3 +20,4 @@ common:
    db:		/var/tmp/music.db
    tokenfile:	../etc/musicd.tokens.yaml
    command:	/usr/local/sbin/musicd
+   rootca:      ../etc/certs/PublicRootCAs.pem
