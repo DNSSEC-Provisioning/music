@@ -60,10 +60,7 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 // XXX: Returning a map[string]Zone just to get rid of an extra call
 // to ListZones() was a mistake. Let's simplify.
 
-// func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
-//	string, map[string]Zone) {
-func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
-	nextstate string) (bool, error, string) {
+func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, string) {
 
 	if !dbzone.Exists {
 		return false, fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -177,7 +174,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
 	// XXX: This should be changed to t.PreCondition once all states have pre conditions
-	if t.Criteria(z) {
+	if t.PreCondition(z) {
 	        log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
 		t.Action(z)
 		if t.PostCondition != nil {
@@ -199,6 +196,8 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 
 		} else {
 			// there is no post-condition
+			log.Fatalf("AttemptStateTransition: Error: no PostCondition defined for transition %s --> %s", currentstate, nextstate)
+			// obviously, because of the log.Fatalf this return won't happen:
 			return false, fmt.Errorf("Cannot transition due to lack of definied post-condition for transition %s --> %s", currentstate, nextstate), ""
 		}
 	}
@@ -207,7 +206,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	if exist {
 		stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 	}
-	return false, nil, fmt.Sprintf("%s: Pre-condition for '%s' failed.%s",
+	return false, nil, fmt.Sprintf("%s: PreCondition for '%s' failed.%s",
 		z.Name, nextstate, stopreason)
 }
 

@@ -8,7 +8,20 @@ import (
         music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
+var FsmLeaveAddCsync = music.FSMTransition{
+	Description: "Once all NS are correct in all signers (criteria), build CSYNC record and push to all signers (action)",
+	MermaidCriteriaDesc: "Wait for all NS RRsets to be in sync in all signers",
+	MermaidPreCondDesc:  "Wait for all NS RRsets to be in sync in all signers",
+	MermaidActionDesc:   "Create and publish CSYNC record in all signers",
+	MermaidPostCondDesc: "Verify that the CSYNC record has been removed everywhere",
+	
+	Criteria:    	LeaveAddCsyncCriteria,
+	PreCondition:   LeaveAddCsyncCriteria,
+	Action:      	LeaveAddCsyncAction,
+	PostCondition:	func (z *music.Zone) bool { return true },
+}
+
+func LeaveAddCsyncCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -93,7 +106,7 @@ func fsmLeaveAddCsyncCriteria(z *music.Zone) bool {
 }
 
 
-func fsmLeaveAddCsyncAction(z *music.Zone) bool {
+func LeaveAddCsyncAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -171,12 +184,8 @@ func fsmLeaveAddCsyncAction(z *music.Zone) bool {
 		log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, leavingSigner.Name)
 	}
 
-	z.StateTransition(FsmStateNsesSynced, FsmStateCsyncAdded)
+	// State transitions are manageed from ZoneStepFsm()
+	// z.StateTransition(FsmStateNsesSynced, FsmStateCsyncAdded)
 	return true
 }
 
-var FsmLeaveAddCsync = music.FSMTransition{
-	Description: "Once all NS are correct in all signers (criteria), build CSYNC record and push to all signers (action)",
-	Criteria:    fsmLeaveAddCsyncCriteria,
-	Action:      fsmLeaveAddCsyncAction,
-}

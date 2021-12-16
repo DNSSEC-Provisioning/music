@@ -30,7 +30,7 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
-		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
+		// log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
@@ -47,14 +47,16 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 		}
 
 		if len(dnskeys[s.Name]) > 0 {
-			log.Printf("%s: Fetched DNSKEYs from %s:", z.Name, s.Name)
+		   	keys := ""
 			for _, k := range dnskeys[s.Name] {
 				if f := k.Flags & 0x101; f == 256 {
-					log.Printf("%s: - %d (ZSK) %s...", z.Name, int(k.KeyTag()), k.PublicKey[:30])
+					keys += fmt.Sprintf("%d (ZSK) ", int(k.KeyTag()))
 				} else {
-					log.Printf("%s: - %d (KSK) %s...", z.Name, int(k.KeyTag()), k.PublicKey[:30])
+					keys += fmt.Sprintf("%d (KSK) ", int(k.KeyTag()))
 				}
 			}
+			log.Printf("Fetched %s DNSKEYs from %s: %s", z.Name,
+					    s.Name, keys)
 		} else {
 			log.Printf("%s: No DNSKEYs found in %s", z.Name, s.Name)
 		}

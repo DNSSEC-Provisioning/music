@@ -68,7 +68,7 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 					fdop = fetchOpQueue[0]
 					fetchOpQueue = fetchOpQueue[1:]
 
-					fmt.Printf("ddnsmgr: issuing fetch for '%s %s'\n",
+					log.Printf("deSECMgr: fetch request for '%s %s'\n",
 						fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
 						rl, hold, err = music.RLDesecFetchRRset(fdop)
@@ -120,7 +120,7 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 					udop = updateOpQueue[0]
 					updateOpQueue = updateOpQueue[1:]
 
-					// fmt.Printf("deSEC Mgr: issuing update for '%s %s'\n",
+					// log.Printf("deSEC Mgr: update request for '%s %s'\n",
 					// 			udop.Owner, dns.TypeToString[udop.RRtype])
 					for {
 						rl, hold, err = music.RLDesecUpdate(udop)

@@ -15,13 +15,13 @@ var FsmJoinAddCsync = music.FSMTransition{
 	MermaidActionDesc:   "Generate and push CSYNC record",
 	MermaidPostCondDesc: "Verify that CSYNC record has been published",
 
-	Criteria:      fsmJoinAddCsyncCriteria,
-	PreCondition:  fsmJoinAddCsyncCriteria,
-	Action:        fsmJoinAddCsyncAction,
+	Criteria:      JoinAddCsyncCriteria,
+	PreCondition:  JoinAddCsyncCriteria,
+	Action:        JoinAddCsyncAction,
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func fsmJoinAddCsyncCriteria(z *music.Zone) bool {
+func JoinAddCsyncCriteria(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
 	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
@@ -93,7 +93,7 @@ func fsmJoinAddCsyncCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmJoinAddCsyncAction(z *music.Zone) bool {
+func JoinAddCsyncAction(z *music.Zone) bool {
 	// TODO: configurable TTL for created CSYNC records
 	ttl := 300
 

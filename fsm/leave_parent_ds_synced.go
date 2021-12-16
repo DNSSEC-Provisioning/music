@@ -97,8 +97,8 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
 	}
 
-	// this should be removed
-	z.StateTransition(FsmStateCDSAdded, FsmStateParentDsSynced)
+	// State transitions are managed from ZoneStepFsm()
+	// z.StateTransition(FsmStateCDSAdded, FsmStateParentDsSynced)
 	return true
 
 	// TODO: remove state/metadata around leaving signer

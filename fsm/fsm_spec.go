@@ -46,7 +46,7 @@ var FSMT_RS_13 = music.FSMTransition{
 	Criteria: music.FsmCriteriaFactory(FsmStateStop, FsmStateStop),
 	Action: func(z *music.Zone) bool {
 		fmt.Printf("Enter ACTION for <stop, stop>. zone state: %s\n", z.State)
-		z.StateTransition(FsmStateStop, FsmStateStop)
+		// z.StateTransition(FsmStateStop, FsmStateStop)
 		fmt.Printf("FsmAction (stop): Exiting the remove-signer process seems to have gone well. Yay!\n")
 		return true
 	},

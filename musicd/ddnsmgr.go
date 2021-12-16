@@ -72,7 +72,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 					fdop = fetchOpQueue[0]
 					fetchOpQueue = fetchOpQueue[1:]
 
-					fmt.Printf("ddnsmgr: issuing fetch for '%s %s'\n",
+					log.Printf("ddnsmgr: fetch request for '%s %s'\n",
 						fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
 						rl, hold, err = music.RLDdnsFetchRRset(fdop)
@@ -117,7 +117,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 			select {
 			case op = <-ddnsupdate:
 				updateOpQueue = append(updateOpQueue, op)
-				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
+				// log.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
 				if cliconf.Debug {
@@ -133,7 +133,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 					udop = updateOpQueue[0]
 					updateOpQueue = updateOpQueue[1:]
 
-					// fmt.Printf("ddnsmgr: issuing update for '%s %s'\n",
+					// log.Printf("ddnsmgr: update request for '%s %s'\n",
 					// 			udop.Owner, dns.TypeToString[udop.RRtype])
 					for {
 						rl, hold, err = music.RLDdnsUpdate(udop)

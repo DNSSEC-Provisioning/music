@@ -10,15 +10,21 @@ import (
 
 var FsmLeaveSyncDnskeys = music.FSMTransition{
 	Description: "Once NSes has been propagated (NO criteria), remove DNSKEYs that originated from the leaving signer (Action)",
-	Criteria:    fsmLeaveSyncDnskeysCriteria,
-	Action:      fsmLeaveSyncDnskeysAction,
+	MermaidCriteriaDesc: "todo",
+	MermaidPreCondDesc:  "todo",
+	MermaidActionDesc:   "todo",
+	MermaidPostCondDesc: "todo",
+	Criteria:    	 LeaveSyncDnskeysCriteria,
+	PreCondition:    LeaveSyncDnskeysCriteria,
+	Action:      	 LeaveSyncDnskeysAction,
+	PostCondition:	 func (z *music.Zone) bool { return true },
 }
 
-func fsmLeaveSyncDnskeysCriteria(z *music.Zone) bool {
+func LeaveSyncDnskeysCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveSyncDnskeysAction(z *music.Zone) bool {
+func LeaveSyncDnskeysAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -87,7 +93,8 @@ func fsmLeaveSyncDnskeysAction(z *music.Zone) bool {
 		}
 	}
 
-	z.StateTransition(FsmStateNsPropagated, FsmStateDnskeysSynced)
+	// State transitions are managed from ZoneStepFsm()
+	// z.StateTransition(FsmStateNsPropagated, FsmStateDnskeysSynced)
 	return true
 }
 
