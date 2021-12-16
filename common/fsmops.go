@@ -60,10 +60,7 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 // XXX: Returning a map[string]Zone just to get rid of an extra call
 // to ListZones() was a mistake. Let's simplify.
 
-// func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (error,
-//	string, map[string]Zone) {
-func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
-	nextstate string) (bool, error, string) {
+func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, string) {
 
 	if !dbzone.Exists {
 		return false, fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -100,8 +97,10 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone,
 	if len(CurrentState.Next) == 1 {
 		nextname := transitions[0]
 		t := CurrentState.Next[nextname]
-		// success, err, msg := dbzone.AttemptStateTransition(nextname, t)
-		return dbzone.AttemptStateTransition(nextname, t)
+		success, err, msg := dbzone.AttemptStateTransition(nextname, t)
+		// return dbzone.AttemptStateTransition(nextname, t)
+		log.Printf("ZoneStepFsm debug: result from AttemptStateTransition: success: %v, err: %v, msg: '%s'\n", success, err, msg)
+		return success, err, msg
 	}
 
 	// More than one possible next state: this can happen. Right now we can
@@ -169,10 +168,14 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	t FSMTransition) (bool, error, string) {
 	currentstate := z.State
 
+	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
+
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
-	if t.Criteria(z) {
+	// XXX: This should be changed to t.PreCondition once all states have pre conditions
+	if t.PreCondition(z) {
+	        log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
 		t.Action(z)
 		if t.PostCondition != nil {
 			postcond := t.PostCondition(z)
@@ -187,12 +190,14 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 				}
 				return false, nil,
-					fmt.Sprintf("Zone %s did not transition from %s to %s.%s",
+					fmt.Sprintf("Zone %s did not transition from %s to %s.",
 						z.Name, currentstate, nextstate)
 			}
 
 		} else {
 			// there is no post-condition
+			log.Fatalf("AttemptStateTransition: Error: no PostCondition defined for transition %s --> %s", currentstate, nextstate)
+			// obviously, because of the log.Fatalf this return won't happen:
 			return false, fmt.Errorf("Cannot transition due to lack of definied post-condition for transition %s --> %s", currentstate, nextstate), ""
 		}
 	}
@@ -201,7 +206,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	if exist {
 		stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 	}
-	return false, nil, fmt.Sprintf("%s: Pre-condition for '%s' failed.%s",
+	return false, nil, fmt.Sprintf("%s: PreCondition for '%s' failed.%s",
 		z.Name, nextstate, stopreason)
 }
 
@@ -220,9 +225,9 @@ func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var parentAddress string
 	var exist bool
 	if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
-		err, _ := z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
+		err, _ := z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
 		if err != nil {
-			log.Printf("GetParentAddressOrStop: Error from ZoneMeta: %v\n", err)
+			log.Printf("GetParentAddressOrStop: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("GetParentAddressOrStop: Zone %s has no parent address registered.",
 			z.Name)

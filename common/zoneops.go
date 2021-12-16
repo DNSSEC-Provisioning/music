@@ -77,25 +77,53 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	return nil, fmt.Sprintf("Zone %s deleted.", z.Name)
 }
 
-func (mdb *MusicDB) ZoneMeta(z *Zone, key, value string) (error, string) {
+func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 	if !z.Exists {
 		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, value) VALUES (?, ?, ?)")
+	stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
 	if err != nil {
-		fmt.Printf("ZoneMeta: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
 	}
 
 	_, err = stmt.Exec(z.Name, key, value)
-	if CheckSQLError("ZoneMeta", "INSERT OR REPLACE INTO", err, false) {
+	if CheckSQLError("ZoneSetMeta", "INSERT OR REPLACE INTO", err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
 	mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s metadata '%s' updated to be '%s'",
 		z.Name, key, value)
+}
+
+func (mdb *MusicDB) ZoneGetMeta(z *Zone, key string) (error, string) {
+	if !z.Exists {
+		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
+	}
+
+	mdb.mu.Lock()
+	stmt, err := mdb.db.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+	if err != nil {
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
+	}
+
+	row := stmt.QueryRow(z.Name, key)
+	if CheckSQLError("ZoneGetMeta", "SELECT value FROM metadata", err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	mdb.mu.Unlock()
+
+	var value string
+	switch err = row.Scan(&value); err {
+	case sql.ErrNoRows:
+		return err, ""
+	case nil:
+	     return nil, value
+	}
+	return nil, ""
 }
 
 func (z *Zone) StateTransition(from, to string) error {
@@ -131,14 +159,22 @@ func (z *Zone) StateTransition(from, to string) error {
 		return err
 	}
 	mdb.mu.Unlock()
-	err, _ = mdb.ZoneMeta(z, "stop-reason", "")
+	err, _ = mdb.ZoneSetMeta(z, "stop-reason", "")
 	if err != nil {
-		log.Printf("StateTransition: Error from ZoneMeta: %v\n", err)
+		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
 	}
 	log.Printf("Zone %s transitioned from %s to %s in process %s", z.Name, from, to, fsm)
 
 	return nil
 }
+
+func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
+     zone, exists := mdb.GetZone(zonename)
+     zone.MusicDB = nil
+     zone.SGroup  = nil  // another one
+     return zone, exists
+}
+
 
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
@@ -179,7 +215,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			FSM:        fsm,
 			SGroup:     sg,
 			SGname:     sg.Name,
-			MusicDB:    mdb,
+			MusicDB:    mdb,	// can not be json encoded, i.e. not used in API
 		}, true
 
 	default:

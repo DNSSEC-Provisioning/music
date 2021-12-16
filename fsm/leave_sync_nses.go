@@ -10,15 +10,21 @@ import (
 
 var FsmLeaveSyncNses = music.FSMTransition{
 	Description: "First step when leaving, this transistion has no critera and will remove NSes that originated from the leaving signer (Action)",
-	Criteria:    fsmLeaveSyncNsesCriteria,
-	Action:      fsmLeaveSyncNsesAction,
+	MermaidCriteriaDesc: "None",
+	MermaidPreCondDesc:  "None",
+	MermaidActionDesc:   "Remove NS records that only belong to the leaving signer",
+	MermaidPostCondDesc: "Verify that NS records have been removed from zone",
+	Criteria:    	 LeaveSyncNsesCriteria,
+	PreCondition:    func (z *music.Zone) bool { return true },
+	Action:      	 LeaveSyncNsesAction,
+	PostCondition:    func (z *music.Zone) bool { return true },
 }
 
-func fsmLeaveSyncNsesCriteria(z *music.Zone) bool {
+func LeaveSyncNsesCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveSyncNsesAction(z *music.Zone) bool {
+func LeaveSyncNsesAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -73,7 +79,8 @@ func fsmLeaveSyncNsesAction(z *music.Zone) bool {
 	}
 	log.Printf("%s: Removed NSes from %s successfully", z.Name, leavingSigner.Name)
 
-	z.StateTransition(FsmStateSignerUnsynced, FsmStateNsesSynced)
+	// State transitions are managed from ZoneStepFsm() 
+	// z.StateTransition(FsmStateSignerUnsynced, FsmStateNsesSynced)
 	return true
 }
 

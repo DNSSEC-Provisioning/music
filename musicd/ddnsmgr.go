@@ -40,8 +40,9 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 	log.Println("Starting DDNS Manager. Will rate-limit DDNS requests (queries and updates).")
 
 	// fetch_ticker := time.NewTicker(time.Minute)
+	// update_ticker := time.NewTicker(time.Minute)
 	fetch_ticker := time.NewTicker(5 * time.Second)
-	update_ticker := time.NewTicker(time.Minute)
+	update_ticker := time.NewTicker(5 * time.Second)
 
 	//	go Recoverer("DDNS fetch routine", func() {
 	// ddns fetcher
@@ -58,8 +59,10 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-fetch_ticker.C:
-				fmt.Printf("%v: DDNS fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
-					time.Now(), fetch_ops, len(fetchOpQueue))
+				if cliconf.Debug {
+					log.Printf("DDNS fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
+						fetch_ops, len(fetchOpQueue))
+				}
 				fetch_ops = 0
 				for {
 					if len(fetchOpQueue) == 0 {
@@ -69,8 +72,8 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 					fdop = fetchOpQueue[0]
 					fetchOpQueue = fetchOpQueue[1:]
 
-					fmt.Printf("ddnsmgr: issuing fetch for '%s %s'\n",
-					 			fdop.Owner, dns.TypeToString[fdop.RRtype])
+					log.Printf("ddnsmgr: fetch request for '%s %s'\n",
+						fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
 						rl, hold, err = music.RLDdnsFetchRRset(fdop)
 						if err != nil {
@@ -114,11 +117,13 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 			select {
 			case op = <-ddnsupdate:
 				updateOpQueue = append(updateOpQueue, op)
-				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
+				// log.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
-				fmt.Printf("%v: DDNS update_ticker: Total ops last period: %d. Ops in queue: %d\n",
-					time.Now(), update_ops, len(updateOpQueue))
+				if cliconf.Debug {
+					log.Printf("DDNS update_ticker: Total ops last period: %d. Ops in queue: %d\n",
+						update_ops, len(updateOpQueue))
+				}
 				update_ops = 0
 				for {
 					if len(updateOpQueue) == 0 {
@@ -128,7 +133,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 					udop = updateOpQueue[0]
 					updateOpQueue = updateOpQueue[1:]
 
-					// fmt.Printf("ddnsmgr: issuing update for '%s %s'\n",
+					// log.Printf("ddnsmgr: update request for '%s %s'\n",
 					// 			udop.Owner, dns.TypeToString[udop.RRtype])
 					for {
 						rl, hold, err = music.RLDdnsUpdate(udop)

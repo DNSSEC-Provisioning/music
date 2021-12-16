@@ -22,11 +22,15 @@ var FsmJoinSyncDnskeys = music.FSMTransition{
 	MermaidPostCondDesc: "Verify that all ZSKs are published in signer DNSKEY RRsets",
 	Criteria:            func(z *music.Zone) bool { return true },
 	PreCondition:        func(z *music.Zone) bool { return true },
-	Action:              fsmJoinSyncDnskeys,
-	PostCondition:       fsmVerifyDnskeysSynched,
+	Action:              JoinSyncDnskeys,
+	PostCondition:       VerifyDnskeysSynched,
 }
 
-func fsmVerifyDnskeysSynched(z *music.Zone) bool {
+// XXX: Is it always true that the PostCondition for one action is equal to the PreCondition
+//      for the next action? I think so. I.e. this implementation (VerifyDnskeysSynched) is
+//      extremely similar to the JoinAddCdsCriteria function that is the PreCondition for
+//      the next step (adding CDS/CDNSKEYs).
+func VerifyDnskeysSynched(z *music.Zone) bool {
 	// 1: for each signer:
 	// 1.a. get DNSKEY RRset, extract all ZSKs,
 	// 1.b. store all zsks in a map[keyid]key per signer
@@ -48,8 +52,7 @@ func fsmVerifyDnskeysSynched(z *music.Zone) bool {
 
 		updater := music.GetUpdater(s.Method)
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
-			dns.TypeDNSKEY)
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -112,28 +115,16 @@ func fsmVerifyDnskeysSynched(z *music.Zone) bool {
 	return true
 }
 
-func fsmJoinSyncDnskeys(z *music.Zone) bool {
+func JoinSyncDnskeys(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
 
 	log.Printf("%s: Syncing DNSKEYs in group %s", z.Name, z.SGroup.Name)
 
 	for _, s := range z.SGroup.SignerMap {
 
-		//		m := new(dns.Msg)
-		//		m.SetQuestion(z.Name, dns.TypeDNSKEY)
-
-		//		c := new(dns.Client)
-		//		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
-
-		//		if err != nil {
-		//			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
-		//			return false
-		//		}
-
 		updater := music.GetUpdater(s.Method)
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, z.Name,
-			dns.TypeDNSKEY)
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
@@ -141,7 +132,6 @@ func fsmJoinSyncDnskeys(z *music.Zone) bool {
 		// signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
-		//		for _, a := range r.Answer {
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {

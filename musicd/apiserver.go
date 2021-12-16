@@ -33,7 +33,10 @@ func API_NYI(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		apistatus := music.APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(apistatus)
+		err := json.NewEncoder(w).Encode(apistatus)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -44,7 +47,10 @@ func APIGoAway(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		apistatus := music.APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(apistatus)
+		err := json.NewEncoder(w).Encode(apistatus)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -79,7 +85,10 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Pongs:   pongs}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		err = json.NewEncoder(w).Encode(response)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -226,18 +235,27 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			// var zones map[string]music.Zone
 			// var success bool
 			// err, resp.Msg, zones = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
-			_, err, resp.Msg = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
+			// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
+			var success bool
+			success, err, resp.Msg = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
 			if err != nil {
-				// log.Printf("Error from ZoneStepFsm: %v", err)
+				log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 				// resp.Zones = zones
 				// resp.Zones = map[string]Zone{ dbzone.Name: *dbzone }
 				// w.Header().Set("Content-Type", "application/json")
 			}
-			dbzone, _ = mdb.GetZone(dbzone.Name)
+			log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
+			dbzone, _ = mdb.ApiGetZone(dbzone.Name) // apisafe
+			if !success {
+			   _, dbzone.StopReason = mdb.ZoneGetMeta(dbzone, "stop-reason")
+			}
 			resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
-			json.NewEncoder(w).Encode(resp)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+			   log.Printf("Error from Encoder: %v\n", err)
+			}
 			return
 
 		case "get-rrsets":
@@ -267,7 +285,10 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				resp.RRsets = result
 				// fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
 			}
-			json.NewEncoder(w).Encode(resp)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+			   log.Printf("Error from Encoder: %v\n", err)
+			}
 			return
 
 		case "copy-rrset":
@@ -284,8 +305,10 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				// resp.RRset = rrset
 				// fmt.Printf("copy:rrset: len: %d\n", len(rrset))
 			}
-			// w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+			   log.Printf("Error from Encoder: %v\n", err)
+			}
 			return
 
 		case "list-rrset":
@@ -299,14 +322,16 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			} else {
 				resp.RRset = rrset
 			}
-			// w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+			   log.Printf("Error from Encoder: %v\n", err)
+			}
 			return
 
 		case "meta":
-			err, resp.Msg = mdb.ZoneMeta(dbzone, zp.Metakey, zp.Metavalue)
+			err, resp.Msg = mdb.ZoneSetMeta(dbzone, zp.Metakey, zp.Metavalue)
 			if err != nil {
-				// log.Printf("Error from ZoneMeta: %v", err)
+				// log.Printf("Error from ZoneSetMeta: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
@@ -536,7 +561,10 @@ func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 
@@ -571,7 +599,10 @@ func APIshowAPI(conf *Config, router *mux.Router) func(w http.ResponseWriter, r 
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		err := json.NewEncoder(w).Encode(response)
+		if err != nil {
+		   log.Printf("Error from Encoder: %v\n", err)
+		}
 	}
 }
 

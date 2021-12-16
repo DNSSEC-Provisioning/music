@@ -31,8 +31,8 @@ func (u *DdnsUpdater) GetApi() Api {
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
-	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
-		signer.Name, fqdn, inserts, removes)
+	// log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
+	// 	signer.Name, fqdn, inserts, removes)
 	inserts_len := 0
 	removes_len := 0
 	if inserts != nil {
@@ -45,6 +45,8 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 			removes_len += len(remove)
 		}
 	}
+	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
+	 	signer.Name, fqdn, inserts_len, removes_len)
 	if inserts_len == 0 && removes_len == 0 {
 		return fmt.Errorf("Inserts and removes empty, nothing to do")
 	}
@@ -157,7 +159,9 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 		return fmt.Errorf("Fetch of %s RRset failed, RCODE = %s", dns.TypeToString[rrtype], dns.RcodeToString[r.MsgHdr.Rcode]), []dns.RR{}
 	}
 
-	log.Printf("Length of Answer from %s: %d RRs\n", signer.Name, len(r.Answer))
+	log.Printf("Length of %s answer from %s: %d RRs\n",
+			   dns.TypeToString[rrtype],
+			   signer.Name, len(r.Answer))
 
 	var rrs []dns.RR
 

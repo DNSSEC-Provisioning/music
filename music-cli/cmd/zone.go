@@ -218,7 +218,7 @@ var zoneStepFsmCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "list",
 		}
-		zr, err := SendZoneCommand("", data)		
+		zr, err := SendZoneCommand(zone, data)		
 		if err != nil {
 			log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
 		}
@@ -229,7 +229,6 @@ var zoneStepFsmCmd = &cobra.Command{
 		if fsm == "" || fsm == "none" {
 			log.Fatalf("ZoneStepFsm: Zone %s is not attached to any FSM. Terminating.\n", zone)
 		}
-
 		data = music.ZonePost{
 			Command: "step-fsm",
 			Zone: music.Zone{
@@ -239,6 +238,15 @@ var zoneStepFsmCmd = &cobra.Command{
 		}
 
 		zr, _ = SendZoneCommand(zone, data)
+		zm = zr.Zones
+
+		if zr.Msg != "" {
+		   fmt.Printf("%s\n", zr.Msg)
+		}
+		z := zr.Zones[zone]
+		if z.StopReason != "" {
+		   fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
+		}
 
 		if zr.Error {
 			fmt.Printf("Error: %s\n", zr.ErrorMsg)

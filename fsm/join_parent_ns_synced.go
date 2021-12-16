@@ -15,13 +15,13 @@ var FsmJoinParentNsSynced = music.FSMTransition{
 	MermaidActionDesc:   "Remove CSYNC RR from all signers",
 	MermaidPostCondDesc: "Verify that CSYNC has been removed from all signers",
 
-	Criteria:      fsmJoinParentNsSyncedCriteria,
-	PreCondition:  fsmJoinParentNsSyncedCriteria,
-	Action:        fsmJoinParentNsSyncedAction,
+	Criteria:      JoinParentNsSyncedCriteria,
+	PreCondition:  JoinParentNsSyncedCriteria,
+	Action:        JoinParentNsSyncedAction,
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func fsmJoinParentNsSyncedCriteria(z *music.Zone) bool {
+func JoinParentNsSyncedCriteria(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
 	log.Printf("%s: Verifying that NSes are in sync in the parent", z.Name)
@@ -92,7 +92,7 @@ func fsmJoinParentNsSyncedCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmJoinParentNsSyncedAction(z *music.Zone) bool {
+func JoinParentNsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CSYNC record sets", z.Name)
 
 	csync := new(dns.CSYNC)

@@ -8,13 +8,15 @@ import (
         music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-var FsmLeaveAddCdscdnskeys = music.FSMTransition{
+var FsmLeaveAddCDS = music.FSMTransition{
 	Description: "Once all DNSKEYs are correct in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-	Criteria:    fsmLeaveAddCdscdnskeysCriteria,
-	Action:      fsmLeaveAddCdscdnskeysAction,
+	Criteria:    	 LeaveAddCDSCriteria,
+	PreCondition:    LeaveAddCDSCriteria,
+	Action:      	 LeaveAddCDSAction,
+	PostCondition:	 func (z *music.Zone) bool { return true },
 }
 
-func fsmLeaveAddCdscdnskeysCriteria(z *music.Zone) bool {
+func LeaveAddCDSCriteria(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -76,7 +78,7 @@ func fsmLeaveAddCdscdnskeysCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveAddCdscdnskeysAction(z *music.Zone) bool {
+func LeaveAddCDSAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	cdses := []dns.RR{}
@@ -119,7 +121,8 @@ func fsmLeaveAddCdscdnskeysAction(z *music.Zone) bool {
 		log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets", z.Name, signer.Name)
 	}
 
-	z.StateTransition(FsmStateDnskeysSynced, FsmStateCdscdnskeysAdded)
+	// State transitions are managed in ZoneStepFsm()
+	// z.StateTransition(FsmStateDnskeysSynced, FsmStateCDSAdded)
 	return true
 }
 
