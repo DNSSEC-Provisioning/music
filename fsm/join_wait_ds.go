@@ -181,7 +181,9 @@ func JoinWaitDsAction(z *music.Zone) bool {
 		log.Printf("%s: Update %s successfully with NS record sets", z.Name, signer.Name)
 	}
 
-	z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
+	// XXX: What should we do here? If we don't do the state transition
+	//      then the delete is wrong. 
+	// z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
 	delete(zoneWaitDs, z.Name)
 	return true
 }

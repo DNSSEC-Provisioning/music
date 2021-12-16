@@ -159,7 +159,9 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 		return fmt.Errorf("Fetch of %s RRset failed, RCODE = %s", dns.TypeToString[rrtype], dns.RcodeToString[r.MsgHdr.Rcode]), []dns.RR{}
 	}
 
-	log.Printf("Length of Answer from %s: %d RRs\n", signer.Name, len(r.Answer))
+	log.Printf("Length of %s answer from %s: %d RRs\n",
+			   dns.TypeToString[rrtype],
+			   signer.Name, len(r.Answer))
 
 	var rrs []dns.RR
 

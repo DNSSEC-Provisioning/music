@@ -30,7 +30,7 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
-		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
+		// log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
@@ -47,14 +47,16 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 		}
 
 		if len(dnskeys[s.Name]) > 0 {
-			log.Printf("%s: Fetched DNSKEYs from %s:", z.Name, s.Name)
+		   	keys := ""
 			for _, k := range dnskeys[s.Name] {
 				if f := k.Flags & 0x101; f == 256 {
-					log.Printf("%s: - %d (ZSK) %s...", z.Name, int(k.KeyTag()), k.PublicKey[:30])
+					keys += fmt.Sprintf("%d (ZSK) ", int(k.KeyTag()))
 				} else {
-					log.Printf("%s: - %d (KSK) %s...", z.Name, int(k.KeyTag()), k.PublicKey[:30])
+					keys += fmt.Sprintf("%d (KSK) ", int(k.KeyTag()))
 				}
 			}
+			log.Printf("Fetched %s DNSKEYs from %s: %s", z.Name,
+					    s.Name, keys)
 		} else {
 			log.Printf("%s: No DNSKEYs found in %s", z.Name, s.Name)
 		}
@@ -152,8 +154,8 @@ func VerifyCdsPublished(z *music.Zone) bool {
 
 	// cdses := []dns.RR{}
 	// cdnskeys := []dns.RR{}
-	cdsmap := map[uint16]*dns.CDS{}
-	cdsmap2 := map[uint16]*dns.CDS{}
+	cdsmap := map[uint16]*dns.CDS{}    // cdsmap: map of CDS RRs created from all KSKs from all signers
+	cdsmap2 := map[uint16]*dns.CDS{}   // cdsmap2: map of all CDS RRs found by querying all signers
 
 	cdnskeymap := map[uint16]*dns.CDNSKEY{}
 	cdnskeymap2 := map[uint16]*dns.CDNSKEY{}
@@ -179,6 +181,11 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			}
 		}
 	}
+	keyids := []uint16{}
+	for k, _ := range cdsmap {
+	    keyids = append(keyids, k)
+	}
+	log.Printf("Verify Publication of CDS: there are KSKs at the signers with the following keytags: %v\n", keyids)
 
 	// Check against published CDS/CDNSKEY RRsets.
 	for _, signer := range z.SGroup.SignerMap {
@@ -191,8 +198,7 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			log.Printf("%s\n", stopreason)
 			return false
 		}
-		err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, z.Name,
-			dns.StringToType["CDNSKEY"])
+		err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDNSKEY)
 		if err != nil {
 			stopreason := fmt.Sprintf("%s: Unable to fetch CDNSKEY RRset from %s: %v",
 				z.Name, signer.Name, err)
@@ -201,12 +207,12 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			return false
 		}
 
-		for _, cdsrr := range cdsrrs {
+		for _, cdsrr := range cdsrrs {		// check all CDS RRs from this signer
 			cds, ok := cdsrr.(*dns.CDS)
 			if !ok {
 				continue
 			}
-			cdsmap2[cds.KeyTag] = cds
+			cdsmap2[cds.KeyTag] = cds	// put the CDS into cdsmap2
 			if _, exist := cdsmap[cds.KeyTag]; !exist {
 			      	stopreason := fmt.Sprintf("CDS RR with keyid=%d published by signer %s should not exist", cds.KeyTag, signer.Name)
 			        err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)

@@ -249,20 +249,22 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Error from Exchange: %v. Returning response chan + call stack\n", err)
 		fdop.Response <- SignerOpResult{ Error: err}
-		// fmt.Printf("RLDdnsFetchRRset: post response chan after exchange error\n", err)
 		return false, 0, nil
 	}
 
 	if r.MsgHdr.Rcode != dns.RcodeSuccess {
-		err = fmt.Errorf("Fetch of %s RRset failed, RCODE = %s", dns.TypeToString[rrtype],
-		      			      	    	    	    	 dns.RcodeToString[r.MsgHdr.Rcode])
-		fmt.Printf("RLDdnsFetchRRset: Rcode error: %v. Returning response chan + call stack\n", err)
+		err = fmt.Errorf("Fetch of %s RRset failed, RCODE = %s",
+		      			dns.TypeToString[rrtype],
+					dns.RcodeToString[r.MsgHdr.Rcode])
+		// fmt.Printf("RLDdnsFetchRRset: Rcode error: %v. Returning response chan + call stack\n", err)
 		fdop.Response <- SignerOpResult{Error: err}
 		// fmt.Printf("RLDdnsFetchRRset: post response chan after rcode error\n", err)
 		return false, 0, nil
 	}
 
-	log.Printf("RLDDNS: Length of Answer from %s: %d RRs\n", signer.Name, len(r.Answer))
+	log.Printf("RLDDNS: Length of %s answer from %s: %d RRs\n",
+			    dns.TypeToString[rrtype], signer.Name,
+			    len(r.Answer))
 
 	var rrs []dns.RR
 

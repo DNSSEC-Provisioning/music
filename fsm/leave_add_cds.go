@@ -10,8 +10,10 @@ import (
 
 var FsmLeaveAddCDS = music.FSMTransition{
 	Description: "Once all DNSKEYs are correct in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-	Criteria:    LeaveAddCDSCriteria,
-	Action:      LeaveAddCDSAction,
+	Criteria:    	 LeaveAddCDSCriteria,
+	PreCondition:    LeaveAddCDSCriteria,
+	Action:      	 LeaveAddCDSAction,
+	PostCondition:	 func (z *music.Zone) bool { return true },
 }
 
 func LeaveAddCDSCriteria(z *music.Zone) bool {
@@ -119,8 +121,8 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets", z.Name, signer.Name)
 	}
 
-	// this should be removed, state transition is managed in fsmops.go
-	z.StateTransition(FsmStateDnskeysSynced, FsmStateCDSAdded)
+	// State transitions are managed in ZoneStepFsm()
+	// z.StateTransition(FsmStateDnskeysSynced, FsmStateCDSAdded)
 	return true
 }
 

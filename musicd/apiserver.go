@@ -235,7 +235,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			// var zones map[string]music.Zone
 			// var success bool
 			// err, resp.Msg, zones = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
-			log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
+			// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
 			var success bool
 			success, err, resp.Msg = mdb.ZoneStepFsm(dbzone, zp.FsmNextState)
 			if err != nil {
@@ -249,12 +249,9 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
 			dbzone, _ = mdb.ApiGetZone(dbzone.Name) // apisafe
 			if !success {
-			   resp.Error = true
 			   _, dbzone.StopReason = mdb.ZoneGetMeta(dbzone, "stop-reason")
 			}
-			log.Printf("APISERVER: STEP-FSM: post GetZone\n")
 			resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
-			log.Printf("APISERVER: STEP-FSM: resp: %v\n", resp)
 			err = json.NewEncoder(w).Encode(resp)
 			if err != nil {
 			   log.Printf("Error from Encoder: %v\n", err)

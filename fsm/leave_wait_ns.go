@@ -17,11 +17,18 @@ func init() {
 
 var FsmLeaveWaitNs = music.FSMTransition{
 	Description: "Wait enough time for parent NS records to propagate (criteria), then continue (NO action)",
-	Criteria:    fsmLeaveWaitNsCriteria,
-	Action:      fsmLeaveWaitNsAction,
+	MermaidCriteriaDesc: "Wait long enough for parent NS records to propagate",
+	MermaidPreCondDesc:  "Wait long enough for parent NS records to propagate",
+	MermaidActionDesc:   "Continue after waiting (no action)",
+	MermaidPostCondDesc: "None",
+	
+	Criteria:	LeaveWaitNsCriteria,
+	PreCondition:   LeaveWaitNsCriteria,
+	Action:      	LeaveWaitNsAction,
+	PostCondition:	func (z *music.Zone) bool { return true },
 }
 
-func fsmLeaveWaitNsCriteria(z *music.Zone) bool {
+func LeaveWaitNsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
@@ -124,7 +131,8 @@ func fsmLeaveWaitNsCriteria(z *music.Zone) bool {
 	return false
 }
 
-func fsmLeaveWaitNsAction(z *music.Zone) bool {
+func LeaveWaitNsAction(z *music.Zone) bool {
+     	// XXX: What should we do about the delete() after the state transition?
 	z.StateTransition(FsmStateParentNsSynced, FsmStateNsPropagated)
 	delete(zoneWaitNs, z.Name)
 	return true
