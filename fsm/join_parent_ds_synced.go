@@ -16,13 +16,13 @@ var FsmJoinParentDsSynced = music.FSMTransition{
 	MermaidActionDesc:   "Remove all CDS/CDNSKEYs",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs are removed",
 
-	Criteria:      fsmJoinParentDsSyncedCriteria,
-	PreCondition:  fsmJoinParentDsSyncedCriteria,
-	Action:        fsmJoinParentDsSyncedAction,
-	PostCondition: fsmVerifyCdsRemoved,
+	Criteria:      JoinParentDsSyncedCriteria,
+	PreCondition:  JoinParentDsSyncedCriteria,
+	Action:        JoinParentDsSyncedAction,
+	PostCondition: VerifyCdsRemoved,
 }
 
-func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
+func JoinParentDsSyncedCriteria(z *music.Zone) bool {
 	cdses := make(map[string][]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
@@ -74,7 +74,8 @@ func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
 			continue
 		}
 
-		log.Printf("%s: Parent DS found: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+		log.Printf("%s: Parent DS found: %d %d %d %s", z.Name, ds.KeyTag,
+				       	  ds.Algorithm, ds.DigestType, ds.Digest)
 		dses = append(dses, ds)
 	}
 
@@ -83,7 +84,8 @@ func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 	for _, keys := range cdses {
 		for _, key := range keys {
-			cdsmap[fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm, key.DigestType, key.Digest)] = key
+			cdsmap[fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm,
+					       key.DigestType, key.Digest)] = key
 			delete(removedses, fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm, key.DigestType, key.Digest))
 		}
 	}
@@ -91,17 +93,17 @@ func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
 		delete(cdsmap, fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
 	}
 	for _, cds := range cdsmap {
-		err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
+		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
 		if err != nil {
-			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
 		parent_up_to_date = false
 	}
 	for _, ds := range removedses {
-		err, _ = z.MusicDB.ZoneMeta(z, "stop-reason", fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
+		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
 		if err != nil {
-			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneMeta: %v\n", err)
+			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
 		parent_up_to_date = false // TODO: should unknown DS be allowed?
@@ -115,7 +117,7 @@ func fsmJoinParentDsSyncedCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmJoinParentDsSyncedAction(z *music.Zone) bool {
+func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	cds := new(dns.CDS)
@@ -137,7 +139,7 @@ func fsmJoinParentDsSyncedAction(z *music.Zone) bool {
 	return true
 }
 
-func fsmVerifyCdsRemoved(z *music.Zone) bool {
+func VerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
 
 	for _, signer := range z.SGroup.SignerMap {

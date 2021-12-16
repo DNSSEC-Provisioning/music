@@ -31,8 +31,8 @@ func (u *DdnsUpdater) GetApi() Api {
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	inserts, removes *[][]dns.RR) error {
-	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
-		signer.Name, fqdn, inserts, removes)
+	// log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
+	// 	signer.Name, fqdn, inserts, removes)
 	inserts_len := 0
 	removes_len := 0
 	if inserts != nil {
@@ -45,6 +45,8 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 			removes_len += len(remove)
 		}
 	}
+	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
+	 	signer.Name, fqdn, inserts_len, removes_len)
 	if inserts_len == 0 && removes_len == 0 {
 		return fmt.Errorf("Inserts and removes empty, nothing to do")
 	}

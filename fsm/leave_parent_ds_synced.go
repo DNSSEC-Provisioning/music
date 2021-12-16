@@ -8,7 +8,19 @@ import (
         music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func fsmLeaveParentDsSyncedCriteria(z *music.Zone) bool {
+var FsmLeaveParentDsSynced = music.FSMTransition{
+	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers and STOP (action)",
+	MermaidCriteriaDesc: "Wait for parent to pick up CDS/CDNSKEYs and update the DS record(s)",
+	MermaidPreCondDesc:  "",
+	MermaidActionDesc:   "Remove CDS/CDNSKEYs from all signers",
+	MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs have been removed",
+	Criteria:    	     LeaveParentDsSyncedCriteria,
+	PreCondition:	     func(z *music.Zone) bool { return true },
+	Action:		     LeaveParentDsSyncedAction,
+	PostCondition:	     func(z *music.Zone) bool { return true },
+}
+
+func LeaveParentDsSyncedCriteria(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
@@ -66,7 +78,7 @@ func fsmLeaveParentDsSyncedCriteria(z *music.Zone) bool {
 	return true
 }
 
-func fsmLeaveParentDsSyncedAction(z *music.Zone) bool {
+func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	cds := new(dns.CDS)
@@ -85,15 +97,11 @@ func fsmLeaveParentDsSyncedAction(z *music.Zone) bool {
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
 	}
 
-	z.StateTransition(FsmStateCdscdnskeysAdded, FsmStateParentDsSynced)
+	// this should be removed
+	z.StateTransition(FsmStateCDSAdded, FsmStateParentDsSynced)
 	return true
 
 	// TODO: remove state/metadata around leaving signer
 	//       tables: zone_dnskeys, zone_nses
 }
 
-var FsmLeaveParentDsSynced = music.FSMTransition{
-	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers and STOP (action)",
-	Criteria:    fsmLeaveParentDsSyncedCriteria,
-	Action:      fsmLeaveParentDsSyncedAction,
-}

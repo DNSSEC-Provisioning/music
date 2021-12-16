@@ -60,8 +60,8 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 	inserts := udop.Inserts
 	removes := udop.Removes
 
-	log.Printf("RLDDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
-		signer.Name, owner, inserts, removes)
+	// log.Printf("RLDDNS Updater: signer: %s, fqdn: %s inserts: %v removes: %v\n",
+	// 	signer.Name, owner, inserts, removes)
 	inserts_len := 0
 	removes_len := 0
 	if inserts != nil {
@@ -74,6 +74,8 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 			removes_len += len(remove)
 		}
 	}
+	log.Printf("RLDDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
+	 	signer.Name, owner, inserts_len, removes_len)
 
 	var err error
 	if inserts_len == 0 && removes_len == 0 {

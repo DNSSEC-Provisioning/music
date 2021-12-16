@@ -12,7 +12,7 @@ import (
 const (
 	FsmStateSignerUnsynced   = "signers-unsynced"
 	FsmStateDnskeysSynced    = "dnskeys-synced"
-	FsmStateCdscdnskeysAdded = "cdscdnskeys-added"
+	FsmStateCDSAdded         = "cds-added"
 	FsmStateParentDsSynced   = "parent-ds-synced"
 	FsmStateDsPropagated     = "ds-propagated"
 	FsmStateCsyncAdded       = "csync-added"
@@ -109,9 +109,9 @@ DS and NS RRsets in the parent.`,
 				Next: map[string]music.FSMTransition{FsmStateDnskeysSynced: FsmJoinSyncDnskeys},
 			},
 			FsmStateDnskeysSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateCdscdnskeysAdded: FsmJoinAddCdscdnskeys},
+				Next: map[string]music.FSMTransition{FsmStateCDSAdded: FsmJoinAddCDS},
 			},
-			FsmStateCdscdnskeysAdded: music.FSMState{
+			FsmStateCDSAdded: music.FSMState{
 				Next: map[string]music.FSMTransition{FsmStateParentDsSynced: FsmJoinParentDsSynced},
 			},
 			FsmStateParentDsSynced: music.FSMState{
@@ -161,9 +161,9 @@ as that would cause the attached zones to have to go unsigned.`,
 				Next: map[string]music.FSMTransition{FsmStateDnskeysSynced: FsmLeaveSyncDnskeys},
 			},
 			FsmStateDnskeysSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateCdscdnskeysAdded: FsmLeaveAddCdscdnskeys},
+				Next: map[string]music.FSMTransition{FsmStateCDSAdded: FsmLeaveAddCDS},
 			},
-			FsmStateCdscdnskeysAdded: music.FSMState{
+			FsmStateCDSAdded: music.FSMState{
 				Next: map[string]music.FSMTransition{FsmStateParentDsSynced: FsmLeaveParentDsSynced},
 			},
 			FsmStateParentDsSynced: music.FSMState{

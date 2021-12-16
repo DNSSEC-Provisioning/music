@@ -22,13 +22,13 @@ var FsmJoinWaitDs = music.FSMTransition{
 	MermaidActionDesc:   "Sync NS RRsets between all signers",
 	MermaidPostCondDesc: "Verify that NS RRsets are in sync",
 
-	Criteria:      fsmJoinWaitDsCriteria,
-	PreCondition:  fsmJoinWaitDsCriteria,
-	Action:        fsmJoinWaitDsAction,
+	Criteria:      JoinWaitDsCriteria,
+	PreCondition:  JoinWaitDsCriteria,
+	Action:        JoinWaitDsAction,
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func fsmJoinWaitDsCriteria(z *music.Zone) bool {
+func JoinWaitDsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
@@ -101,7 +101,7 @@ func fsmJoinWaitDsCriteria(z *music.Zone) bool {
 	return false
 }
 
-func fsmJoinWaitDsAction(z *music.Zone) bool {
+func JoinWaitDsAction(z *music.Zone) bool {
 	log.Printf("%s: Fetch all NS records from all signers", z.Name)
 
 	nses := make(map[string][]*dns.NS)
@@ -158,7 +158,7 @@ func fsmJoinWaitDsAction(z *music.Zone) bool {
 	}
 
 	// TODO: is this needed here also?
-	//       Old code made sure the configured NS for each singer was added
+	//       Old code made sure the configured NS for each signer was added
 	// for _, signer := range signers {
 	//     ns := Config.Get("signer-ns:"+signer, "")
 	//     if ns == "" {
