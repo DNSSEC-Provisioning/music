@@ -68,6 +68,7 @@ rdata       TEXT
 id         INTEGER PRIMARY KEY,
 zone       TEXT,
 key        TEXT,
+time	   DATETIME,
 value      TEXT,
 UNIQUE (zone, key)
 )`,

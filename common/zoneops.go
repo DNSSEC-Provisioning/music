@@ -83,7 +83,7 @@ func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, value) VALUES (?, ?, ?)")
+	stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
 	if err != nil {
 		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
 	}

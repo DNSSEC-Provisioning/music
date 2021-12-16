@@ -249,7 +249,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
 			dbzone, _ = mdb.ApiGetZone(dbzone.Name) // apisafe
 			if !success {
-			   resp.Error = true
 			   _, dbzone.StopReason = mdb.ZoneGetMeta(dbzone, "stop-reason")
 			}
 			log.Printf("APISERVER: STEP-FSM: post GetZone\n")
