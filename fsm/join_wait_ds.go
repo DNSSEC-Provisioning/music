@@ -1,11 +1,12 @@
 package fsm
 
 import (
+	"fmt"
 	"log"
 	"time"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var zoneWaitDs map[string]time.Time // Issue #34: using local store for now
@@ -31,24 +32,29 @@ var FsmJoinWaitDs = music.FSMTransition{
 func JoinWaitDsCriteria(z *music.Zone) bool {
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
-			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
+			stopreason := fmt.Sprintf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
+			err, _ := z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			if err != nil {
+				log.Printf("JoinWaitDsCriteria Couldn't update stop-reason \n")
+			}
+			log.Printf("%s\n", stopreason)
 			return false
 		}
 		log.Printf("%s: Waited enough for DS, critera fullfilled", z.Name)
 		return true
 	}
 
-	log.Printf("%s: Fetching DNSKEYs and DSes to calculate DS wait until", z.Name)
+	log.Printf("JoinWaitDsCriteria: %s: Fetching DNSKEYs and DSes to calculate DS wait until", z.Name)
 
 	var ttl uint32
 
 	for _, signer := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(signer.Method)
-		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
+		log.Printf("JoinWaitDsCriteria: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			log.Printf("JoinWaitDsCriteria: Error from updater.FetchRRset: %v\n", err)
 		}
 
 		for _, a := range rrs {
@@ -75,7 +81,9 @@ func JoinWaitDsCriteria(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		log.Printf("%s: Unable to fetch DSes from parent: %s", z.Name, err)
+		stopreason := fmt.Sprintf("%s: Unable to fetch DSes from parent: %s", z.Name, err)
+		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+		log.Printf("%s\n", stopreason)
 		return false
 	}
 
@@ -94,7 +102,9 @@ func JoinWaitDsCriteria(z *music.Zone) bool {
 	// TODO: static wait time to enable faster testing
 	until := time.Now().Add((time.Duration(5) * time.Second))
 
-	log.Printf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl, until.String(), time.Until(until).String())
+	stopreason := fmt.Sprintf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl, until.String(), time.Until(until).String())
+	err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+	log.Printf("%s\n", stopreason)
 
 	zoneWaitDs[z.Name] = until
 
@@ -102,7 +112,7 @@ func JoinWaitDsCriteria(z *music.Zone) bool {
 }
 
 func JoinWaitDsAction(z *music.Zone) bool {
-	log.Printf("%s: Fetch all NS records from all signers", z.Name)
+	log.Printf("JoinWaitDsAction: %s: Fetch all NS records from all signers", z.Name)
 
 	nses := make(map[string][]*dns.NS)
 
@@ -111,7 +121,9 @@ func JoinWaitDsAction(z *music.Zone) bool {
 		log.Printf("JoinWaitDsAction: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
+			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			log.Printf("%s\n", stopreason)
 		}
 
 		nses[signer.Name] = []*dns.NS{}
@@ -175,14 +187,16 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
-			log.Printf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
+			stopreason := fmt.Sprintf("%s: Unable to update %s with NS record sets: %s", z.Name, signer.Name, err)
+			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			log.Printf("%s\n", stopreason)
 			return false
 		}
 		log.Printf("%s: Update %s successfully with NS record sets", z.Name, signer.Name)
 	}
 
 	// XXX: What should we do here? If we don't do the state transition
-	//      then the delete is wrong. 
+	//      then the delete is wrong.
 	// z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
 	delete(zoneWaitDs, z.Name)
 	return true
