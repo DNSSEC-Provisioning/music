@@ -15,13 +15,13 @@ var FsmJoinAddCDS = music.FSMTransition{
 	MermaidPreCondDesc:  "Wait for all DNSKEY RRsets to be consistent",
 	MermaidActionDesc:   "Compute and publish CDS/CDNSKEY RRsets on all signers",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEY RRs are published",
-	Criteria:            JoinAddCdsCriteria,
-	PreCondition:        JoinAddCdsCriteria,
+	Criteria:            JoinAddCdsPreCondition,
+	PreCondition:        JoinAddCdsPreCondition,
 	Action:              JoinAddCdsAction,
 	PostCondition:       VerifyCdsPublished,
 }
 
-func JoinAddCdsCriteria(z *music.Zone) bool {
+func JoinAddCdsPreCondition(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
 
 	log.Printf("Add CDS/CDNSKEY:\n")
@@ -30,10 +30,9 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
-		// log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v\n", s.Name, err)
 		}
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
@@ -58,7 +57,7 @@ func JoinAddCdsCriteria(z *music.Zone) bool {
 			log.Printf("Fetched %s DNSKEYs from %s: %s", z.Name,
 					    s.Name, keys)
 		} else {
-			log.Printf("%s: No DNSKEYs found in %s", z.Name, s.Name)
+			log.Printf("JoinAddCdsPreCondition: %s: No DNSKEYs found in %s", z.Name, s.Name)
 		}
 	}
 

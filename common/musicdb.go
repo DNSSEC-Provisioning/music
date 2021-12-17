@@ -21,7 +21,8 @@ name        TEXT,
 state       TEXT,
 statestamp  DATETIME,
 fsm         TEXT,
-sgroup      TEXT
+sgroup      TEXT,
+UNIQUE (name, sgroup)
 )`,
 
 	"zone_dnskeys": `CREATE TABLE IF NOT EXISTS 'zone_dnskeys' (
@@ -52,7 +53,9 @@ sgroup      TEXT
 
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
 id          INTEGER PRIMARY KEY,
-name        TEXT
+name        TEXT,
+signer	    TEXT,
+UNIQUE (name, signer)
 )`,
 
 	"records": `CREATE TABLE IF NOT EXISTS 'records' (

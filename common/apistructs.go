@@ -92,8 +92,9 @@ type ZoneResponse struct {
 }
 
 type SignerPost struct {
-	Command string
-	Signer  Signer
+	Command         string
+	Signer		Signer
+	SignerGroup	string
 }
 
 type SignerResponse struct {

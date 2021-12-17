@@ -25,7 +25,7 @@ func (s *Signer) MusicDB() *MusicDB {
 	return s.DB
 }
 
-func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
+func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	var err error
 	if dbsigner.Exists {
 		return fmt.Errorf("Signer %s already present in system.",
@@ -68,6 +68,15 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
 			dbsigner.Address)
 		return err, ""
 	}
+
+	if group != "" {
+		fmt.Printf("AddSigner: notice that the signer %s has the signergroup %s specified so we set that too\n", dbsigner.Name, group)
+		dbsigner, _ := mdb.GetSigner(dbsigner, false) // no need for apisafe
+		mdb.SignerJoinGroup(dbsigner, group) // we know that the signer exist
+		return nil, fmt.Sprintf(
+			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
+	}
+
 	fmt.Printf("AddSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.Auth, dbsigner.Address)
 	return nil, fmt.Sprintf("New signer %s successfully added.",
@@ -156,12 +165,16 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 // 	}, err
 // }
 
+const (
+	SJGsql2 = "INSERT OR IGNORE INTO signergroups (name, signer) VALUES (?, ?)"
+)
+
 // SignerJoinGroup(): add an already defined signer to an already
 // defined signer group.
 //
 // Note: this should trigger all zones attached to this signer group to enter
 // the "add-signer" process.
-//
+
 func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) {
 	var sg *SignerGroup
 	var err error
@@ -182,6 +195,15 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	}
 	_, err = stmt.Exec(g, dbsigner.Name)
 	if CheckSQLError("SignerJoinGroup", sqlcmd, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	stmt, err := mdb.db.Prepare(SJGsql2)
+	if err != nil {
+		fmt.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
+	}
+	_, err = stmt.Exec(g, dbsigner.Name)
+	if CheckSQLError("SignerJoinGroup", SJGsql2, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}

@@ -148,6 +148,7 @@ func AddSigner() error {
 			Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 			Address: signeraddress,
 		},
+		SignerGroup: sgroupname, // may be unspecified
 	}
 
 	bytebuf := new(bytes.Buffer)
