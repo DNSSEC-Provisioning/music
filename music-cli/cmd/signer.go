@@ -391,15 +391,16 @@ func ListSigners() error {
 
 	var out []string
 	if cliconf.Verbose || showheaders {
-		out = append(out, "Signer|Method|Address|SignerGroup")
+		out = append(out, "Signer|Method|Address|SignerGroups")
 	}
 
 	for _, v := range sr.Signers {
-		group := "---"
-		if v.SignerGroup != "" {
-			group = v.SignerGroup
+		groups := []string{"---"}
+		if len(v.SignerGroups) != 0 {
+			groups = v.SignerGroups
 		}
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s", v.Name, v.Method, v.Address, group))
+		gs := strings.Join(groups, ", ")
+		out = append(out, fmt.Sprintf("%s|%s|%s|%s", v.Name, v.Method, v.Address, gs))
 	}
 	fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	return nil

@@ -54,7 +54,8 @@ type Signer struct {
 	Method      string // "ddns" | "desec" | ...
 	Address     string
 	Auth        string // AuthDataTmp // TODO: Issue #28
-	SignerGroup string
+	SignerGroup string  // single signer group for join/leave
+	SignerGroups []string // all signer groups signer is member of
 	DB          *MusicDB
 }
 

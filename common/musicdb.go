@@ -119,25 +119,60 @@ func NewDB(force bool) *MusicDB {
 	}
 	dbSetupTables(db)
 	var mdb = MusicDB{
-			db: db,
-			FSMlist: map[string]FSM{},
-		  }
-        return &mdb
+		db:      db,
+		FSMlist: map[string]FSM{},
+	}
+	return &mdb
 }
 
 func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
-     return mdb.db.Prepare(sqlq)
+	return mdb.db.Prepare(sqlq)
+}
+
+const (
+	GSGsql = "SELECT name FROM signergroups WHERE signer=?"
+)
+
+func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
+	var sgs = []string{}
+	stmt, err := mdb.db.Prepare(GSGsql)
+	if err != nil {
+		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql, err)
+	}
+
+	rows, err := stmt.Query(name)
+	if CheckSQLError("GetSignerGroups", GSGsql, err, false) {
+		return []string{}, err
+	} else {
+		var signergroup string
+		for rows.Next() {
+			err := rows.Scan(&signergroup)
+			if err != nil {
+				log.Fatalf("signer.GetSignerGroups(): Error from rows.Next(): %v", err)
+			} else {
+				sgs = append(sgs, signergroup)
+			}
+		}
+	}
+	return sgs, nil
 }
 
 func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, error) {
 	return mdb.GetSigner(&Signer{Name: signername}, apisafe)
 }
 
+const (
+	GSsql = `
+SELECT name, method, auth,
+  COALESCE (addr, '') AS address,
+  COALESCE (sgroup, '') AS signergroup
+FROM signers WHERE name=?`
+)
+
 func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
-	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.db.Prepare(GSsql)
 	if err != nil {
-		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
+		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
 	}
 
 	row := stmt.QueryRow(s.Name)
@@ -157,18 +192,23 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 	case nil:
 		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name,
 		// 			  method, auth, address, signergroup)
+		sgs, err := mdb.GetSignerGroups(s.Name)
+		if err != nil {
+		   log.Fatalf("mdb.GetSigner: Error from signer.GetSignerGroups: %v", err)
+		}
+		
 		dbref := mdb
 		if apisafe {
-	   	   dbref = nil
+			dbref = nil
 		}
 		return &Signer{
-			Name:        name,
-			Exists:      true,
-			Method:      method,
-			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
-			Address:     address,
-			SignerGroup: signergroup,
-			DB:          dbref,
+			Name:         name,
+			Exists:       true,
+			Method:       method,
+			Auth:         auth, // AuthDataTmp(auth), // TODO: Issue #28
+			Address:      address,
+			SignerGroups: sgs,
+			DB:           dbref,
 		}, nil
 
 	default:
