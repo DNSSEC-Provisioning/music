@@ -135,7 +135,7 @@ const (
 
 func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
 	var sgs = []string{}
-	stmt, err := mdb.db.Prepare(GSGsql)
+	stmt, err := mdb.Prepare(GSGsql)
 	if err != nil {
 		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql, err)
 	}
@@ -170,7 +170,7 @@ FROM signers WHERE name=?`
 )
 
 func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
-	stmt, err := mdb.db.Prepare(GSsql)
+	stmt, err := mdb.Prepare(GSsql)
 	if err != nil {
 		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
 	}

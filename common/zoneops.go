@@ -27,7 +27,7 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	}
 
 	sqlq := "INSERT INTO zones(name, state, statestamp, fsm) VALUES (?, ?, datetime('now'), ?)"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("Error in SQL prepare: %v", err)
 	}
@@ -56,7 +56,7 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("DELETE FROM zones WHERE name=?")
+	stmt, err := mdb.Prepare("DELETE FROM zones WHERE name=?")
 	if err != nil {
 		fmt.Printf("DeleteZone: Error from db.Prepare: %v\n", err)
 	}
@@ -64,9 +64,9 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	if err != nil {
 		fmt.Printf("DeleteZone: Error from stmt.Exec: %v\n", err)
 	}
-	stmt, err = mdb.db.Prepare("DELETE FROM records WHERE zone=?")
+	stmt, err = mdb.Prepare("DELETE FROM records WHERE zone=?")
 	_, err = stmt.Exec(z.Name)
-	stmt, err = mdb.db.Prepare("DELETE FROM metadata WHERE zone=?")
+	stmt, err = mdb.Prepare("DELETE FROM metadata WHERE zone=?")
 	_, err = stmt.Exec(z.Name)
 
 	if CheckSQLError("DeleteZone", "DELETE FROM ... WHERE zone=...", err, false) {
@@ -83,7 +83,7 @@ func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
+	stmt, err := mdb.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
 	if err != nil {
 		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
 	}
@@ -104,7 +104,7 @@ func (mdb *MusicDB) ZoneGetMeta(z *Zone, key string) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+	stmt, err := mdb.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
 	if err != nil {
 		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
 	}
@@ -147,7 +147,7 @@ func (z *Zone) StateTransition(from, to string) error {
 	}
 
 	sqlq := "UPDATE zones SET state=?, fsm=? WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("Error from db.Prepare: %v\n", err)
 	}
@@ -178,7 +178,7 @@ func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
 
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("GetZone: Error from db.Prepare: %v\n", err)
 	}
@@ -231,7 +231,7 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 	var zones = []*Zone{}
 
 	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm FROM zones WHERE sgroup=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("GetSignerGroupZones: Error from db.Prepare: %v\n", err)
 	}
@@ -300,7 +300,7 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 
 	mdb.mu.Lock()
 	sqlq := "UPDATE zones SET sgroup=? WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("ZoneJoinGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -350,7 +350,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 
 	mdb.mu.Lock()
 	sqlq := "UPDATE zones SET sgroup='' WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("ZoneLeaveGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -377,7 +377,7 @@ FROM zones`
 func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	var zl = make(map[string]Zone, 10)
 
-	stmt, err := mdb.db.Prepare(LZsqlq)
+	stmt, err := mdb.Prepare(LZsqlq)
 	if err != nil {
 		fmt.Printf("ListZones: Error from db.Prepare: %v\n", err)
 	}

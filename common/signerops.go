@@ -43,11 +43,11 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	delstmt, err := mdb.db.Prepare("DELETE FROM signers WHERE name=?")
+	delstmt, err := mdb.Prepare("DELETE FROM signers WHERE name=?")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
-	addstmt, err := mdb.db.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
@@ -100,7 +100,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.db.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
+	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
 	if err != nil {
 		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
 	}
@@ -125,7 +125,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 
 // func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
 // 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
-// 	stmt, err := mdb.db.Prepare(sqlcmd)
+// 	stmt, err := mdb.Prepare(sqlcmd)
 // 	if err != nil {
 // 		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
 // 	}
@@ -190,7 +190,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	mdb.mu.Lock()
 	// XXX: this is just wrong. what if the signer is already in another group?
 //	sqlcmd := "UPDATE signers SET sgroup=? WHERE name=?" 
-//	stmt, err := mdb.db.Prepare(sqlcmd)
+//	stmt, err := mdb.Prepare(sqlcmd)
 //	if err != nil {
 //		fmt.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
 //	}
@@ -199,7 +199,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 //		mdb.mu.Unlock()
 //		return err, ""
 //	}
-	stmt, err = mdb.db.Prepare(SJGsql2)
+	stmt, err := mdb.Prepare(SJGsql2)
 	if err != nil {
 		fmt.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -264,7 +264,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	mdb.mu.Lock()
 	// old model: signer group mapping is stored with the signer
 //	sqlcmd := "UPDATE signers SET sgroup='' WHERE name=?"
-//	stmt, err := mdb.db.Prepare(sqlcmd)
+//	stmt, err := mdb.Prepare(sqlcmd)
 //	if err != nil {
 //		fmt.Printf("SignerLeaveGroup: Error from db.Prepare: %v\n", err)
 //	}
@@ -276,7 +276,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 //	}
 
 	// new model: signer group mapping is stored with the signer group
-	stmt, err = mdb.db.Prepare(SLGsql2)
+	stmt, err := mdb.Prepare(SLGsql2)
 	if err != nil {
 		fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql2, err)
 	}
@@ -322,7 +322,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 				dbsigner.Name, sgs), ""
 	}
 
-	stmt, err := mdb.db.Prepare(DSsql)
+	stmt, err := mdb.Prepare(DSsql)
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql, err)
 	}
@@ -334,7 +334,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 		return err, ""
 	}
 
-	stmt, err = mdb.db.Prepare(DSsql2)
+	stmt, err = mdb.Prepare(DSsql2)
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
 	}
@@ -357,7 +357,7 @@ FROM signers`
 func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	var sl = make(map[string]Signer, 2)
 
-	stmt, err := mdb.db.Prepare(LSIGsql)
+	stmt, err := mdb.Prepare(LSIGsql)
 	if err != nil {
 		fmt.Printf("ListSigners: Error from db.Prepare: %v\n", err)
 	}

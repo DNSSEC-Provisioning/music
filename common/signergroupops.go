@@ -17,11 +17,11 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 	fmt.Printf("AddSignerGroup(%s)\n", group)
 	delcmd := "DELETE FROM signergroups WHERE name=?"
 	addcmd := "INSERT INTO signergroups(name) VALUES (?)"
-	delstmt, err := mdb.db.Prepare(delcmd)
+	delstmt, err := mdb.Prepare(delcmd)
 	if err != nil {
 		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
 	}
-	addstmt, err := mdb.db.Prepare(addcmd)
+	addstmt, err := mdb.Prepare(addcmd)
 	if err != nil {
 		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -47,7 +47,7 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 	}
 
 	sqlcmd := "SELECT name FROM signergroups WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.Prepare(sqlcmd)
 	if err != nil {
 		fmt.Printf("GetSignerGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -85,7 +85,7 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 
 func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 	mdb.mu.Lock()
-	stmt, err := mdb.db.Prepare("DELETE FROM signergroups WHERE name=?")
+	stmt, err := mdb.Prepare("DELETE FROM signergroups WHERE name=?")
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -95,7 +95,7 @@ func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 		return err
 	}
 
-	stmt, err = mdb.db.Prepare("UPDATE signers SET sgroup=? WHERE sgroup=?")
+	stmt, err = mdb.Prepare("UPDATE signers SET sgroup=? WHERE sgroup=?")
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
@@ -136,7 +136,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 	rows.Close()
 
 	for _, sgname := range sgnames {
-		stmt, err := mdb.db.Prepare(LSGsql2)
+		stmt, err := mdb.Prepare(LSGsql2)
 		if err != nil {
 			fmt.Printf("ListSignerGroup: Error from db.Prepare: %v\n", err)
 		}
@@ -176,7 +176,7 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 func (sg *SignerGroup) PopulateSigners() error {
 	mdb := sg.DB
 	sqlcmd := "SELECT name FROM signers WHERE sgroup=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.Prepare(sqlcmd)
 	if err != nil {
 		fmt.Printf("PopulateSigners: Error from db.Prepare: %v\n", err)
 	}
@@ -213,7 +213,7 @@ func (sg *SignerGroup) PopulateSigners() error {
 
 func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[string]*Signer) {
 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.Prepare(sqlcmd)
 	if err != nil {
 		fmt.Printf("GetGroupSigners: Error from db.Prepare: %v\n", err)
 	}
@@ -252,7 +252,7 @@ const (
 )
 
 func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[string]*Signer) {
-	stmt, err := mdb.db.Prepare(GGSNGsql)
+	stmt, err := mdb.Prepare(GGSNGsql)
 	if err != nil {
 		fmt.Printf("GetGroupSigners: Error from db.Prepare '%s': %v\n", GGSNGsql, err)
 	}
