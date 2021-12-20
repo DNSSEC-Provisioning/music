@@ -10,19 +10,18 @@ import (
 
 var FsmLeaveParentNsSynced = music.FSMTransition{
 	Description: "Wait for parent to pick up CSYNC and update it's NS records (criteria), then remove CSYNC from all signers (action)",
-	MermaidCriteriaDesc: "Wait for parent to pick up CSYNC and update the NS records",
+
 	MermaidPreCondDesc:  "Wait for parent to pick up CSYNC and update the NS records",
 	MermaidActionDesc:   "Remove CSYNC records from all signers",
 	MermaidPostCondDesc: "Verify that all CSYNC records have been removed",
 	
-	Criteria:    	 LeaveParentNsSyncedCriteria,
-	PreCondition:    LeaveParentNsSyncedCriteria,
+	PreCondition:    LeaveParentNsSyncedPreCondition,
 	Action:      	 LeaveParentNsSyncedAction,
 	PostCondition:	 func (z *music.Zone) bool { return true },
 }
 
 // Verify that NS records in parent are in synched.
-func LeaveParentNsSyncedCriteria(z *music.Zone) bool {
+func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -151,8 +150,6 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	}
 	log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)
 
-	// State transitions are managed from ZoneStepFsm()
-	// z.StateTransition(FsmStateCsyncAdded, FsmStateParentNsSynced)
 	return true
 }
 

@@ -10,17 +10,17 @@ import (
 
 var FsmLeaveSyncDnskeys = music.FSMTransition{
 	Description: "Once NSes has been propagated (NO criteria), remove DNSKEYs that originated from the leaving signer (Action)",
-	MermaidCriteriaDesc: "todo",
+
 	MermaidPreCondDesc:  "todo",
-	MermaidActionDesc:   "todo",
+	MermaidActionDesc:   "Remove DNSKEYs that originated with the leaving signer",
 	MermaidPostCondDesc: "todo",
-	Criteria:    	 LeaveSyncDnskeysCriteria,
-	PreCondition:    LeaveSyncDnskeysCriteria,
+
+	PreCondition:    LeaveSyncDnskeysPreCondition,
 	Action:      	 LeaveSyncDnskeysAction,
 	PostCondition:	 func (z *music.Zone) bool { return true },
 }
 
-func LeaveSyncDnskeysCriteria(z *music.Zone) bool {
+func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 	return true
 }
 
@@ -93,8 +93,6 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 		}
 	}
 
-	// State transitions are managed from ZoneStepFsm()
-	// z.StateTransition(FsmStateNsPropagated, FsmStateDnskeysSynced)
 	return true
 }
 

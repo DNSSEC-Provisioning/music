@@ -11,18 +11,16 @@ import (
 var FsmJoinParentDsSynced = music.FSMTransition{
 	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers (action)",
 
-	MermaidCriteriaDesc: "Verify that parent DS RRset is updated",
 	MermaidPreCondDesc:  "Verify that parent DS RRset is updated",
 	MermaidActionDesc:   "Remove all CDS/CDNSKEYs",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs are removed",
 
-	Criteria:      JoinParentDsSyncedCriteria,
-	PreCondition:  JoinParentDsSyncedCriteria,
+	PreCondition:  JoinParentDsSyncedPreCondition,
 	Action:        JoinParentDsSyncedAction,
 	PostCondition: VerifyCdsRemoved,
 }
 
-func JoinParentDsSyncedCriteria(z *music.Zone) bool {
+func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	cdses := make(map[string][]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
@@ -46,7 +44,8 @@ func JoinParentDsSyncedCriteria(z *music.Zone) bool {
 				continue
 			}
 
-			log.Printf("%s: Signer %s CDS found: %d %d %d %s", z.Name, s.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
+			log.Printf("%s: Signer %s CDS found: %d %d %d %s", z.Name,
+					s.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
 			cdses[s.Name] = append(cdses[s.Name], cds)
 		}
 	}
@@ -95,7 +94,7 @@ func JoinParentDsSyncedCriteria(z *music.Zone) bool {
 	for _, cds := range cdsmap {
 		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
 		if err != nil {
-			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneSetMeta: %v\n", err)
+			log.Printf("JoinParentDsSynchedPreCondition: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
 		parent_up_to_date = false
@@ -103,7 +102,7 @@ func JoinParentDsSyncedCriteria(z *music.Zone) bool {
 	for _, ds := range removedses {
 		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
 		if err != nil {
-			log.Printf("JoinParentDsSynchedCriteria: Error from ZoneSetMeta: %v\n", err)
+			log.Printf("JoinParentDsSynchedPreCondition: Error from ZoneSetMeta: %v\n", err)
 		}
 		log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
 		parent_up_to_date = false // TODO: should unknown DS be allowed?

@@ -16,11 +16,9 @@ import (
 
 var FsmJoinSyncDnskeys = music.FSMTransition{
 	Description:         "First step when joining, this transistion has no criteria and will sync DNSKEYs between all signers (action)",
-	MermaidCriteriaDesc: "",
 	MermaidPreCondDesc:  "",
 	MermaidActionDesc:   "Update all signer DNSKEY RRsets with all ZSKs",
 	MermaidPostCondDesc: "Verify that all ZSKs are published in signer DNSKEY RRsets",
-	Criteria:            func(z *music.Zone) bool { return true },
 	PreCondition:        func(z *music.Zone) bool { return true },
 	Action:              JoinSyncDnskeys,
 	PostCondition:       VerifyDnskeysSynched,
@@ -28,7 +26,7 @@ var FsmJoinSyncDnskeys = music.FSMTransition{
 
 // XXX: Is it always true that the PostCondition for one action is equal to the PreCondition
 //      for the next action? I think so. I.e. this implementation (VerifyDnskeysSynched) is
-//      extremely similar to the JoinAddCdsCriteria function that is the PreCondition for
+//      extremely similar to the JoinAddCdsPreCondition function that is the PreCondition for
 //      the next step (adding CDS/CDNSKEYs).
 func VerifyDnskeysSynched(z *music.Zone) bool {
 	// 1: for each signer:

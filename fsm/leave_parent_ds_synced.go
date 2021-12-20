@@ -10,17 +10,17 @@ import (
 
 var FsmLeaveParentDsSynced = music.FSMTransition{
 	Description: "Wait for parent to pick up CDS/CDNSKEYs and update it's DS (criteria), then remove CDS/CDNSKEYs from all signers and STOP (action)",
-	MermaidCriteriaDesc: "Wait for parent to pick up CDS/CDNSKEYs and update the DS record(s)",
-	MermaidPreCondDesc:  "",
+
+	MermaidPreCondDesc:  "Wait for parent to pick up CDS/CDNSKEYs and update the DS record(s)",
 	MermaidActionDesc:   "Remove CDS/CDNSKEYs from all signers",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs have been removed",
-	Criteria:    	     LeaveParentDsSyncedCriteria,
-	PreCondition:	     func(z *music.Zone) bool { return true },
+
+	PreCondition:	     LeaveParentDsSyncedPreCondition,
 	Action:		     LeaveParentDsSyncedAction,
-	PostCondition:	     func(z *music.Zone) bool { return true },
+	PostCondition:	     func(z *music.Zone) bool { return true }, // XXX: TODO
 }
 
-func LeaveParentDsSyncedCriteria(z *music.Zone) bool {
+func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
@@ -97,8 +97,6 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
 	}
 
-	// State transitions are managed from ZoneStepFsm()
-	// z.StateTransition(FsmStateCDSAdded, FsmStateParentDsSynced)
 	return true
 
 	// TODO: remove state/metadata around leaving signer

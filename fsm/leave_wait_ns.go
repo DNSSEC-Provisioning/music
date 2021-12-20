@@ -17,18 +17,17 @@ func init() {
 
 var FsmLeaveWaitNs = music.FSMTransition{
 	Description: "Wait enough time for parent NS records to propagate (criteria), then continue (NO action)",
-	MermaidCriteriaDesc: "Wait long enough for parent NS records to propagate",
+
 	MermaidPreCondDesc:  "Wait long enough for parent NS records to propagate",
 	MermaidActionDesc:   "Continue after waiting (no action)",
 	MermaidPostCondDesc: "None",
 	
-	Criteria:	LeaveWaitNsCriteria,
-	PreCondition:   LeaveWaitNsCriteria,
+	PreCondition:   LeaveWaitNsPreCondition,
 	Action:      	LeaveWaitNsAction,
 	PostCondition:	func (z *music.Zone) bool { return true },
 }
 
-func LeaveWaitNsCriteria(z *music.Zone) bool {
+func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())

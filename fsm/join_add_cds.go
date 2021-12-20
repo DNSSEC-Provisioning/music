@@ -11,11 +11,11 @@ import (
 var FsmJoinAddCDS = music.FSMTransition{
 	// XXX: what is the *criteria* for making this transition?
 	Description:         "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
-	MermaidCriteriaDesc: "Wait for DNSKEY RRset to be consistent",
+
 	MermaidPreCondDesc:  "Wait for all DNSKEY RRsets to be consistent",
 	MermaidActionDesc:   "Compute and publish CDS/CDNSKEY RRsets on all signers",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEY RRs are published",
-	Criteria:            JoinAddCdsPreCondition,
+
 	PreCondition:        JoinAddCdsPreCondition,
 	Action:              JoinAddCdsAction,
 	PostCondition:       VerifyCdsPublished,

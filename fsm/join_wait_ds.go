@@ -18,43 +18,40 @@ func init() {
 var FsmJoinWaitDs = music.FSMTransition{
 	Description: "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
 
-	MermaidCriteriaDesc: "Wait for DS to propagate",
 	MermaidPreCondDesc:  "Wait for DS to propagate",
 	MermaidActionDesc:   "Sync NS RRsets between all signers",
 	MermaidPostCondDesc: "Verify that NS RRsets are in sync",
 
-	Criteria:      JoinWaitDsCriteria,
-	PreCondition:  JoinWaitDsCriteria,
+	PreCondition:  JoinWaitDsPreCondition,
 	Action:        JoinWaitDsAction,
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func JoinWaitDsCriteria(z *music.Zone) bool {
+func JoinWaitDsPreCondition(z *music.Zone) bool {
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
 			stopreason := fmt.Sprintf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
 			err, _ := z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
 			if err != nil {
-				log.Printf("JoinWaitDsCriteria Couldn't update stop-reason \n")
+				log.Printf("JoinWaitDsPreCondition: Could not update stop-reason \n")
 			}
 			log.Printf("%s\n", stopreason)
 			return false
 		}
-		log.Printf("%s: Waited enough for DS, critera fullfilled", z.Name)
+		log.Printf("%s: Waited enough for DS, pre-condition fullfilled", z.Name)
 		return true
 	}
 
-	log.Printf("JoinWaitDsCriteria: %s: Fetching DNSKEYs and DSes to calculate DS wait until", z.Name)
+	log.Printf("JoinWaitDsPreCondition: %s: Fetching DNSKEYs and DSes to calculate DS wait until", z.Name)
 
 	var ttl uint32
 
 	for _, signer := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(signer.Method)
-		log.Printf("JoinWaitDsCriteria: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("JoinWaitDsCriteria: Error from updater.FetchRRset: %v\n", err)
+			log.Printf("JoinWaitDsPreCondition: Error from updater.FetchRRset: %v\n", err)
 		}
 
 		for _, a := range rrs {
