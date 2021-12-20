@@ -388,7 +388,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			resp.Signers = ss
 
 		case "add":
-			err, resp.Msg = mdb.AddSigner(dbsigner)
+			err, resp.Msg = mdb.AddSigner(dbsigner, sp.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from AddSigner: %v", err)
 				resp.Error = true
