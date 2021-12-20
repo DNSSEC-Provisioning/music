@@ -265,7 +265,7 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 			})
 			rowcounter++
 		}
-		fmt.Printf("GetSignerGroupZones: found %d zones attached to signer group %s\n",
+		log.Printf("GetSignerGroupZones: found %d zones attached to signer group %s\n",
 			rowcounter, sg.Name)
 	}
 	return zones, nil

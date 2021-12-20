@@ -48,10 +48,19 @@ method      TEXT,
 auth        TEXT,
 addr        TEXT,
 status      TEXT,
-sgroup      TEXT
+UNIQUE (name)
 )`,
 
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
+id          INTEGER PRIMARY KEY,
+name        TEXT,
+curprocess  TEXT,
+pendadd	    TEXT,
+pendremove  TEXT,
+UNIQUE (name)
+)`,
+
+	"group_signers": `CREATE TABLE IF NOT EXISTS 'group_signers' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
 signer	    TEXT,
@@ -131,17 +140,18 @@ func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
 
 const (
 	GSGsql = "SELECT name FROM signergroups WHERE signer=?"
+	GSGsql2 = "SELECT name FROM group_signers WHERE signer=?"
 )
 
 func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
 	var sgs = []string{}
-	stmt, err := mdb.Prepare(GSGsql)
+	stmt, err := mdb.Prepare(GSGsql2)
 	if err != nil {
-		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql, err)
+		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql2, err)
 	}
 
 	rows, err := stmt.Query(name)
-	if CheckSQLError("GetSignerGroups", GSGsql, err, false) {
+	if CheckSQLError("GetSignerGroups", GSGsql2, err, false) {
 		return []string{}, err
 	} else {
 		var signergroup string

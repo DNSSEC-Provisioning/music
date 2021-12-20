@@ -36,10 +36,14 @@ type Zone struct {
 }
 
 type SignerGroup struct {
-	Name      string
-	SignerMap map[string]*Signer
-	State     string
-	DB        *MusicDB
+	Name      	string
+	SignerMap	map[string]*Signer
+	CurrentProcess	string
+	PendingRemoval	string
+	PendingAddition	string
+	NumZones	int
+	State     	string
+	DB        	*MusicDB
 }
 
 func (sg *SignerGroup) Signers() map[string]*Signer {

@@ -773,7 +773,7 @@ func PrintZones(zm map[string]music.Zone) {
 	var out []string
 	var zone music.Zone
 
-	if cliconf.Verbose {
+	if cliconf.Verbose || showheaders {
 		// out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Possible Next State(s)|ZSK State")
 		out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
 	}

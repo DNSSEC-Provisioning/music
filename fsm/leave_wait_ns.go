@@ -34,6 +34,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 			return false
 		}
 		log.Printf("%s: Waited enough for NS, critera fullfilled", z.Name)
+		delete(zoneWaitNs, z.Name)
 		return true
 	}
 
@@ -126,14 +127,14 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl, until.String(), time.Until(until).String())
 
 	zoneWaitNs[z.Name] = until
-
 	return false
 }
 
 func LeaveWaitNsAction(z *music.Zone) bool {
      	// XXX: What should we do about the delete() after the state transition?
-	z.StateTransition(FsmStateParentNsSynced, FsmStateNsPropagated)
-	delete(zoneWaitNs, z.Name)
+	// z.StateTransition(FsmStateParentNsSynced, FsmStateNsPropagated)
+	// The delete action has moved to the true-branch of the PreCondition
+	// delete(zoneWaitNs, z.Name)
 	return true
 }
 

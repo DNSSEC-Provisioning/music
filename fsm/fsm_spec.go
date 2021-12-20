@@ -50,28 +50,44 @@ steps for synching DNSKEYs among signers as well as updating the
 DS and NS RRsets in the parent.`,
 		States: map[string]music.FSMState{
 			FsmStateSignerUnsynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateDnskeysSynced: FsmJoinSyncDnskeys},
+				Next: map[string]music.FSMTransition{
+					FsmStateDnskeysSynced: FsmJoinSyncDnskeys,
+					},
 			},
 			FsmStateDnskeysSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateCDSAdded: FsmJoinAddCDS},
+				Next: map[string]music.FSMTransition{
+					FsmStateCDSAdded: FsmJoinAddCDS,
+					},
 			},
 			FsmStateCDSAdded: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateParentDsSynced: FsmJoinParentDsSynced},
+				Next: map[string]music.FSMTransition{
+					FsmStateParentDsSynced: FsmJoinParentDsSynced,
+					},
 			},
 			FsmStateParentDsSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateDsPropagated: FsmJoinWaitDs},
+				Next: map[string]music.FSMTransition{
+					FsmStateDsPropagated: FsmJoinWaitDs,
+					},
 			},
 			FsmStateDsPropagated: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateCsyncAdded: FsmJoinAddCsync},
+				Next: map[string]music.FSMTransition{
+					FsmStateCsyncAdded: FsmJoinAddCsync,
+					},
 			},
 			FsmStateCsyncAdded: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateParentNsSynced: FsmJoinParentNsSynced},
+				Next: map[string]music.FSMTransition{
+					FsmStateParentNsSynced: FsmJoinParentNsSynced,
+					},
 			},
 			FsmStateParentNsSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{music.FsmStateStop: music.FsmTransitionStopFactory(FsmStateParentNsSynced)},
+				Next: map[string]music.FSMTransition{
+					music.FsmStateStop: music.FsmTransitionStopFactory(FsmStateParentNsSynced),
+					},
 			},
 			music.FsmStateStop: music.FSMState{
-				Next: map[string]music.FSMTransition{music.FsmStateStop: FsmGenericStop},
+				Next: map[string]music.FSMTransition{
+				      music.FsmStateStop: FsmGenericStop,
+				      },
 			},
 		},
 	},
