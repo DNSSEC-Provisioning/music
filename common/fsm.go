@@ -6,7 +6,6 @@ package music
 import (
 	"fmt"
 	"time"
-
 	// "github.com/DNSSEC-Provisioning/music/fsm"
 )
 
@@ -86,12 +85,14 @@ func PrintStateDuration(z *Zone, state string) {
 // Generic stop transistion
 func FsmTransitionStopFactory(from string) FSMTransition {
 	return FSMTransition{
-		Description: "Generic stop transition without criteria",
-		Criteria:    func(z *Zone) bool { return true },
+		Description:  "Generic stop transition without criteria",
+		Criteria:     func(z *Zone) bool { return true },
+		PreCondition: func(z *Zone) bool { return true },
 		Action: func(z *Zone) bool {
 			z.StateTransition(from, FsmStateStop)
 			return true
 		},
+		PostCondition: func(z *Zone) bool { return true },
 	}
 }
 

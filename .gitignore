@@ -2,6 +2,7 @@ music-cli/music-cli
 music-cli/.music-cli.yaml
 music-cli/.desectokens.yaml
 music-cli/.idea/
+music-cli/cli_test*
 etc/*
 sbin/*
 musicd/musicd
