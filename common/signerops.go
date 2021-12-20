@@ -25,7 +25,7 @@ func (s *Signer) MusicDB() *MusicDB {
 	return s.DB
 }
 
-func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
+func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	var err error
 	if dbsigner.Exists {
 		return fmt.Errorf("Signer %s already present in system.",
@@ -43,11 +43,11 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	delstmt, err := mdb.db.Prepare("DELETE FROM signers WHERE name=?")
+	delstmt, err := mdb.Prepare("DELETE FROM signers WHERE name=?")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
-	addstmt, err := mdb.db.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
@@ -68,6 +68,15 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer) (error, string) {
 			dbsigner.Address)
 		return err, ""
 	}
+
+	if group != "" {
+		fmt.Printf("AddSigner: notice that the signer %s has the signergroup %s specified so we set that too\n", dbsigner.Name, group)
+		dbsigner, _ := mdb.GetSigner(dbsigner, false) // no need for apisafe
+		mdb.SignerJoinGroup(dbsigner, group) // we know that the signer exist
+		return nil, fmt.Sprintf(
+			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
+	}
+
 	fmt.Printf("AddSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.Auth, dbsigner.Address)
 	return nil, fmt.Sprintf("New signer %s successfully added.",
@@ -91,7 +100,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.db.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
+	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
 	if err != nil {
 		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
 	}
@@ -116,7 +125,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 
 // func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
 // 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
-// 	stmt, err := mdb.db.Prepare(sqlcmd)
+// 	stmt, err := mdb.Prepare(sqlcmd)
 // 	if err != nil {
 // 		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
 // 	}
@@ -156,12 +165,16 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 // 	}, err
 // }
 
+const (
+	SJGsql2 = "INSERT OR IGNORE INTO signergroups (name, signer) VALUES (?, ?)"
+)
+
 // SignerJoinGroup(): add an already defined signer to an already
 // defined signer group.
 //
 // Note: this should trigger all zones attached to this signer group to enter
 // the "add-signer" process.
-//
+
 func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) {
 	var sg *SignerGroup
 	var err error
@@ -175,13 +188,23 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	}
 
 	mdb.mu.Lock()
-	sqlcmd := "UPDATE signers SET sgroup=? WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	// XXX: this is just wrong. what if the signer is already in another group?
+//	sqlcmd := "UPDATE signers SET sgroup=? WHERE name=?" 
+//	stmt, err := mdb.Prepare(sqlcmd)
+//	if err != nil {
+//		fmt.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
+//	}
+//	_, err = stmt.Exec(g, dbsigner.Name)
+//	if CheckSQLError("SignerJoinGroup", sqlcmd, err, false) {
+//		mdb.mu.Unlock()
+//		return err, ""
+//	}
+	stmt, err := mdb.Prepare(SJGsql2)
 	if err != nil {
 		fmt.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
 	}
 	_, err = stmt.Exec(g, dbsigner.Name)
-	if CheckSQLError("SignerJoinGroup", sqlcmd, err, false) {
+	if CheckSQLError("SignerJoinGroup", SJGsql2, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
@@ -214,6 +237,10 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		dbsigner.Name, g)
 }
 
+const (
+      SLGsql2 = "DELETE FROM signergroups WHERE name=? AND signer=?"
+)
+
 func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string) {
 	var sg *SignerGroup
 	var err error
@@ -235,14 +262,27 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	}
 
 	mdb.mu.Lock()
-	sqlcmd := "UPDATE signers SET sgroup='' WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	// old model: signer group mapping is stored with the signer
+//	sqlcmd := "UPDATE signers SET sgroup='' WHERE name=?"
+//	stmt, err := mdb.Prepare(sqlcmd)
+//	if err != nil {
+//		fmt.Printf("SignerLeaveGroup: Error from db.Prepare: %v\n", err)
+//	}
+//
+//	_, err = stmt.Exec(dbsigner.Name)
+//	if CheckSQLError("SignerLeaveGroup", sqlcmd, err, false) {
+//		mdb.mu.Unlock()
+//		return err, ""
+//	}
+
+	// new model: signer group mapping is stored with the signer group
+	stmt, err := mdb.Prepare(SLGsql2)
 	if err != nil {
-		fmt.Printf("SignerLeaveGroup: Error from db.Prepare: %v\n", err)
+		fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql2, err)
 	}
 
-	_, err = stmt.Exec(dbsigner.Name)
-	if CheckSQLError("SignerLeaveGroup", sqlcmd, err, false) {
+	_, err = stmt.Exec(sg.Name, dbsigner.Name)
+	if CheckSQLError("SignerLeaveGroup", SLGsql2, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
@@ -263,28 +303,46 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		dbsigner.Name, g, len(zones))
 }
 
-// XXX: It should not be possible to delete a signer that is part of a signer group. Full stop.
+const (
+	DSsql  = "DELETE FROM signers WHERE name=?"
+	DSsql2 = "DELETE FROM signergroups WHERE signer=?"
+)
+
+// XXX: It should not be possible to delete a signer that is part of a signer group.
+//      Full stop.
 func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
-	sg := dbsigner.SignerGroup
-	if sg != "" {
+	sgs := dbsigner.SignerGroups
+	if len(sgs) != 0 {
 		// err, _ := mdb.SignerLeaveGroup(dbsigner, sg)
 		// if err != nil {
 		//    return err, ""
 		// }
 		return fmt.Errorf(
-			"Signer %s can not be deleted as it is part of the signer group %s.", dbsigner.Name, sg), ""
+			"Signer %s can not be deleted as it is part of the signer groups %v.",
+				dbsigner.Name, sgs), ""
 	}
 
-	sqlcmd := "DELETE FROM signers WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlcmd)
+	stmt, err := mdb.Prepare(DSsql)
 	if err != nil {
-		fmt.Printf("DeleteSigner: Error from db.Prepare: %v\n", err)
+		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql, err)
 	}
 	mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Name)
 	mdb.mu.Unlock()
 
-	if CheckSQLError("DeleteSigner", sqlcmd, err, false) {
+	if CheckSQLError("DeleteSigner", DSsql, err, false) {
+		return err, ""
+	}
+
+	stmt, err = mdb.Prepare(DSsql2)
+	if err != nil {
+		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
+	}
+	mdb.mu.Lock()
+	_, err = stmt.Exec(dbsigner.Name)
+	mdb.mu.Unlock()
+
+	if CheckSQLError("DeleteSigner", DSsql2, err, false) {
 		return err, ""
 	}
 	return nil, fmt.Sprintf("Signer %s deleted.", dbsigner.Name)
@@ -299,7 +357,7 @@ FROM signers`
 func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	var sl = make(map[string]Signer, 2)
 
-	stmt, err := mdb.db.Prepare(LSIGsql)
+	stmt, err := mdb.Prepare(LSIGsql)
 	if err != nil {
 		fmt.Printf("ListSigners: Error from db.Prepare: %v\n", err)
 	}
@@ -316,14 +374,21 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}
-			sl[name] = Signer{
+
+			s := Signer{
 				Name:        name,
 				Exists:      true,
 				Method:      method,
 				Address:     address,
 				Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
-				SignerGroup: signergroup,
 			}
+			sgs, err := mdb.GetSignerGroups(name)
+			if err != nil {
+			   log.Fatalf("mdb.ListSigners: Error from mdb.GetSignerGroups: %v",
+			   				err)
+			}
+			s.SignerGroups = sgs
+			sl[name] = s			
 		}
 	}
 	return sl, nil

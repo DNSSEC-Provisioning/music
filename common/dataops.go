@@ -194,13 +194,13 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	rrtype uint16, rrs []dns.RR) error {
 
 	delsql := "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
-	delstmt, err := mdb.db.Prepare(delsql)
+	delstmt, err := mdb.Prepare(delsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)
 	}
 
 	addsql := "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
-	addstmt, err := mdb.db.Prepare(addsql)
+	addstmt, err := mdb.Prepare(addsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", addsql, err)
 	}
@@ -234,7 +234,7 @@ func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (e
 	RRtype := dns.StringToType[rrtype]
 
 	sql := "SELECT rdata FROM records WHERE owner=? AND signer=? AND rrtype=?"
-	stmt, err := mdb.db.Prepare(sql)
+	stmt, err := mdb.Prepare(sql)
 	if err != nil {
 		fmt.Printf("ListRRset: Error from db.Prepare: %v\n", err)
 	}
@@ -288,7 +288,7 @@ func RecursiveDNSQuery(qname, nameserver string, rrtype uint16, verbose bool) (*
 }
 
 func (mdb *MusicDB) GetMeta(z *Zone, key string) (string, bool) {
-	stmt, err := mdb.db.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+	stmt, err := mdb.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
 	if err != nil {
 		fmt.Printf("GetMeta: Error from db.Prepare: %v\n", err)
 	}

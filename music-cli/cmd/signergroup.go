@@ -146,7 +146,7 @@ func ListSignerGroups() error {
 	// fmt.Printf("Data from /signergroup list: %v\n", sr)
 
 	var out []string
-	if cliconf.Verbose {
+	if cliconf.Verbose || showheaders {
 		out = append(out, "Name of signergroup|Signers in group")
 	}
 
