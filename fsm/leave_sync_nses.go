@@ -10,17 +10,17 @@ import (
 
 var FsmLeaveSyncNses = music.FSMTransition{
 	Description: "First step when leaving, this transistion has no critera and will remove NSes that originated from the leaving signer (Action)",
-	MermaidCriteriaDesc: "None",
+
 	MermaidPreCondDesc:  "None",
 	MermaidActionDesc:   "Remove NS records that only belong to the leaving signer",
 	MermaidPostCondDesc: "Verify that NS records have been removed from zone",
-	Criteria:    	 LeaveSyncNsesCriteria,
-	PreCondition:    func (z *music.Zone) bool { return true },
+
+	PreCondition:    LeaveSyncNsesPreCondition,
 	Action:      	 LeaveSyncNsesAction,
 	PostCondition:    func (z *music.Zone) bool { return true },
 }
 
-func LeaveSyncNsesCriteria(z *music.Zone) bool {
+func LeaveSyncNsesPreCondition(z *music.Zone) bool {
 	return true
 }
 
@@ -79,8 +79,6 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	}
 	log.Printf("%s: Removed NSes from %s successfully", z.Name, leavingSigner.Name)
 
-	// State transitions are managed from ZoneStepFsm() 
-	// z.StateTransition(FsmStateSignerUnsynced, FsmStateNsesSynced)
 	return true
 }
 

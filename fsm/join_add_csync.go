@@ -10,34 +10,22 @@ import (
 var FsmJoinAddCsync = music.FSMTransition{
 	Description: "Once all NS are present in all signers (criteria), build CSYNC record and push to all signers (action)",
 
-	MermaidCriteriaDesc: "Wait for NS RRset to be consistent",
 	MermaidPreCondDesc:  "Wait for NS RRset to be consistent",
 	MermaidActionDesc:   "Generate and push CSYNC record",
 	MermaidPostCondDesc: "Verify that CSYNC record has been published",
 
-	Criteria:      JoinAddCsyncCriteria,
-	PreCondition:  JoinAddCsyncCriteria,
+	PreCondition:  JoinAddCsyncPreCondition,
 	Action:        JoinAddCsyncAction,
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
-func JoinAddCsyncCriteria(z *music.Zone) bool {
+func JoinAddCsyncPreCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
 	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
 
 	for _, s := range z.SGroup.SignerMap {
-		//        m := new(dns.Msg)
-		//        m.SetQuestion(z.Name, dns.TypeNS)
-		//        c := new(dns.Client)
-		//        r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
-		//        if err != nil {
-		//            log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
-		//            return false
-		//        }
-
 		updater := music.GetUpdater(s.Method)
-		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
@@ -45,7 +33,6 @@ func JoinAddCsyncCriteria(z *music.Zone) bool {
 
 		nses[s.Name] = []*dns.NS{}
 
-		//        for _, a := range r.Answer {
 		for _, a := range rrs {
 			ns, ok := a.(*dns.NS)
 			if !ok {
@@ -100,15 +87,6 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CSYNC record sets", z.Name)
 
 	for _, signer := range z.SGroup.SignerMap {
-		//        m := new(dns.Msg)
-		//        m.SetQuestion(z.Name, dns.TypeSOA)
-		//        c := new(dns.Client)
-		//        r, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
-		//        if err != nil {
-		//            log.Printf("%s: Unable to fetch SOA from %s: %s", z.Name, signer.Name, err)
-		//            return false
-		//        }
-
 		updater := music.GetUpdater(signer.Method)
 		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeSOA)
