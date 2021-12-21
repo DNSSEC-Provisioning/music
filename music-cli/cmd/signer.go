@@ -126,10 +126,9 @@ var logoutSignerCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(signerCmd)
-	signerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd, joinGroupCmd, leaveGroupCmd,
-		loginSignerCmd, logoutSignerCmd)
+	signerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
+					   joinGroupCmd, leaveGroupCmd,	loginSignerCmd, logoutSignerCmd)
 
-	// promoting signername to root to make it available also for zone cmd
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",

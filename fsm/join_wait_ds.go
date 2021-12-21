@@ -24,7 +24,10 @@ var FsmJoinWaitDs = music.FSMTransition{
 
 	PreCondition:  JoinWaitDsPreCondition,
 	Action:        JoinWaitDsAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: func(z *music.Zone) bool {
+		       	      // verify that the NS RRset is in sync for all signers
+		       	      return true
+		       },
 }
 
 func JoinWaitDsPreCondition(z *music.Zone) bool {
@@ -39,6 +42,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 			return false
 		}
 		log.Printf("%s: Waited enough for DS, pre-condition fullfilled", z.Name)
+		delete(zoneWaitDs, z.Name)
 		return true
 	}
 
@@ -99,7 +103,8 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	// TODO: static wait time to enable faster testing
 	until := time.Now().Add((time.Duration(5) * time.Second))
 
-	stopreason := fmt.Sprintf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl, until.String(), time.Until(until).String())
+	stopreason := fmt.Sprintf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl,
+		      		       until.String(), time.Until(until).String())
 	err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
 	log.Printf("%s\n", stopreason)
 
@@ -195,6 +200,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	// XXX: What should we do here? If we don't do the state transition
 	//      then the delete is wrong.
 	// z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
-	delete(zoneWaitDs, z.Name)
+	// The delete has moved to the true-branch of the PreCondition.
+	// delete(zoneWaitDs, z.Name)
 	return true
 }

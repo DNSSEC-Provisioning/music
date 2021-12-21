@@ -104,6 +104,11 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// Semantics:
+// 1. Lookup zone signergroup (can only be one)
+// 2. Lookup all signers in signergroup.PendingRemoval
+// 3. For each signer in that list (should really only be one) go through the steps below.
+// 4. Celebrate Christmas
 
 func LeaveAddCsyncAction(z *music.Zone) bool {
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place

@@ -41,21 +41,27 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 	return nil
 }
 
+const (
+      GSGsql1 = `
+SELECT name, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
+  COALESCE(pendremove, '') AS prem
+FROM signergroups WHERE name=?`
+)
+
 func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
 		return &SignerGroup{}, errors.New("Empty signer group does not exist")
 	}
 
-	sqlcmd := "SELECT name FROM signergroups WHERE name=?"
-	stmt, err := mdb.Prepare(sqlcmd)
+	stmt, err := mdb.Prepare(GSGsql1)
 	if err != nil {
-		fmt.Printf("GetSignerGroup: Error from db.Prepare: %v\n", err)
+		fmt.Printf("GetSignerGroup: Error from db.Prepare '%s': %v\n", GSGsql1, err)
 	}
 
 	row := stmt.QueryRow(sg)
 
-	var name string
-	switch err = row.Scan(&name); err {
+	var name, curprocess, pendadd, pendremove string
+	switch err = row.Scan(&name, &curprocess, &pendadd, &pendremove); err {
 	case sql.ErrNoRows:
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
@@ -66,9 +72,12 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 		   dbref = nil
 		}
 		return &SignerGroup{
-			Name:      name,
-			SignerMap: sm,
-			DB:        dbref,
+			Name:			name,
+			CurrentProcess:		curprocess,
+			PendingAddition:	pendadd,
+			PendingRemoval:		pendremove,
+			SignerMap:		sm,
+			DB:        		dbref,
 		}, nil
 
 	default:
@@ -83,93 +92,112 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 // more or less the only tool we have to force a cleanup if or when stuff has gotten seriously
 // out of whack.
 
+const (
+      DSGsql1 = "DELETE FROM signergroups WHERE name=?"
+      DSGsql2 = "UPDATE signers SET sgroup=? WHERE sgroup=?"
+      DSGsql3 = "DELETE FROM group_signers WHERE name=?"
+)
+
 func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 	mdb.mu.Lock()
-	stmt, err := mdb.Prepare("DELETE FROM signergroups WHERE name=?")
+	stmt, err := mdb.Prepare(DSGsql1)
 	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
+		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql1, err)
 	}
 	_, err = stmt.Exec(group)
-	if CheckSQLError("DeleteSignerGroup", "DELETE FROM signergroups ...", err, false) {
+	if CheckSQLError("DeleteSignerGroup", DSGsql1, err, false) {
 	   	mdb.mu.Unlock()
 		return err
 	}
 
-	stmt, err = mdb.Prepare("UPDATE signers SET sgroup=? WHERE sgroup=?")
+	stmt, err = mdb.Prepare(DSGsql3)
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
 	}
-	_, err = stmt.Exec("", group)
+	_, err = stmt.Exec(group)
 	mdb.mu.Unlock()
 
-	if CheckSQLError("DeleteSignerGroup", "UPDATE signers SET ...", err, false) {
+	if CheckSQLError("DeleteSignerGroup", DSGsql3, err, false) {
 		return err
 	}
 	return nil
 }
 
 const (
-	LSGsql = "SELECT name FROM signergroups"
-	LSGsql2 = "SELECT name FROM signers WHERE sgroup=?"
+	LSGsql  = `
+SELECT name, COALESCE(curprocess, '') AS curp, COALESCE (pendadd, '') AS padd,
+   COALESCE(pendremove, '') AS prem
+FROM signergroups`
+	LSGsql2 = "SELECT DISTINCT name FROM signergroups"
+	LSGsql3 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
 )
 
 func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 	var sgl = make(map[string]SignerGroup, 2)
 
-	var sgnames []string
-
 	rows, err := mdb.db.Query(LSGsql)
 
-	if CheckSQLError("ListSignerGroups", LSGsql, err, false) {
+	if CheckSQLError("ListSignerGroups", LSGsql2, err, false) {
 		return sgl, err
 	} else {
-		var name string
+		var name, curp, pendadd, pendrem string
 		for rows.Next() {
-			err := rows.Scan(&name)
+			err := rows.Scan(&name, &curp, &pendadd, &pendrem)
 			if err != nil {
 				log.Fatal("ListSignerGroups: Error from rows.Next():", err)
 			}
-			// sgl[name] = true
-			sgnames = append(sgnames, name)
+			sgl[name] = SignerGroup{
+				  Name:			name,
+				  CurrentProcess:	curp,
+				  PendingAddition:	pendadd,
+				  PendingRemoval:	pendrem,
+			}
 		}
 	}
 	rows.Close()
 
-	for _, sgname := range sgnames {
-		stmt, err := mdb.Prepare(LSGsql2)
+	for sgname, sg := range sgl {
+		stmt, err := mdb.Prepare(LSGsql3)
 		if err != nil {
-			fmt.Printf("ListSignerGroup: Error from db.Prepare: %v\n", err)
+			log.Printf("ListSignerGroup: Error from db.Prepare: %v\n", err)
 		}
 
 		rows, err := stmt.Query(sgname)
 		defer rows.Close()
 
-		if CheckSQLError("ListSignerGroups", LSGsql2, err, false) {
+		if CheckSQLError("ListSignerGroups", LSGsql3, err, false) {
 			return sgl, err
 		} else {
-			var name string
+			var signer string
+			var zones = []*Zone{}
 			signers := map[string]*Signer{}
 			for rows.Next() {
-				err := rows.Scan(&name)
+				err := rows.Scan(&signer)
 				if err != nil {
 					log.Fatal("ListSignerGroups: Error from rows.Next():", err)
-				} else {
-					s, err := mdb.GetSignerByName(name, true) // apisafe
-					if err != nil {
-						log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
-					} else {
-						signers[name] = s
-					}
 				}
+				if signer == "" {	// There may be rows with signer=="" (if group created w/o signers)
+				   continue
+				}
+				s, err := mdb.GetSignerByName(signer, true) // apisafe
+				if err != nil {
+					log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
+				} else {
+					signers[signer] = s
+				}
+				zones, _ = mdb.GetSignerGroupZones(&sg)
 			}
-			sgl[sgname] = SignerGroup{
-				Name:      sgname,
-				SignerMap: signers,
-			}
+//			sgl[sgname] = SignerGroup{
+//				Name:      sgname,
+//				SignerMap: signers,
+//			}
+			sg.SignerMap = signers
+			sg.NumZones  = len(zones)
+			sgl[sgname] = sg
 		}
 	}
 
-	// fmt.Printf("ListSignerGroup(): %v\n", sgl)
+	fmt.Printf("ListSignerGroup(): %v\n", sgl)
 	return sgl, nil
 }
 
@@ -211,9 +239,14 @@ func (sg *SignerGroup) PopulateSigners() error {
 	return nil
 }
 
+const (
+	GGSsql1 = "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
+	GGSsql2 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
+)
+
 func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[string]*Signer) {
-	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
-	stmt, err := mdb.Prepare(sqlcmd)
+
+	stmt, err := mdb.Prepare(GGSsql2)
 	if err != nil {
 		fmt.Printf("GetGroupSigners: Error from db.Prepare: %v\n", err)
 	}
@@ -223,24 +256,25 @@ func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[strin
 
 	signers := map[string]*Signer{}
 
-	if CheckSQLError("GetGroupSigners", sqlcmd, err, false) {
+	if CheckSQLError("GetGroupSigners", GGSsql2, err, false) {
 		return err, map[string]*Signer{}
 	} else {
-		var name, method, auth, address string
+		var signer string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &auth, &address)
+			err := rows.Scan(&signer)
 			if err != nil {
-				log.Fatal("GetGroupSigners: Error from rows.Next():",
-					err)
+				log.Fatal("GetGroupSigners: Error from rows.Next():", err)
+			}
+			if signer == "" {
+			   continue		// This does happen, not a problem
+			}
+			fmt.Printf("GGS: got signer name: %s\n", signer)
+			s, err := mdb.GetSignerByName(signer, apisafe)
+			if err != nil {
+				log.Fatalf("GGS: Error from GetSigner: %v", err)
 			} else {
-				// fmt.Printf("GGS: got signer name: %s\n", name)
-				s, err := mdb.GetSignerByName(name, apisafe)
-				if err != nil {
-					log.Fatalf("GGS: Error from GetSigner: %v", err)
-				} else {
-					signers[name] = s
-					// fmt.Printf("LSG: found signer obj for %s: %v\n", name, s)
-				}
+				signers[signer] = s
+				// fmt.Printf("LSG: found signer obj for %s: %v\n", signer, s)
 			}
 		}
 	}
@@ -248,7 +282,7 @@ func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[strin
 }
 
 const (
-	GGSNGsql = "SELECT signer FROM signergroups WHERE name=?"
+	GGSNGsql = "SELECT signer FROM group_signers WHERE name=?"
 )
 
 func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[string]*Signer) {
