@@ -291,7 +291,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		}
 		mdb.mu.Unlock()
 		return nil, fmt.Sprintf(
-		"Signer %s was removed from signer group %s immediately (because the signer group has no zones).",
+			"Signer %s was removed from signer group %s immediately (because the signer group has no zones).",
 			dbsigner.Name, g)
 	}
 
@@ -359,7 +359,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 
 	// This should be a no-op, as the signer must not be a member of any group.
 	// But we keep it as a GC mechanism in case something has gone wrong.
-	stmt, err = mdb.Prepare(DSsql2) 
+	stmt, err = mdb.Prepare(DSsql2)
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
 	}
@@ -375,7 +375,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 
 const (
 	LSIGsql = `
-SELECT name, method, addr, auth, COALESCE (sgroup, '') AS signergroup
+SELECT name, method, addr, auth
 FROM signers`
 )
 
@@ -393,9 +393,9 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	if CheckSQLError("ListSigners", LSIGsql, err, false) {
 		return sl, err
 	} else {
-		var name, method, address, auth, signergroup string
+		var name, method, address, auth string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &address, &auth, &signergroup)
+			err := rows.Scan(&name, &method, &address, &auth)
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}

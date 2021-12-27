@@ -139,7 +139,7 @@ func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
 }
 
 const (
-	GSGsql = "SELECT name FROM signergroups WHERE signer=?"
+	GSGsql  = "SELECT name FROM signergroups WHERE signer=?"
 	GSGsql2 = "SELECT name FROM group_signers WHERE signer=?"
 )
 
@@ -174,8 +174,7 @@ func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, e
 const (
 	GSsql = `
 SELECT name, method, auth,
-  COALESCE (addr, '') AS address,
-  COALESCE (sgroup, '') AS signergroup
+  COALESCE (addr, '') AS address
 FROM signers WHERE name=?`
 )
 
@@ -187,8 +186,8 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 
 	row := stmt.QueryRow(s.Name)
 
-	var name, method, auth, address, signergroup string
-	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
+	var name, method, auth, address string
+	switch err = row.Scan(&name, &method, &auth, &address); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
 		return &Signer{
@@ -204,9 +203,9 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 		// 			  method, auth, address, signergroup)
 		sgs, err := mdb.GetSignerGroups(s.Name)
 		if err != nil {
-		   log.Fatalf("mdb.GetSigner: Error from signer.GetSignerGroups: %v", err)
+			log.Fatalf("mdb.GetSigner: Error from signer.GetSignerGroups: %v", err)
 		}
-		
+
 		dbref := mdb
 		if apisafe {
 			dbref = nil
