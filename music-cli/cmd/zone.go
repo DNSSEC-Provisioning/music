@@ -15,6 +15,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
+
 	// "github.com/go-playground/validator/v10"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -218,7 +219,7 @@ var zoneStepFsmCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "list",
 		}
-		zr, err := SendZoneCommand(zone, data)		
+		zr, err := SendZoneCommand(zone, data)
 		if err != nil {
 			log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
 		}
@@ -241,11 +242,11 @@ var zoneStepFsmCmd = &cobra.Command{
 		zm = zr.Zones
 
 		if zr.Msg != "" {
-		   fmt.Printf("%s\n", zr.Msg)
+			fmt.Printf("%s\n", zr.Msg)
 		}
 		z := zr.Zones[zone]
 		if z.StopReason != "" {
-		   fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
+			fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
 		}
 
 		if zr.Error {
@@ -306,9 +307,9 @@ var listZonesCmd = &cobra.Command{
 		zone := "fluffmunk.se." // must have something, not used
 		data := music.ZonePost{
 			Command: "list",
-			Zone:	 music.Zone{
-					Name: zone,  
-				 },
+			Zone: music.Zone{
+				Name: zone,
+			},
 		}
 		zr, err := SendZoneCommand(zone, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
