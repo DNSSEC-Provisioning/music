@@ -31,6 +31,25 @@ var zoneCmd = &cobra.Command{
 	},
 }
 
+var statusZoneCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Get status of a zone according to MuSiC",
+	Run: func(cmd *cobra.Command, arg []string) {
+		zonename = dns.Fqdn(zonename)
+		data := music.ZonePost{
+			Command: "status",
+			Zone: music.Zone{
+				Name: zonename,
+			},
+		}
+		zr, err := SendZoneCommand(zonename, data)
+		if err != nil {
+			fmt.Printf("statusZoneCmd: Error from SendZoneCommand: %v\n", err)
+		}
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
+	},
+}
+
 var addZoneCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new zone to MuSiC",
@@ -304,14 +323,16 @@ var listZonesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// zr, err := ListZones()
 
-		zone := "fluffmunk.se." // must have something, not used
+		if zonename == "" {
+			zonename = "zone-name-not-set.se." // must have something, not used
+		}
 		data := music.ZonePost{
 			Command: "list",
 			Zone: music.Zone{
-				Name: zone,
+				Name: zonename,
 			},
 		}
-		zr, err := SendZoneCommand(zone, data)
+		zr, err := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("Error from ListZones: %v\n", err)
@@ -326,7 +347,7 @@ func init() {
 	zoneCmd.AddCommand(addZoneCmd, deleteZoneCmd, listZonesCmd, zoneJoinGroupCmd,
 		zoneLeaveGroupCmd, zoneFsmCmd, zoneStepFsmCmd,
 		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
-		zoneMetaCmd)
+		zoneMetaCmd, statusZoneCmd)
 
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
@@ -363,7 +384,8 @@ func SendZoneCommand(zonename string, data music.ZonePost) (music.ZoneResponse, 
 
 	}
 	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
+		fmt.Println()
+		fmt.Printf("SendZoneCommand Status: %d\n", status)
 	}
 
 	var zr music.ZoneResponse

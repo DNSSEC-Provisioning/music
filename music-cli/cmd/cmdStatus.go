@@ -11,7 +11,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
-	statusCmd.AddCommand(statusZoneCmd)
+	statusCmd.AddCommand(statusZonesCmd)
 	statusCmd.AddCommand(statusSignerCmd)
 	statusCmd.AddCommand(statusSignerGroupCmd)
 	statusCmd.AddCommand(statusAllCmd)
@@ -24,7 +24,7 @@ var statusCmd = &cobra.Command{
 	},
 }
 
-var statusZoneCmd = &cobra.Command{
+var statusZonesCmd = &cobra.Command{
 	Use:   "zone",
 	Short: "Show current status of all zones in MuSiC",
 	Run: func(cmd *cobra.Command, arg []string) {
