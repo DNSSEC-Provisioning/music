@@ -188,8 +188,6 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		dbzone, _ := mdb.GetZone(zp.Zone.Name) // Get a more complete Zone structure
 		w.Header().Set("Content-Type", "application/json")
 
-		log.Printf("rog: APIzone command: %v\n", zp.Zone.Name)
-		log.Printf("rog: APIzone command: %v\n", dbzone)
 		switch zp.Command {
 		case "list":
 			zs, err := mdb.ListZones()
@@ -199,16 +197,25 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			resp.Zones = zs
 		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 		case "status":
-			log.Printf("rog Status: %v\n", dbzone)
+			var zl = make(map[string]music.Zone, 1)
 			if dbzone.Exists {
-				log.Printf("rog Status: %v\n", dbzone)
-				log.Printf("rog Name: %s, State: %s, Timestamp: %v, NextState: %v, StopReason: %s, FSM: %s, SGroup: %s \n",
-					dbzone.Name, dbzone.State, dbzone.Statestamp, dbzone.NextState, dbzone.StopReason, dbzone.FSM, dbzone.SGname)
-				resp.Msg = fmt.Sprintf("Name: %s, State: %s, Timestamp: %v, NextState: %v, StopReason: %s, FSM: %s, SGroup: %s \n",
-					dbzone.Name, dbzone.State, dbzone.Statestamp, dbzone.NextState, dbzone.StopReason, dbzone.FSM, dbzone.SGname)
+				sg, _ := mdb.GetSignerGroup(dbzone.SGname, true)
+
+				zl[dbzone.Name] = music.Zone{
+					Name:       dbzone.Name,
+					State:      dbzone.State,
+					Statestamp: dbzone.Statestamp,
+					NextState:  dbzone.NextState,
+					FSM:        dbzone.FSM,
+					SGroup:     sg,
+					SGname:     sg.Name,
+				}
+				resp.Zones = zl
 
 			} else {
-				log.Printf("Zone %s: not in DB\n", zp.Zone.Name)
+				message := fmt.Sprintf("Zone %s: not in DB", zp.Zone.Name)
+				log.Println(message)
+				resp.Msg = message
 			}
 
 		case "add":

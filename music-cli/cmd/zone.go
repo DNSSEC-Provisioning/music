@@ -43,10 +43,12 @@ var statusZoneCmd = &cobra.Command{
 			},
 		}
 		zr, err := SendZoneCommand(zonename, data)
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("statusZoneCmd: Error from SendZoneCommand: %v\n", err)
+		} else if len(zr.Zones) > 0 {
+			PrintZones(zr.Zones)
 		}
-		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
 
