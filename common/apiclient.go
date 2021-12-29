@@ -517,11 +517,15 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 
 	defer resp.Body.Close()
 	buf, err := ioutil.ReadAll(resp.Body)
-
 	if api.Debug {
-		fmt.Println()
-		fmt.Printf("requestHelper: received %d bytes of response data: %v\n",
-			len(buf), string(buf))
+		var prettyJSON bytes.Buffer
+		error := json.Indent(&prettyJSON, buf, "", "  ")
+		if error != nil {
+			log.Println("JSON parse error: ", error)
+		}
+		fmt.Printf("requestHelper: received %d bytes of response data: %s\n", len(buf), prettyJSON.String())
+		//fmt.Printf("requestHelper: received %d bytes of response data: %v\n",
+		//len(buf), string(buf))
 	}
 
 	//not bothering to copy buf, this is a one-off
@@ -532,9 +536,15 @@ func (api *Api) requestHelper(req *http.Request) (int, []byte, error) {
 func (api *Api) Post(endpoint string, data []byte) (int, []byte, error) {
 
 	if api.Debug {
-		fmt.Println()
-		fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %v\n",
-			api.BaseUrl+endpoint, len(data), string(data))
+		var prettyJSON bytes.Buffer
+		error := json.Indent(&prettyJSON, data, "", "  ")
+		if error != nil {
+			log.Println("JSON parse error: ", error)
+		}
+		fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %s\n", api.BaseUrl+endpoint, len(data), prettyJSON.String())
+		//fmt.Println()
+		//fmt.Printf("api.Post: posting to URL '%s' %d bytes of data: %v\n",
+		//api.BaseUrl+endpoint, len(data), string(data))
 	}
 
 	req, err := http.NewRequest(http.MethodPost, api.BaseUrl+endpoint,
