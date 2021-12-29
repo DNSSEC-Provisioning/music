@@ -15,6 +15,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
+
 	// "github.com/go-playground/validator/v10"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -27,6 +28,27 @@ var zoneCmd = &cobra.Command{
 	Use:   "zone",
 	Short: "Zone commands",
 	Run: func(cmd *cobra.Command, args []string) {
+	},
+}
+
+var statusZoneCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Get status of a zone according to MuSiC",
+	Run: func(cmd *cobra.Command, arg []string) {
+		zonename = dns.Fqdn(zonename)
+		data := music.ZonePost{
+			Command: "status",
+			Zone: music.Zone{
+				Name: zonename,
+			},
+		}
+		zr, err := SendZoneCommand(zonename, data)
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
+		if err != nil {
+			fmt.Printf("statusZoneCmd: Error from SendZoneCommand: %v\n", err)
+		} else if len(zr.Zones) > 0 {
+			PrintZones(zr.Zones)
+		}
 	},
 }
 
@@ -218,7 +240,7 @@ var zoneStepFsmCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "list",
 		}
-		zr, err := SendZoneCommand(zone, data)		
+		zr, err := SendZoneCommand(zone, data)
 		if err != nil {
 			log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
 		}
@@ -241,11 +263,11 @@ var zoneStepFsmCmd = &cobra.Command{
 		zm = zr.Zones
 
 		if zr.Msg != "" {
-		   fmt.Printf("%s\n", zr.Msg)
+			fmt.Printf("%s\n", zr.Msg)
 		}
 		z := zr.Zones[zone]
 		if z.StopReason != "" {
-		   fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
+			fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
 		}
 
 		if zr.Error {
@@ -303,14 +325,16 @@ var listZonesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// zr, err := ListZones()
 
-		zone := "fluffmunk.se." // must have something, not used
+		if zonename == "" {
+			zonename = "zone-name-not-set.se." // must have something, not used
+		}
 		data := music.ZonePost{
 			Command: "list",
-			Zone:	 music.Zone{
-					Name: zone,  
-				 },
+			Zone: music.Zone{
+				Name: zonename,
+			},
 		}
-		zr, err := SendZoneCommand(zone, data)
+		zr, err := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("Error from ListZones: %v\n", err)
@@ -325,7 +349,7 @@ func init() {
 	zoneCmd.AddCommand(addZoneCmd, deleteZoneCmd, listZonesCmd, zoneJoinGroupCmd,
 		zoneLeaveGroupCmd, zoneFsmCmd, zoneStepFsmCmd,
 		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
-		zoneMetaCmd)
+		zoneMetaCmd, statusZoneCmd)
 
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
@@ -362,7 +386,8 @@ func SendZoneCommand(zonename string, data music.ZonePost) (music.ZoneResponse, 
 
 	}
 	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
+		fmt.Println()
+		fmt.Printf("SendZoneCommand Status: %d\n", status)
 	}
 
 	var zr music.ZoneResponse

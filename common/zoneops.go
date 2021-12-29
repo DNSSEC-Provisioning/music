@@ -121,7 +121,7 @@ func (mdb *MusicDB) ZoneGetMeta(z *Zone, key string) (error, string) {
 	case sql.ErrNoRows:
 		return err, ""
 	case nil:
-	     return nil, value
+		return nil, value
 	}
 	return nil, ""
 }
@@ -169,12 +169,11 @@ func (z *Zone) StateTransition(from, to string) error {
 }
 
 func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
-     zone, exists := mdb.GetZone(zonename)
-     zone.MusicDB = nil
-     zone.SGroup  = nil  // another one
-     return zone, exists
+	zone, exists := mdb.GetZone(zonename)
+	zone.MusicDB = nil
+	zone.SGroup = nil // another one
+	return zone, exists
 }
-
 
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
@@ -215,7 +214,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			FSM:        fsm,
 			SGroup:     sg,
 			SGname:     sg.Name,
-			MusicDB:    mdb,	// can not be json encoded, i.e. not used in API
+			MusicDB:    mdb, // can not be json encoded, i.e. not used in API
 		}, true
 
 	default:
@@ -366,8 +365,8 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 }
 
 const (
-      layout = "2006-01-02 15:04:05"
-      LZsqlq = `
+	layout = "2006-01-02 15:04:05"
+	LZsqlq = `
 SELECT name, state, fsm,
   COALESCE(statestamp, datetime('now')) AS timestamp,
   COALESCE(sgroup, '') AS signergroup
@@ -383,6 +382,9 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	}
 
 	rows, err := stmt.Query()
+	if err != nil {
+		log.Printf("ListZones: Error from db query: %v\n", err)
+	}
 	defer rows.Close()
 
 	if CheckSQLError("ListZones", LZsqlq, err, false) {

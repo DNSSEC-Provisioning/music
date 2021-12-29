@@ -35,7 +35,7 @@ func API_NYI(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -49,7 +49,7 @@ func APIGoAway(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -67,14 +67,14 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("APIping: error decoding ping post:", err)
 		}
-		
+
 		pongs += 1
 
-		for i := 1 ; i < pp.Fetches ; i++ {
-		    conf.Internal.DesecFetch <- music.SignerOp{}
+		for i := 1; i < pp.Fetches; i++ {
+			conf.Internal.DesecFetch <- music.SignerOp{}
 		}
-		for i := 1 ; i < pp.Updates ; i++ {
-		    conf.Internal.DesecUpdate <- music.SignerOp{}
+		for i := 1; i < pp.Updates; i++ {
+			conf.Internal.DesecUpdate <- music.SignerOp{}
 		}
 
 		response := music.PingResponse{
@@ -87,7 +87,7 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(response)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -115,57 +115,56 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch tp.Command {
 		case "dnsquery":
-		     signer, err := mdb.GetSigner(&music.Signer{ Name: tp.Signer}, false)
-		     if err != nil {
-		     	resp.Error = true
-			resp.ErrorMsg = err.Error()
-		     }
-		     updater := music.GetUpdater(signer.Method)
-		     if updater == nil {
-		     	resp.Error = true
-		     	resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
-			
-		     } 
-		     rrtype :=  dns.StringToType[tp.RRtype]
-		     if !resp.Error {
-		     	i := 0
-			queuedepth := 0
-			switch signer.Method {
-			case "ddns", "desec-api":
-			     queuedepth = 0
-			case "rlddns":
-			     queuedepth = len(conf.Internal.DdnsFetch)
-			case "rldesec":
-			     queuedepth = len(conf.Internal.DesecFetch)
-			}
-			     
-			fmt.Printf("Test DNS Query: currently %d fetch requests in the '%s' fetch queue.\n",
-					 queuedepth, signer.Method)
-			fmt.Printf("Test DNS Query: will send %d queries for '%s %s'\n",
-					 tp.Count, tp.Qname, tp.RRtype)
-		     	for i = 0; i < tp.Count ; i++ {
-		     	     // err, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
-		     	     go updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
-			     if err != nil {
-			     	resp.Error = true
+			signer, err := mdb.GetSigner(&music.Signer{Name: tp.Signer}, false)
+			if err != nil {
+				resp.Error = true
 				resp.ErrorMsg = err.Error()
-				break
-			     }
-			     fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
-		     	}
-		     	resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
-		     }
+			}
+			updater := music.GetUpdater(signer.Method)
+			if updater == nil {
+				resp.Error = true
+				resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
+
+			}
+			rrtype := dns.StringToType[tp.RRtype]
+			if !resp.Error {
+				i := 0
+				queuedepth := 0
+				switch signer.Method {
+				case "ddns", "desec-api":
+					queuedepth = 0
+				case "rlddns":
+					queuedepth = len(conf.Internal.DdnsFetch)
+				case "rldesec":
+					queuedepth = len(conf.Internal.DesecFetch)
+				}
+
+				fmt.Printf("Test DNS Query: currently %d fetch requests in the '%s' fetch queue.\n",
+					queuedepth, signer.Method)
+				fmt.Printf("Test DNS Query: will send %d queries for '%s %s'\n",
+					tp.Count, tp.Qname, tp.RRtype)
+				for i = 0; i < tp.Count; i++ {
+					// err, _ = updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+					go updater.FetchRRset(signer, tp.Zone, tp.Qname, rrtype)
+					if err != nil {
+						resp.Error = true
+						resp.ErrorMsg = err.Error()
+						break
+					}
+					fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
+				}
+				resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+			}
 
 		default:
 		}
 
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
-
 
 func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
@@ -191,6 +190,34 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch zp.Command {
 		case "list":
+			zs, err := mdb.ListZones()
+			if err != nil {
+				log.Printf("Error from ListZones: %v", err)
+			}
+			resp.Zones = zs
+		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
+		case "status":
+			var zl = make(map[string]music.Zone, 1)
+			if dbzone.Exists {
+				sg, _ := mdb.GetSignerGroup(dbzone.SGname, true)
+
+				zl[dbzone.Name] = music.Zone{
+					Name:       dbzone.Name,
+					State:      dbzone.State,
+					Statestamp: dbzone.Statestamp,
+					NextState:  dbzone.NextState,
+					FSM:        dbzone.FSM,
+					SGroup:     sg,
+					SGname:     sg.Name,
+				}
+				resp.Zones = zl
+
+			} else {
+				message := fmt.Sprintf("Zone %s: not in DB", zp.Zone.Name)
+				log.Println(message)
+				resp.Msg = message
+			}
+
 		case "add":
 			err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
 			if err != nil {
@@ -249,12 +276,12 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
 			dbzone, _ = mdb.ApiGetZone(dbzone.Name) // apisafe
 			if !success {
-			   _, dbzone.StopReason = mdb.ZoneGetMeta(dbzone, "stop-reason")
+				_, dbzone.StopReason = mdb.ZoneGetMeta(dbzone, "stop-reason")
 			}
 			resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
 			err = json.NewEncoder(w).Encode(resp)
 			if err != nil {
-			   log.Printf("Error from Encoder: %v\n", err)
+				log.Printf("Error from Encoder: %v\n", err)
 			}
 			return
 
@@ -287,7 +314,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 			err = json.NewEncoder(w).Encode(resp)
 			if err != nil {
-			   log.Printf("Error from Encoder: %v\n", err)
+				log.Printf("Error from Encoder: %v\n", err)
 			}
 			return
 
@@ -307,7 +334,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 			err = json.NewEncoder(w).Encode(resp)
 			if err != nil {
-			   log.Printf("Error from Encoder: %v\n", err)
+				log.Printf("Error from Encoder: %v\n", err)
 			}
 			return
 
@@ -324,7 +351,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 			err = json.NewEncoder(w).Encode(resp)
 			if err != nil {
-			   log.Printf("Error from Encoder: %v\n", err)
+				log.Printf("Error from Encoder: %v\n", err)
 			}
 			return
 
@@ -338,17 +365,17 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		default:
 		}
-
-		zs, err := mdb.ListZones()
-		if err != nil {
-			log.Printf("Error from ListZones: %v", err)
-		}
-		resp.Zones = zs
-		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
-
+		/*
+			zs, err := mdb.ListZones()
+			if err != nil {
+				log.Printf("Error from ListZones: %v", err)
+			}
+			resp.Zones = zs
+			// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
+		*/
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -456,7 +483,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -511,7 +538,7 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -563,7 +590,7 @@ func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
@@ -601,7 +628,7 @@ func APIshowAPI(conf *Config, router *mux.Router) func(w http.ResponseWriter, r 
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
-		   log.Printf("Error from Encoder: %v\n", err)
+			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
 }
