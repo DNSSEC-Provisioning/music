@@ -25,7 +25,13 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 }
 
 func LeaveSyncDnskeysAction(z *music.Zone) bool {
-	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	sg, err := z.SignerGroup()
+	leavingSignerName := sg.PendingRemoval
+	if leavingSignerName == "" {
+		// bitch and moan
+		log.Fatalf("")
+	}
+	// leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
