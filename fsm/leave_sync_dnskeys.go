@@ -25,11 +25,14 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 }
 
 func LeaveSyncDnskeysAction(z *music.Zone) bool {
-	sg, err := z.SignerGroup()
+	sg := z.SignerGroup()
+	if sg == nil {
+	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+	}
+	
 	leavingSignerName := sg.PendingRemoval
 	if leavingSignerName == "" {
-		// bitch and moan
-		log.Fatalf("")
+		log.Fatalf("Leaving signer name in signer group %s unset.", sg.Name)
 	}
 	// leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
