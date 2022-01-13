@@ -22,7 +22,16 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 
 // Verify that NS records in parent are in synched.
 func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
-	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	sg := z.SignerGroup()
+	if sg == nil {
+	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+	}
+	
+	leavingSignerName := sg.PendingRemoval
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name in signer group %s unset.", sg.Name)
+	}
+	// leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
@@ -118,7 +127,16 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 }
 
 func LeaveParentNsSyncedAction(z *music.Zone) bool {
-	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	sg := z.SignerGroup()
+	if sg == nil {
+	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+	}
+	
+	leavingSignerName := sg.PendingRemoval
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name in signer group %s unset.", sg.Name)
+	}
+	// leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
