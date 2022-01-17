@@ -43,8 +43,8 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 
 const (
       GSGsql1 = `
-SELECT name, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
-  COALESCE(pendremove, '') AS prem
+SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
+  COALESCE(pendremove, '') AS prem, numzones, numprocesszones
 FROM signergroups WHERE name=?`
 )
 
@@ -60,8 +60,11 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 
 	row := stmt.QueryRow(sg)
 
+	var locked bool
 	var name, curprocess, pendadd, pendremove string
-	switch err = row.Scan(&name, &curprocess, &pendadd, &pendremove); err {
+	var numzones, numprocesszones int
+	switch err = row.Scan(&name, &locked, &curprocess, &pendadd,
+	       	     		     &pendremove, &numzones, &numprocesszones); err {
 	case sql.ErrNoRows:
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
@@ -73,6 +76,9 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 		}
 		return &SignerGroup{
 			Name:			name,
+			Locked:			locked,
+			NumZones:		numzones,
+			NumProcessZones:	numprocesszones,
 			CurrentProcess:		curprocess,
 			PendingAddition:	pendadd,
 			PendingRemoval:		pendremove,

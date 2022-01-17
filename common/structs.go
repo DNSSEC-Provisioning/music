@@ -37,11 +37,13 @@ type Zone struct {
 
 type SignerGroup struct {
 	Name      	string
+	Locked		bool
 	SignerMap	map[string]*Signer
 	CurrentProcess	string
 	PendingRemoval	string
 	PendingAddition	string
 	NumZones	int
+	NumProcessZones	int
 	State     	string
 	DB        	*MusicDB
 }
