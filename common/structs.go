@@ -33,6 +33,13 @@ type Zone struct {
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
+	CurProc	   []ZoneProcess	// 
+}
+
+// A process object encapsulates the change that 
+type ZoneProcess struct {
+     Type    string // "add-signer" | "remove-signer"
+     Signer  string // name of signer
 }
 
 type SignerGroup struct {
@@ -40,8 +47,8 @@ type SignerGroup struct {
 	Locked		bool
 	SignerMap	map[string]*Signer
 	CurrentProcess	string
-	PendingRemoval	string
-	PendingAddition	string
+	PendingRemoval	string	// name of leaving signer
+	PendingAddition	string	// name of joining signer
 	NumZones	int
 	NumProcessZones	int
 	State     	string

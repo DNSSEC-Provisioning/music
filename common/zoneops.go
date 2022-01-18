@@ -333,7 +333,7 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 		return err, ""
 	}
 
-	sqlq = "UPDATE signergroups SET zones=(COALESCE ((SELECT zones FROM signergroups WHERE name=?), 0) + 1) WHERE name=?"
+	sqlq = "UPDATE signergroups SET numzones=(COALESCE ((SELECT numzones FROM signergroups WHERE name=?), 0) + 1) WHERE name=?"
 	stmt, err = mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("ZoneJoinGroup: Error from db.Prepare: %v\n", err)
@@ -363,6 +363,11 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 as the zone is already in process '%s'. Problematic.`, dbzone.Name, g, SignerJoinGroupProcess, dbzone.FSM)
 }
 
+// Leaving a signer group is different from joining in the sense that
+// if the group is locked (due to ongoing process) a zone cannot join at
+// all, but it is possible to leave as long as the leaving zone is done
+// with the process.
+
 func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -379,6 +384,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 			dbzone.Name, g), ""
 	}
 
+	// It *this* zone in a process or not?
 	if dbzone.FSM != "" && dbzone.FSM != "---" {
 		return fmt.Errorf(
 			"Zone %s is executing process '%s'. Cannot leave until finished.", dbzone.Name, dbzone.FSM), ""
@@ -396,6 +402,19 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
+
+	sqlq = "UPDATE signergroups SET numzones=(COALESCE ((SELECT numzones FROM signergroups WHERE name=?), 0) - 1) WHERE name=?"
+	stmt, err = mdb.Prepare(sqlq)
+	if err != nil {
+		fmt.Printf("ZoneLeaveGroup: Error from db.Prepare: %v\n", err)
+	}
+
+	_, err = stmt.Exec(g, g)
+	if CheckSQLError("ZoneLeaveGroup", sqlq, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+
 	mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s has left the signer group %s.",
 		dbzone.Name, sg.Name)
