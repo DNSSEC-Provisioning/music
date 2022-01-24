@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/miekg/dns"
+	"github.com/spf13/viper"
 )
 
 type CliConfig struct {
@@ -27,7 +27,7 @@ type Zone struct {
 	State      string
 	Statestamp time.Time
 	NextState  map[string]bool
-	StopReason string	// possible reason for a state transition not to be possible
+	StopReason string // possible reason for a state transition not to be possible
 	FSM        string
 	SGroup     *SignerGroup
 	SGname     string
@@ -36,14 +36,14 @@ type Zone struct {
 }
 
 type SignerGroup struct {
-	Name      	string
-	SignerMap	map[string]*Signer
-	CurrentProcess	string
-	PendingRemoval	string
-	PendingAddition	string
-	NumZones	int
-	State     	string
-	DB        	*MusicDB
+	Name            string
+	SignerMap       map[string]*Signer
+	CurrentProcess  string
+	PendingRemoval  string
+	PendingAddition string
+	NumZones        int
+	State           string
+	DB              *MusicDB
 }
 
 func (sg *SignerGroup) Signers() map[string]*Signer {
@@ -53,14 +53,15 @@ func (sg *SignerGroup) Signers() map[string]*Signer {
 type ZoneState string
 
 type Signer struct {
-	Name        string
-	Exists      bool
-	Method      string // "ddns" | "desec" | ...
-	Address     string
-	Auth        string // AuthDataTmp // TODO: Issue #28
-	SignerGroup string  // single signer group for join/leave
+	Name         string
+	Exists       bool
+	Method       string // "ddns" | "desec" | ...
+	Address      string
+	Port         string
+	Auth         string   // AuthDataTmp // TODO: Issue #28
+	SignerGroup  string   // single signer group for join/leave
 	SignerGroups []string // all signer groups signer is member of
-	DB          *MusicDB
+	DB           *MusicDB
 }
 
 // type AuthDataTmp string // TODO: Issue #28
@@ -74,27 +75,27 @@ type AuthData struct {
 }
 
 type MusicDB struct {
-	mu     sync.Mutex
-	db     *sql.DB
-        FSMlist	map[string]FSM
-	Tokvip *viper.Viper
+	mu      sync.Mutex
+	db      *sql.DB
+	FSMlist map[string]FSM
+	Tokvip  *viper.Viper
 }
 
 type SignerOp struct {
-        Command  string
-        Signer   *Signer
-        Zone     string
-        Owner    string
-        RRtype   uint16
-        Inserts  *[][]dns.RR
-        Removes  *[][]dns.RR
-        Response chan SignerOpResult
+	Command  string
+	Signer   *Signer
+	Zone     string
+	Owner    string
+	RRtype   uint16
+	Inserts  *[][]dns.RR
+	Removes  *[][]dns.RR
+	Response chan SignerOpResult
 }
 
 type SignerOpResult struct {
-        Status   int
-	Rcode	 uint8      // only relevant for DDNS
-        RRs      []dns.RR
-        Error    error
-        Response string
+	Status   int
+	Rcode    uint8 // only relevant for DDNS
+	RRs      []dns.RR
+	Error    error
+	Response string
 }

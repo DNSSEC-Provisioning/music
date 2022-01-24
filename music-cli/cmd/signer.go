@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var signermethod, signerauth, signeraddress string
+var signermethod, signerauth, signeraddress, signerport string
 
 // signerCmd represents the signer command
 var signerCmd = &cobra.Command{
@@ -38,6 +38,9 @@ var addSignerCmd = &cobra.Command{
 			log.Fatalf("Error: signer address unspecified. Terminating.\n")
 		}
 
+		if signerport == "" {
+			signerport = "53"
+		}
 		err := AddSigner()
 		if err != nil {
 			fmt.Printf("Error from AddSigner: %v\n", err)
@@ -127,14 +130,18 @@ var logoutSignerCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(signerCmd)
 	signerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
-					   joinGroupCmd, leaveGroupCmd,	loginSignerCmd, logoutSignerCmd)
+		joinGroupCmd, leaveGroupCmd, loginSignerCmd, logoutSignerCmd)
 
+	signerCmd.PersistentFlags().StringVarP(&signername, "name", "n", "",
+		"Name of signer")
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
 		"authdata for signer")
 	signerCmd.PersistentFlags().StringVarP(&signeraddress, "address", "", "",
 		"IP address of signer")
+	signerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",
+		"Port of signer")
 }
 
 func AddSigner() error {
@@ -146,6 +153,7 @@ func AddSigner() error {
 			Method:  strings.ToLower(signermethod),
 			Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 			Address: signeraddress,
+			Port:    signerport, // set to 53 if not specified
 		},
 		SignerGroup: sgroupname, // may be unspecified
 	}
@@ -177,6 +185,7 @@ func UpdateSigner() error {
 			Method:  strings.ToLower(signermethod),
 			Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 			Address: signeraddress,
+			Port:    signerport, // set to 53 if not specified
 		},
 	}
 
@@ -390,7 +399,7 @@ func ListSigners() error {
 
 	var out []string
 	if cliconf.Verbose || showheaders {
-		out = append(out, "Signer|Method|Address|SignerGroups")
+		out = append(out, "Signer|Method|Address|Port|SignerGroups")
 	}
 
 	for _, v := range sr.Signers {
@@ -399,7 +408,7 @@ func ListSigners() error {
 			groups = v.SignerGroups
 		}
 		gs := strings.Join(groups, ", ")
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s", v.Name, v.Method, v.Address, gs))
+		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s", v.Name, v.Method, v.Address, v.Port, gs))
 	}
 	fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	return nil
