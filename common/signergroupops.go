@@ -15,23 +15,13 @@ import (
 
 func (mdb *MusicDB) AddSignerGroup(group string) error {
 	fmt.Printf("AddSignerGroup(%s)\n", group)
-	delcmd := "DELETE FROM signergroups WHERE name=?"
-	addcmd := "INSERT INTO signergroups(name) VALUES (?)"
-	delstmt, err := mdb.Prepare(delcmd)
-	if err != nil {
-		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
-	}
+	addcmd := "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
 	addstmt, err := mdb.Prepare(addcmd)
 	if err != nil {
 		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = delstmt.Exec(group)
-	if CheckSQLError("AddSignerGroup", delcmd, err, false) {
-		mdb.mu.Unlock()
-		return err
-	}
 	_, err = addstmt.Exec(group)
 	mdb.mu.Unlock()
 

@@ -43,21 +43,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	delstmt, err := mdb.Prepare("DELETE FROM signers WHERE name=?")
-	if err != nil {
-		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
-	}
-	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+	addstmt, err := mdb.Prepare("INSERT OR REPLACE INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = delstmt.Exec(dbsigner.Name)
-	if err != nil {
-		mdb.mu.Unlock()
-		return err, ""
-	}
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
 		dbsigner.Auth, dbsigner.Address)
 	mdb.mu.Unlock()
