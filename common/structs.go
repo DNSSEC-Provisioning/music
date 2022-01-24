@@ -29,11 +29,11 @@ type Zone struct {
 	NextState  map[string]bool
 	StopReason string	// possible reason for a state transition not to be possible
 	FSM        string
+	FSMSigner  string
 	SGroup     *SignerGroup
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
-	CurProc	   []ZoneProcess	// 
 }
 
 // A process object encapsulates the change that 

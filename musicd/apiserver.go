@@ -223,8 +223,10 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				resp.ErrorMsg = err.Error()
 			}
 
+		// XXX: A single zone cannot "choose" to join an FSM, it's the Group that does that.
+		//      This endpoint is only here for development and debugging reasons.
 		case "fsm":
-			err, resp.Msg = mdb.ZoneAttachFsm(dbzone, zp.FSM)
+			err, resp.Msg = mdb.ZoneAttachFsm(dbzone, zp.FSM, zp.FSMSigner)
 			if err != nil {
 				// log.Printf("Error from ZoneAttachFsm: %v", err)
 				resp.Error = true

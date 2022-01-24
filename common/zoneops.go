@@ -348,15 +348,15 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 
 	dbzone, _ = mdb.GetZone(dbzone.Name)
 
-	// If the new zone is not already in a process then we put it in the SignerJoinGroupProcess as
-	// a method of ensuring that it is in sync.
+	// If the new zone is not already in a process then we put it in the VerifyZoneInSyncProcess as
+	// a method of ensuring that it is in sync. This process is currently a no-op, but doesn't have to be.
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
-		err, msg := mdb.ZoneAttachFsm(dbzone, SignerJoinGroupProcess)
+		err, msg := mdb.ZoneAttachFsm(dbzone, VerifyZoneInSyncProcess, "all")
 		if err != nil {
 			return err, msg
 		}
 		return nil, fmt.Sprintf(
-			"Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, SignerJoinGroupProcess)
+			"Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, VerifyZoneInSyncProcess)
 	}
 	return nil, fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'

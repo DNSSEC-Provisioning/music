@@ -180,6 +180,11 @@ command.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
 
+		fmt.Println(
+`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
+up to the signer group. This command is only here for development and debuging
+reasons and will disappear.`)
+
 		zone := dns.Fqdn(zonename)
 		if zone == "." {
 			log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
@@ -189,12 +194,17 @@ command.`,
 			log.Fatalf("ZoneFsm: FSM not specified. Terminating.\n")
 		}
 
+		if signername == "" {
+			log.Fatalf("ZoneFsm: FSM signer not specified. Terminating.\n")
+		}
+
 		data := music.ZonePost{
 			Command: "fsm",
 			Zone: music.Zone{
 				Name: zone,
 			},
 			FSM: fsmname,
+			FSMSigner: signername,
 		}
 		zr, _ := SendZoneCommand(zone, data)
 		if zr.Error {

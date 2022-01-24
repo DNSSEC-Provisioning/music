@@ -21,6 +21,7 @@ name        TEXT,
 state       TEXT,
 statestamp  DATETIME,
 fsm         TEXT,
+fsmsigner   TEXT,	
 sgroup      TEXT,
 UNIQUE (name, sgroup)
 )`,
