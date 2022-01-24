@@ -106,7 +106,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 
 	mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address, dbsigner.Name)
+		dbsigner.Address, dbsigner.Name, dbsigner.Port)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", "", err, false) {
 		return err, ""
