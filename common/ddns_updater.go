@@ -17,16 +17,16 @@ func init() {
 }
 
 func (u *DdnsUpdater) SetChannels(fetch, update chan SignerOp) {
-     // no-op
+	// no-op
 }
 
 func (u *DdnsUpdater) SetApi(api Api) {
-     // no-op
+	// no-op
 }
 
 func (u *DdnsUpdater) GetApi() Api {
-     // no-op
-     return Api{}
+	// no-op
+	return Api{}
 }
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
@@ -46,7 +46,7 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 		}
 	}
 	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
-	 	signer.Name, fqdn, inserts_len, removes_len)
+		signer.Name, fqdn, inserts_len, removes_len)
 	if inserts_len == 0 && removes_len == 0 {
 		return fmt.Errorf("Inserts and removes empty, nothing to do")
 	}
@@ -78,7 +78,7 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 
 	c := new(dns.Client)
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]
 
 	c := new(dns.Client)
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	r, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		return err, []dns.RR{}
 	}
@@ -160,8 +160,8 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	}
 
 	log.Printf("Length of %s answer from %s: %d RRs\n",
-			   dns.TypeToString[rrtype],
-			   signer.Name, len(r.Answer))
+		dns.TypeToString[rrtype],
+		signer.Name, len(r.Answer))
 
 	var rrs []dns.RR
 

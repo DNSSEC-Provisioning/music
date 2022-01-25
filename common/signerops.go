@@ -43,20 +43,22 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	addstmt, err := mdb.Prepare("INSERT OR REPLACE INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+
+	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port) VALUES (?, ?, ?, ?, ?)")
+
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
-		dbsigner.Auth, dbsigner.Address)
+		dbsigner.Auth, dbsigner.Address, dbsigner.Port)
 	mdb.mu.Unlock()
 
 	if err != nil {
-		fmt.Printf("AddSigner: failure: %s, %s, %s, %s\n",
+		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.Auth,
-			dbsigner.Address)
+			dbsigner.Address, dbsigner.Port)
 		return err, ""
 	}
 
@@ -68,8 +70,8 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
 	}
 
-	log.Printf("AddSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
-		dbsigner.Method, dbsigner.Auth, dbsigner.Address)
+	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
+		dbsigner.Method, dbsigner.Auth, dbsigner.Address, dbsigner.Port)
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
@@ -90,22 +92,22 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
+	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ?, port = ? WHERE name = ?")
 	if err != nil {
 		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address, dbsigner.Name)
+		dbsigner.Address, dbsigner.Name, dbsigner.Port)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", "", err, false) {
 		return err, ""
 	}
 
-	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
+	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address)
+		dbsigner.Address, dbsigner.Port)
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
@@ -366,7 +368,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 
 const (
 	LSIGsql = `
-SELECT name, method, addr, auth
+SELECT name, method, addr, auth, port
 FROM signers`
 )
 
@@ -384,9 +386,9 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	if CheckSQLError("ListSigners", LSIGsql, err, false) {
 		return sl, err
 	} else {
-		var name, method, address, auth string
+		var name, method, address, auth, port string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &address, &auth)
+			err := rows.Scan(&name, &method, &address, &auth, &port)
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}
@@ -397,6 +399,7 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 				Method:  method,
 				Address: address,
 				Auth:    auth, // AuthDataTmp(auth), // TODO: Issue #28
+				Port:    port,
 			}
 			sgs, err := mdb.GetSignerGroups(name)
 			if err != nil {
