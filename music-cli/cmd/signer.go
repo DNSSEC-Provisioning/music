@@ -132,8 +132,6 @@ func init() {
 	signerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
 		joinGroupCmd, leaveGroupCmd, loginSignerCmd, logoutSignerCmd)
 
-	signerCmd.PersistentFlags().StringVarP(&signername, "name", "n", "",
-		"Name of signer")
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
