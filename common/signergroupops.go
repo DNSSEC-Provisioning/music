@@ -15,23 +15,13 @@ import (
 
 func (mdb *MusicDB) AddSignerGroup(group string) error {
 	fmt.Printf("AddSignerGroup(%s)\n", group)
-	delcmd := "DELETE FROM signergroups WHERE name=?"
-	addcmd := "INSERT INTO signergroups(name) VALUES (?)"
-	delstmt, err := mdb.Prepare(delcmd)
-	if err != nil {
-		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
-	}
+	addcmd := "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
 	addstmt, err := mdb.Prepare(addcmd)
 	if err != nil {
 		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = delstmt.Exec(group)
-	if CheckSQLError("AddSignerGroup", delcmd, err, false) {
-		mdb.mu.Unlock()
-		return err
-	}
 	_, err = addstmt.Exec(group)
 	mdb.mu.Unlock()
 
@@ -43,8 +33,8 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 
 const (
       GSGsql1 = `
-SELECT name, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
-  COALESCE(pendremove, '') AS prem
+SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
+  COALESCE(pendremove, '') AS prem, numzones, numprocesszones
 FROM signergroups WHERE name=?`
 )
 
@@ -60,8 +50,11 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 
 	row := stmt.QueryRow(sg)
 
+	var locked bool
 	var name, curprocess, pendadd, pendremove string
-	switch err = row.Scan(&name, &curprocess, &pendadd, &pendremove); err {
+	var numzones, numprocesszones int
+	switch err = row.Scan(&name, &locked, &curprocess, &pendadd,
+	       	     		     &pendremove, &numzones, &numprocesszones); err {
 	case sql.ErrNoRows:
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
@@ -73,6 +66,9 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 		}
 		return &SignerGroup{
 			Name:			name,
+			Locked:			locked,
+			NumZones:		numzones,
+			NumProcessZones:	numprocesszones,
 			CurrentProcess:		curprocess,
 			PendingAddition:	pendadd,
 			PendingRemoval:		pendremove,

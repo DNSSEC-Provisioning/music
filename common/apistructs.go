@@ -71,6 +71,7 @@ type ZonePost struct {
 	ToSigner     string
 	SignerGroup  string
 	FSM          string
+	FSMSigner    string
 	FsmNextState string
 	Metakey      string
 	Metavalue    string

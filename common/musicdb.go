@@ -21,6 +21,7 @@ name        TEXT,
 state       TEXT,
 statestamp  DATETIME,
 fsm         TEXT,
+fsmsigner   TEXT,	
 sgroup      TEXT,
 UNIQUE (name, sgroup)
 )`,
@@ -55,9 +56,12 @@ UNIQUE (name)
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
+locked	    BOOLEAN NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)), // locked=1 => group disallow zones joining or leaving
 curprocess  TEXT,
 pendadd	    TEXT,
 pendremove  TEXT,
+numzones    INTEGER,
+numprocesszones	INTEGER,
 UNIQUE (name)
 )`,
 
