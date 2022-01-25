@@ -46,7 +46,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
-	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "", "name of signer")
+	rootCmd.PersistentFlags().StringVarP(&signername, "signer", "s", "", "name of signer")
 	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g",	"", "name of signer group")
 
 }

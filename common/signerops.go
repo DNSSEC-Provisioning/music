@@ -43,21 +43,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	delstmt, err := mdb.Prepare("DELETE FROM signers WHERE name=?")
-	if err != nil {
-		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
-	}
-	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+	addstmt, err := mdb.Prepare("INSERT OR REPLACE INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = delstmt.Exec(dbsigner.Name)
-	if err != nil {
-		mdb.mu.Unlock()
-		return err, ""
-	}
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
 		dbsigner.Auth, dbsigner.Address)
 	mdb.mu.Unlock()
@@ -193,8 +184,8 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 				dbsigner.Name, sg.Name)
 		}
 
-		// At this stage we know that there are now more than one signer and more than zero zones. Hence we
-		// need to enter the add-signer process for all the zones.
+		// At this stage we know that there are now more than one signer and more than zero
+		// zones. Hence we need to enter the add-signer process for all the zones.
 		const sqlq = "UPDATE signergroups SET curprocess=?, pendadd=? WHERE name=?"
 
 		mdb.mu.Lock()
@@ -214,7 +205,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		// XXX: this is inefficient, but I don't think we will have enough
 		//      zones in the system for that to be an issue
 		for _, z := range zones {
-			mdb.ZoneAttachFsm(z, SignerJoinGroupProcess) // we know that z exist
+			mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
 		}
 		return nil, fmt.Sprintf(
 			"Signer %s has joined signer group %s and %d zones have entered the 'add-signer' process.",
@@ -319,7 +310,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
-		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess) // we know that z exist
+		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess, dbsigner.Name) // we know that z exist
 	}
 	return nil, fmt.Sprintf(
 		"Signer %s is in pending removal from signer group %s and therefore %d zones entered the '%s' process.",

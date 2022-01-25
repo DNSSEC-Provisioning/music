@@ -36,6 +36,13 @@ var FSMlist = map[string]music.FSM{
 		},
 	},
 
+	"verify-zone-sync": music.FSM{
+		Type:         "single-run",
+		InitialState: "ready",
+		States: map[string]music.FSMState{
+		},
+	},
+
 	// PROCESS: ADD-SIGNER: This is a real process, from the draft doc.
 	// defined in fsm/join*.go
 

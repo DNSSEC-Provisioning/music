@@ -29,19 +29,28 @@ type Zone struct {
 	NextState  map[string]bool
 	StopReason string	// possible reason for a state transition not to be possible
 	FSM        string
+	FSMSigner  string
 	SGroup     *SignerGroup
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
 }
 
+// A process object encapsulates the change that 
+type ZoneProcess struct {
+     Type    string // "add-signer" | "remove-signer"
+     Signer  string // name of signer
+}
+
 type SignerGroup struct {
 	Name      	string
+	Locked		bool
 	SignerMap	map[string]*Signer
 	CurrentProcess	string
-	PendingRemoval	string
-	PendingAddition	string
+	PendingRemoval	string	// name of leaving signer
+	PendingAddition	string	// name of joining signer
 	NumZones	int
+	NumProcessZones	int
 	State     	string
 	DB        	*MusicDB
 }
