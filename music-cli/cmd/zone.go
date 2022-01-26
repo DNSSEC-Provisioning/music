@@ -20,7 +20,7 @@ import (
 	music "github.com/DNSSEC-Provisioning/music/common"
 )
 
-var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner string
+var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
 var metakey, metavalue string
 
 var zoneCmd = &cobra.Command{
@@ -38,7 +38,8 @@ var addZoneCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
-				Name: zonename,
+				Name:		zonename,
+				ZoneType:	zonetype,
 			},
 			SignerGroup: sgroupname, // may be unspecified
 		}
@@ -327,6 +328,7 @@ func init() {
 		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
 		zoneMetaCmd)
 
+	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "normal", "type of zone, 'normal' or 'debug")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
 	zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",

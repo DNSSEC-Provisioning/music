@@ -25,6 +25,11 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeCDS)
@@ -140,6 +145,11 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 
 func VerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("VerifyCdsRemoved: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)

@@ -24,6 +24,11 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 
 	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(s.Method)
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)

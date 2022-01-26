@@ -19,6 +19,11 @@ func (z *Zone) SignerGroup() *SignerGroup {
 	return z.SGroup
 }
 
+const (
+	AZsql = `
+INSERT INTO zones(name, zonetype, state, statestamp, fsm) VALUES (?, ?, ?, datetime('now'), ?)`
+)
+
 func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _ := mdb.GetZone(fqdn)
@@ -26,15 +31,14 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 		return fmt.Errorf("Zone %s already present in MuSiC system.", fqdn), ""
 	}
 
-	sqlq := "INSERT INTO zones(name, state, statestamp, fsm) VALUES (?, ?, datetime('now'), ?)"
-	stmt, err := mdb.Prepare(sqlq)
+	stmt, err := mdb.Prepare(AZsql)
 	if err != nil {
-		fmt.Printf("Error in SQL prepare: %v", err)
+		fmt.Printf("Error in SQL prepare(%s): %v", AZsql, err)
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(fqdn, "---", "---")
-	if CheckSQLError("AddZone", sqlq, err, false) {
+	_, err = stmt.Exec(fqdn, z.ZoneType, "---", "---")
+	if CheckSQLError("AddZone", AZsql, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}

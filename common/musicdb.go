@@ -18,6 +18,7 @@ var DefaultTables = map[string]string{
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
+zonetype    TEXT,	"normal" | "debug"
 state       TEXT,
 statestamp  DATETIME,
 fsm         TEXT,
