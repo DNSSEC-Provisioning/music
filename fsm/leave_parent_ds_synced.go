@@ -25,6 +25,11 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeCDS)
@@ -80,6 +85,11 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 
 func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveParentDsSyncedAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	cds := new(dns.CDS)
 	cds.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCDS, Class: dns.ClassINET, Ttl: 0}

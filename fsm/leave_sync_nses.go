@@ -25,6 +25,11 @@ func LeaveSyncNsesPreCondition(z *music.Zone) bool {
 }
 
 func LeaveSyncNsesAction(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveSyncNsesAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore

@@ -124,6 +124,12 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinParentDsSyncedAction: zone %s (DEBUG) is automatically ok",
+	   					 z.Name)
+	   return true
+	}
+
 	cds := new(dns.CDS)
 	cds.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCDS, Class: dns.ClassINET, Ttl: 0}
 

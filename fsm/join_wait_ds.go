@@ -31,6 +31,11 @@ var FsmJoinWaitDs = music.FSMTransition{
 }
 
 func JoinWaitDsPreCondition(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinWaitDsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
 			stopreason := fmt.Sprintf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
@@ -115,6 +120,11 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 
 func JoinWaitDsAction(z *music.Zone) bool {
 	log.Printf("JoinWaitDsAction: %s: Fetch all NS records from all signers", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinWaitDsAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	nses := make(map[string][]*dns.NS)
 

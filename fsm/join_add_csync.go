@@ -91,6 +91,11 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 
 	log.Printf("%s: Creating CSYNC record sets", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")

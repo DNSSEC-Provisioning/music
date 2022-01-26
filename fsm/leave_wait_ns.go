@@ -28,6 +28,11 @@ var FsmLeaveWaitNs = music.FSMTransition{
 }
 
 func LeaveWaitNsPreCondition(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())

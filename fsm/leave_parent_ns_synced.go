@@ -22,6 +22,11 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 
 // Verify that NS records in parent are in synched.
 func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveParentNsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
@@ -118,6 +123,11 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 }
 
 func LeaveParentNsSyncedAction(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveParentNsSyncedAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
