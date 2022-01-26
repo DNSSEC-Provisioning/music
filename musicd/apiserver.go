@@ -219,7 +219,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "add":
-			err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
+			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
+			err, resp.Msg = mdb.AddZone(&zp.Zone, zp.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from AddZone: %v", err)
 				resp.Error = true
@@ -358,6 +359,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			return
 
 		case "meta":
+		        dbzone.ZoneType = zp.Zone.ZoneType 
 			err, resp.Msg = mdb.ZoneSetMeta(dbzone, zp.Metakey, zp.Metavalue)
 			if err != nil {
 				// log.Printf("Error from ZoneSetMeta: %v", err)

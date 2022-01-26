@@ -57,6 +57,9 @@ var addZoneCmd = &cobra.Command{
 	Short: "Add a new zone to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
 		zonename = dns.Fqdn(zonename)
+		if zonetype == "" {
+		   zonetype = "normal"
+		}
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
@@ -184,6 +187,9 @@ var zoneMetaCmd = &cobra.Command{
 			Metakey:   metakey,
 			Metavalue: metavalue,
 		}
+		if zonetype != "" {
+		   data.Zone.ZoneType = zonetype
+		}
 
 		zr, _ := SendZoneCommand(zone, data)
 		if zr.Error {
@@ -247,7 +253,6 @@ var zoneStepFsmCmd = &cobra.Command{
 			log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
 		}
 
-		// zm, err := ListZones()
 		data := music.ZonePost{
 			Command: "list",
 		}
@@ -362,7 +367,7 @@ func init() {
 		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
 		zoneMetaCmd, statusZoneCmd)
 
-	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "normal", "type of zone, 'normal' or 'debug")
+	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "", "type of zone, 'normal' or 'debug")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
 	zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",
@@ -562,8 +567,12 @@ func PrintZones(zm map[string]music.Zone) {
 
 	for _, zn := range zonenames {
 		zone = zm[zn]
+	        zname := zn
+		if zone.ZoneType == "debug" {
+		   zname += "[D]"
+		}
+
 		group := "---"
-		// if zone.SignerGroup().Name != "" {
 		if zone.SGname != "" {
 			group = zone.SGname
 		}
@@ -585,7 +594,7 @@ func PrintZones(zm map[string]music.Zone) {
 		for k, _ := range zone.NextState {
 			nextStates = append(nextStates, k)
 		}
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zone.Name, group, fsm,
+		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zname, group, fsm,
 			zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
 			strings.Join(nextStates, " "), zone.ZskState))
 	}

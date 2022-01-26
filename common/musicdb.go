@@ -18,7 +18,7 @@ var DefaultTables = map[string]string{
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
-zonetype    TEXT,	"normal" | "debug"
+zonetype    TEXT,
 state       TEXT,
 statestamp  DATETIME,
 fsm         TEXT,
@@ -57,12 +57,12 @@ UNIQUE (name)
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
-locked	    BOOLEAN NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)), // locked=1 => group disallow zones joining or leaving
+locked	    BOOLEAN NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)),
 curprocess  TEXT,
-pendadd	    TEXT,
-pendremove  TEXT,
-numzones    INTEGER,
-numprocesszones	INTEGER,
+pendadd	    TEXT NOT NULL DEFAULT '',
+pendremove  TEXT NOT NULL DEFAULT '',
+numzones    INTEGER NOT NULL DEFAULT 0,
+numprocesszones	INTEGER NOT NULL DEFAULT 0,
 UNIQUE (name)
 )`,
 

@@ -25,6 +25,7 @@ INSERT INTO zones(name, zonetype, state, statestamp, fsm) VALUES (?, ?, ?, datet
 )
 
 func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
+     log.Printf("AddZone: zone: %v", z)
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _ := mdb.GetZone(fqdn)
 	if dbzone.Exists {
@@ -86,17 +87,28 @@ func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
 	}
 
-	mdb.mu.Lock()
-	stmt, err := mdb.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
+	mstmt, err := mdb.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
 	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare 1: %v\n", err)
+	}
+	zstmt, err := mdb.Prepare("UPDATE zones SET zonetype=? WHERE name=?")
+	if err != nil {
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare 2: %v\n", err)
 	}
 
-	_, err = stmt.Exec(z.Name, key, value)
+	mdb.mu.Lock()
+
+	_, err = mstmt.Exec(z.Name, key, value)
 	if CheckSQLError("ZoneSetMeta", "INSERT OR REPLACE INTO", err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
+	_, err = zstmt.Exec(z.ZoneType, z.Name,)
+	if CheckSQLError("ZoneSetMeta", "UPDATE zones SET zonetype", err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	
 	mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s metadata '%s' updated to be '%s'",
 		z.Name, key, value)
@@ -180,15 +192,15 @@ func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
 }
 
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
-	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
+	sqlq := "SELECT name, zonetype, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
 	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("GetZone: Error from db.Prepare: %v\n", err)
 	}
 	row := stmt.QueryRow(zonename)
 
-	var name, state, timestamp, fsm, signergroup string
-	switch err = row.Scan(&name, &state, &timestamp, &fsm, &signergroup); err {
+	var name, zonetype, state, timestamp, fsm, signergroup string
+	switch err = row.Scan(&name, &zonetype, &state, &timestamp, &fsm, &signergroup); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetZone: Zone \"%s\" does not exist\n", zonename)
 		return &Zone{
@@ -212,6 +224,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 		return &Zone{
 			Name:       name,
 			Exists:     true,
+			ZoneType:   zonetype,
 			State:      state,
 			Statestamp: t,
 			NextState:  next,
@@ -351,13 +364,28 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 
 	dbzone, _ = mdb.GetZone(dbzone.Name)
 
-	// If the new zone is not already in a process then we put it in the VerifyZoneInSyncProcess as
-	// a method of ensuring that it is in sync. This process is currently a no-op, but doesn't have to be.
+	// If the new zone is not already in a process then we put it in the VerifyZoneInSyncProcess
+	// as a method of ensuring that it is in sync. This process is currently a no-op, but doesn't
+	// have to be.
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
 		err, msg := mdb.ZoneAttachFsm(dbzone, VerifyZoneInSyncProcess, "all")
 		if err != nil {
 			return err, msg
 		}
+
+		// update counter
+		sqlq = "UPDATE signergroups SET numprocesszones=numprocesszones+1 WHERE name=?"
+		stmt, err = mdb.Prepare(sqlq)
+		if err != nil {
+		   fmt.Printf("ZoneJoinGroup: Error from db.Prepare: %v\n", err)
+		}
+
+		_, err = stmt.Exec(g)
+		if CheckSQLError("JoinGroup", sqlq, err, false) {
+		   mdb.mu.Unlock()
+		   return err, ""
+		}
+
 		return nil, fmt.Sprintf(
 			"Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, VerifyZoneInSyncProcess)
 	}
@@ -426,7 +454,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 const (
 	layout = "2006-01-02 15:04:05"
 	LZsqlq = `
-SELECT name, state, fsm,
+SELECT name, zonetype, state, fsm,
   COALESCE(statestamp, datetime('now')) AS timestamp,
   COALESCE(sgroup, '') AS signergroup
 FROM zones`
@@ -450,11 +478,11 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 		return zl, err
 	} else {
 		rowcounter := 0
-		var name, state, fsm string
+		var name, zonetype, state, fsm string
 		var timestamp string
 		var signergroup string
 		for rows.Next() {
-			err := rows.Scan(&name, &state, &fsm, &timestamp, &signergroup)
+			err := rows.Scan(&name, &zonetype, &state, &fsm, &timestamp, &signergroup)
 			if err != nil {
 				log.Fatal("ListZones: Error from rows.Next():", err)
 			}
@@ -478,6 +506,7 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 
 			zl[name] = Zone{
 				Name:       name,
+				ZoneType:   zonetype,
 				State:      state,
 				Statestamp: t,
 				NextState:  next,

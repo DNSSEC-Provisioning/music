@@ -18,6 +18,9 @@ const (
 	FsmStateNsesSynced       = "nses-synced"
 	FsmStateNsPropagated     = "ns-propagated"
 //	FsmStateStop             = "stop"		// XXX: This state is defined in music package
+
+	FsmStateSignersUnknown	 = "signers-unknown"	// Only used in the VERIFY-ZONE-SYNC proc
+
 )
 
 var FsmGenericStop = music.FsmTransitionStopFactory(music.FsmStateStop)
@@ -36,10 +39,19 @@ var FSMlist = map[string]music.FSM{
 		},
 	},
 
+	// PROCESS: VERIFY-ZONE-SYNC: This is presently an empty process, but should
+	//          contain steps needed to verify whether a zone is in sync across
+	//          signers (or not).
+	
 	"verify-zone-sync": music.FSM{
 		Type:         "single-run",
-		InitialState: "ready",
+		InitialState: FsmStateSignersUnknown,
 		States: map[string]music.FSMState{
+			FsmStateSignersUnknown: music.FSMState{
+				Next: map[string]music.FSMTransition{
+				      music.FsmStateStop: FsmZoneIsInSync,
+				},
+			},
 		},
 	},
 

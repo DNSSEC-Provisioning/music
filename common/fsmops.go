@@ -57,6 +57,53 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 		dbzone.Name, fsm, initialstate)
 }
 
+func (mdb *MusicDB) ZoneDetachFsm(dbzone *Zone, fsm, fsmsigner string) (error, string) {
+
+	if !dbzone.Exists {
+		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
+	}
+
+	sgname := dbzone.SignerGroup().Name
+
+	if sgname == "" || sgname == "---" {
+		return fmt.Errorf("Zone %s not assigned to any signer group, so it can not detach from a process\n",
+			dbzone.Name), ""
+	}
+
+	var exist bool
+	if _, exist = mdb.FSMlist[fsm]; !exist {
+		return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
+	}
+
+	if dbzone.FSM == "" || dbzone.FSM == "---" {
+		return fmt.Errorf(
+			"Zone %s is not attached to any process.\n",
+			dbzone.Name, dbzone.FSM), ""
+	}
+
+	if dbzone.FSM != fsm {
+		return fmt.Errorf(
+			"Zone %s should be attached to process %s but is instead attached to %s.\n",
+			dbzone.Name, fsm, dbzone.FSM), ""
+	}
+
+	mdb.mu.Lock()
+	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
+	stmt, err := mdb.db.Prepare(sqlq)
+	if err != nil {
+		fmt.Printf("ZoneDetachFsm: Error from db.Prepare: %v\n", err)
+	}
+
+	_, err = stmt.Exec("", "", "", dbzone.Name)
+	if CheckSQLError("DetachFsm", sqlq, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	mdb.mu.Unlock()
+	return nil, fmt.Sprintf("Zone %s has now left process '%s'.",
+		dbzone.Name, fsm)
+}
+
 // XXX: Returning a map[string]Zone just to get rid of an extra call
 // to ListZones() was a mistake. Let's simplify.
 
@@ -76,6 +123,27 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 	CurrentFsm := mdb.FSMlist[fsmname]
 
 	state := dbzone.State
+
+	if state == FsmStateStop {
+	   	 // 1. Zone leaves process
+		 // 2. Count of #zones in process in signergroup is decremented
+		 err, msg := mdb.ZoneDetachFsm(dbzone, fsmname, "")
+
+		 sqlq := "UPDATE signergroups SET numprocesszones=numprocesszones-1 WHERE name=?"
+		 stmt, err := mdb.Prepare(sqlq)
+		 if err != nil {
+		    fmt.Printf("DetachFsm: Error from db.Prepare: %v\n", err)
+		 }
+
+		 sgname := dbzone.SignerGroup().Name
+		 _, err = stmt.Exec(sgname)
+		 if CheckSQLError("DetachFsm", sqlq, err, false) {
+		    mdb.mu.Unlock()
+		    return true, err, msg
+		 }
+		 return true, nil, msg
+	}
+
 	var CurrentState FSMState
 	var exist bool
 	if CurrentState, exist = CurrentFsm.States[state]; !exist {
