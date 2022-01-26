@@ -25,6 +25,11 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 
 	log.Printf("%s: Verifying that NSes are in sync in the parent", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinParentNsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeNS)
@@ -99,6 +104,11 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 
 func JoinParentNsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CSYNC record sets", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinParentNsSyncedAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	csync := new(dns.CSYNC)
 	csync.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: 0}

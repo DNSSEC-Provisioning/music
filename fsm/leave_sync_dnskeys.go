@@ -25,7 +25,12 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 }
 
 func LeaveSyncDnskeysAction(z *music.Zone) bool {
-	sg := z.SignerGroup()
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveSyncDnskeysAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
+  sg := z.SignerGroup()
 	if sg == nil {
 	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}

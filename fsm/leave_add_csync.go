@@ -21,6 +21,11 @@ var FsmLeaveAddCsync = music.FSMTransition{
 }
 
 func LeaveAddCsyncPreCondition(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	sg := z.SignerGroup()
 	if sg == nil {
 	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
@@ -119,6 +124,11 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 // 4. Celebrate Christmas
 
 func LeaveAddCsyncAction(z *music.Zone) bool {
+	if z.ZoneType == "debug" {
+	   log.Printf("LeaveAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	sg := z.SignerGroup()
 	if sg == nil {
 	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)

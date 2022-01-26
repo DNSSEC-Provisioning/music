@@ -27,6 +27,11 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 	log.Printf("Add CDS/CDNSKEY:\n")
 	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.SGroup.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
@@ -75,11 +80,11 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 					for _, other_key := range other_keys {
 						if other_key.PublicKey == key.PublicKey {
 							// if other_key.Protocol != key.Protocol {
-							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but missmatch Protocol: %s", other_signer, key.PublicKey))
+							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but mismatch Protocol: %s", other_signer, key.PublicKey))
 							//     break
 							// }
 							// if other_key.Algorithm != key.Algorithm {
-							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but missmatch Protocol: %s", other_signer, key.PublicKey))
+							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but mismatch Protocol: %s", other_signer, key.PublicKey))
 							//     break
 							// }
 							found = true
@@ -104,6 +109,11 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 
 func JoinAddCdsAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinAddCdsAction: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	cdses := []dns.RR{}
 	cdnskeys := []dns.RR{}
@@ -150,6 +160,11 @@ func JoinAddCdsAction(z *music.Zone) bool {
 
 func VerifyCdsPublished(z *music.Zone) bool {
 	log.Printf("Verifying Publication of CDS/CDNSKEY record sets for %s", z.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("VerifyCdsPublished: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	// cdses := []dns.RR{}
 	// cdnskeys := []dns.RR{}

@@ -46,6 +46,11 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 
 	log.Printf("VerifyDnskeysSynched: Fetching all ZSKs for %s.\n", z.Name)
 
+	if z.ZoneType == "debug" {
+	   log.Printf("VerifyDnskeysSynched: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
@@ -117,6 +122,11 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
 
 	log.Printf("%s: Syncing DNSKEYs in group %s", z.Name, z.SGroup.Name)
+
+	if z.ZoneType == "debug" {
+	   log.Printf("JoinSyncDnskeys: zone %s (DEBUG) is automatically ok", z.Name)
+	   return true
+	}
 
 	for _, s := range z.SGroup.SignerMap {
 

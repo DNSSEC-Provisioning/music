@@ -34,6 +34,7 @@ type Zone struct {
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
+	ZoneType   string	// "normal", "debug"
 }
 
 // A process object encapsulates the change that 
