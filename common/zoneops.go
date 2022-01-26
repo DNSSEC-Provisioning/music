@@ -125,7 +125,7 @@ func (mdb *MusicDB) ZoneGetMeta(z *Zone, key string) (error, string) {
 	case sql.ErrNoRows:
 		return err, ""
 	case nil:
-	     return nil, value
+		return nil, value
 	}
 	return nil, ""
 }
@@ -173,12 +173,11 @@ func (z *Zone) StateTransition(from, to string) error {
 }
 
 func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
-     zone, exists := mdb.GetZone(zonename)
-     zone.MusicDB = nil
-     zone.SGroup  = nil  // another one
-     return zone, exists
+	zone, exists := mdb.GetZone(zonename)
+	zone.MusicDB = nil
+	zone.SGroup = nil // another one
+	return zone, exists
 }
-
 
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
@@ -219,7 +218,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			FSM:        fsm,
 			SGroup:     sg,
 			SGname:     sg.Name,
-			MusicDB:    mdb,	// can not be json encoded, i.e. not used in API
+			MusicDB:    mdb, // can not be json encoded, i.e. not used in API
 		}, true
 
 	default:
@@ -284,12 +283,26 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 // zone, "joining" the signer group (that has signers) by definition
 // causes signers to be added (for that zone).
 
+// Current thinking: it should not be possible to enter (or leave) a
+// signer group that is in an add-signer or remove-signer process. The
+// problem with that is that // if a zone joining then automatically
+// enters the add-signer process, then we "lock" the signer group until
+// the new zone is in sync. That seems... bad.
+
+// So perhaps the new zone going through "add-signer" is different
+// from the entire signer group going through "add-signer"? In that case,
+// perhaps the right thing is to "lock" the signer group when the entire
+// group enters a proceess (and unlock when all zones are done)
+
 func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
+     var group *SignerGroup
+     var err error
+     
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
 
-	if _, err := mdb.GetSignerGroup(g, false); err != nil { // not apisafe
+	if group, err = mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
 
@@ -300,6 +313,14 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 	if sg != nil && sg.Name != "" {
 		return errors.New(fmt.Sprintf("Zone %s already assigned to signer group %s\n",
 			dbzone.Name, sg.Name)), ""
+	}
+
+	// Is the signer group locked (because of being in a process
+	// that precludes zones joining or leaving)?
+	if group.Locked {
+		return errors.New(fmt.Sprintf("Signer group %s locked from zones joining or leaving due to ongoing %s process\n",
+			group.Name, group.CurrentProcess)), ""
+	   		
 	}
 
 	mdb.mu.Lock()
@@ -314,22 +335,41 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
+
+	sqlq = "UPDATE signergroups SET numzones=(COALESCE ((SELECT numzones FROM signergroups WHERE name=?), 0) + 1) WHERE name=?"
+	stmt, err = mdb.Prepare(sqlq)
+	if err != nil {
+		fmt.Printf("ZoneJoinGroup: Error from db.Prepare: %v\n", err)
+	}
+
+	_, err = stmt.Exec(g, g)
+	if CheckSQLError("JoinGroup", sqlq, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
 	mdb.mu.Unlock()
 
 	dbzone, _ = mdb.GetZone(dbzone.Name)
 
+	// If the new zone is not already in a process then we put it in the VerifyZoneInSyncProcess as
+	// a method of ensuring that it is in sync. This process is currently a no-op, but doesn't have to be.
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
-		err, msg := mdb.ZoneAttachFsm(dbzone, SignerJoinGroupProcess)
+		err, msg := mdb.ZoneAttachFsm(dbzone, VerifyZoneInSyncProcess, "all")
 		if err != nil {
 			return err, msg
 		}
 		return nil, fmt.Sprintf(
-			"Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, SignerJoinGroupProcess)
+			"Zone %s has joined signer group %s and started the process '%s'.", dbzone.Name, g, VerifyZoneInSyncProcess)
 	}
 	return nil, fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'
 as the zone is already in process '%s'. Problematic.`, dbzone.Name, g, SignerJoinGroupProcess, dbzone.FSM)
 }
+
+// Leaving a signer group is different from joining in the sense that
+// if the group is locked (due to ongoing process) a zone cannot join at
+// all, but it is possible to leave as long as the leaving zone is done
+// with the process.
 
 func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 	if !dbzone.Exists {
@@ -347,6 +387,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 			dbzone.Name, g), ""
 	}
 
+	// It *this* zone in a process or not?
 	if dbzone.FSM != "" && dbzone.FSM != "---" {
 		return fmt.Errorf(
 			"Zone %s is executing process '%s'. Cannot leave until finished.", dbzone.Name, dbzone.FSM), ""
@@ -364,14 +405,27 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
+
+	sqlq = "UPDATE signergroups SET numzones=(COALESCE ((SELECT numzones FROM signergroups WHERE name=?), 0) - 1) WHERE name=?"
+	stmt, err = mdb.Prepare(sqlq)
+	if err != nil {
+		fmt.Printf("ZoneLeaveGroup: Error from db.Prepare: %v\n", err)
+	}
+
+	_, err = stmt.Exec(g, g)
+	if CheckSQLError("ZoneLeaveGroup", sqlq, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+
 	mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s has left the signer group %s.",
 		dbzone.Name, sg.Name)
 }
 
 const (
-      layout = "2006-01-02 15:04:05"
-      LZsqlq = `
+	layout = "2006-01-02 15:04:05"
+	LZsqlq = `
 SELECT name, state, fsm,
   COALESCE(statestamp, datetime('now')) AS timestamp,
   COALESCE(sgroup, '') AS signergroup
@@ -387,6 +441,9 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	}
 
 	rows, err := stmt.Query()
+	if err != nil {
+		log.Printf("ListZones: Error from db query: %v\n", err)
+	}
 	defer rows.Close()
 
 	if CheckSQLError("ListZones", LZsqlq, err, false) {

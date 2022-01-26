@@ -39,21 +39,15 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig, initApi)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		fmt.Sprintf("config file (default is %s)", DefaultCfgFile))
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
-	rootCmd.PersistentFlags().StringVarP(&signername, "name", "s", "",
-		"name of signer")
+	rootCmd.PersistentFlags().StringVarP(&signername, "signer", "s", "", "name of signer")
+	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g",	"", "name of signer group")
 
 }
 

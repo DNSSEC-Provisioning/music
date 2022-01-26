@@ -13,7 +13,7 @@ import (
         // "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
+func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, string) {
 
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -41,13 +41,13 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm string) (error, string) {
 	initialstate := process.InitialState
 
 	mdb.mu.Lock()
-	sqlq := "UPDATE zones SET fsm=?, state=? WHERE name=?"
+	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
 	}
 
-	_, err = stmt.Exec(fsm, initialstate, dbzone.Name)
+	_, err = stmt.Exec(fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		mdb.mu.Unlock()
 		return err, ""

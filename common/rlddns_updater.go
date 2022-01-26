@@ -75,7 +75,7 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 		}
 	}
 	log.Printf("RLDDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
-	 	signer.Name, owner, inserts_len, removes_len)
+		signer.Name, owner, inserts_len, removes_len)
 
 	var err error
 	if inserts_len == 0 && removes_len == 0 {
@@ -111,7 +111,7 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
@@ -122,7 +122,7 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 		}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
-	udop.Response <- SignerOpResult{Error: nil, Rcode: dns.RcodeSuccess }
+	udop.Response <- SignerOpResult{Error: nil, Rcode: dns.RcodeSuccess}
 	return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 }
 
@@ -142,8 +142,8 @@ func (u *RLDdnsUpdater) RemoveRRset(signer *Signer, zone, owner string, rrsets [
 }
 
 func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
-     signer := udop.Signer
-     rrsets := *udop.Removes
+	signer := udop.Signer
+	rrsets := *udop.Removes
 	rrsets_len := 0
 	for _, rrset := range rrsets {
 		rrsets_len += len(rrset)
@@ -165,7 +165,7 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
 	}
 	if err != nil {
-		udop.Response <- SignerOpResult{Error: err }
+		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 
@@ -179,9 +179,9 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
-		udop.Response <- SignerOpResult{Error: err }
+		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 	if in.MsgHdr.Rcode != dns.RcodeSuccess {
@@ -190,7 +190,7 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 		}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
-	udop.Response <- SignerOpResult{ Error: nil, Rcode: dns.RcodeSuccess }
+	udop.Response <- SignerOpResult{Error: nil, Rcode: dns.RcodeSuccess}
 	return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 }
 
@@ -245,17 +245,17 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	r, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Error from Exchange: %v. Returning response chan + call stack\n", err)
-		fdop.Response <- SignerOpResult{ Error: err}
+		fdop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil
 	}
 
 	if r.MsgHdr.Rcode != dns.RcodeSuccess {
 		err = fmt.Errorf("Fetch of %s RRset failed, RCODE = %s",
-		      			dns.TypeToString[rrtype],
-					dns.RcodeToString[r.MsgHdr.Rcode])
+			dns.TypeToString[rrtype],
+			dns.RcodeToString[r.MsgHdr.Rcode])
 		// fmt.Printf("RLDdnsFetchRRset: Rcode error: %v. Returning response chan + call stack\n", err)
 		fdop.Response <- SignerOpResult{Error: err}
 		// fmt.Printf("RLDdnsFetchRRset: post response chan after rcode error\n", err)
@@ -263,8 +263,8 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	}
 
 	log.Printf("RLDDNS: Length of %s answer from %s: %d RRs\n",
-			    dns.TypeToString[rrtype], signer.Name,
-			    len(r.Answer))
+		dns.TypeToString[rrtype], signer.Name,
+		len(r.Answer))
 
 	var rrs []dns.RR
 
@@ -330,7 +330,7 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	// fmt.Printf("RLDdnsFetchRRset: All ok. Returning result ->response chan + call stack\n", err)
 	fdop.Response <- SignerOpResult{
 		Status:   0, // should perhaps use DNS Rcodes?
-		Rcode:	  dns.RcodeSuccess,
+		Rcode:    dns.RcodeSuccess,
 		RRs:      rrs,
 		Error:    nil,
 		Response: "Tjolahopp",

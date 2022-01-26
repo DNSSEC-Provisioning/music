@@ -15,6 +15,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
+
 	// "github.com/go-playground/validator/v10"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -27,6 +28,27 @@ var zoneCmd = &cobra.Command{
 	Use:   "zone",
 	Short: "Zone commands",
 	Run: func(cmd *cobra.Command, args []string) {
+	},
+}
+
+var statusZoneCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Get status of a zone according to MuSiC",
+	Run: func(cmd *cobra.Command, arg []string) {
+		zonename = dns.Fqdn(zonename)
+		data := music.ZonePost{
+			Command: "status",
+			Zone: music.Zone{
+				Name: zonename,
+			},
+		}
+		zr, err := SendZoneCommand(zonename, data)
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
+		if err != nil {
+			fmt.Printf("statusZoneCmd: Error from SendZoneCommand: %v\n", err)
+		} else if len(zr.Zones) > 0 {
+			PrintZones(zr.Zones)
+		}
 	},
 }
 
@@ -181,6 +203,11 @@ command.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
 
+		fmt.Println(
+`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
+up to the signer group. This command is only here for development and debuging
+reasons and will disappear.`)
+
 		zone := dns.Fqdn(zonename)
 		if zone == "." {
 			log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
@@ -190,12 +217,17 @@ command.`,
 			log.Fatalf("ZoneFsm: FSM not specified. Terminating.\n")
 		}
 
+		if signername == "" {
+			log.Fatalf("ZoneFsm: FSM signer not specified. Terminating.\n")
+		}
+
 		data := music.ZonePost{
 			Command: "fsm",
 			Zone: music.Zone{
 				Name: zone,
 			},
 			FSM: fsmname,
+			FSMSigner: signername,
 		}
 		zr, _ := SendZoneCommand(zone, data)
 		if zr.Error {
@@ -219,7 +251,7 @@ var zoneStepFsmCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "list",
 		}
-		zr, err := SendZoneCommand(zone, data)		
+		zr, err := SendZoneCommand(zone, data)
 		if err != nil {
 			log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
 		}
@@ -242,11 +274,11 @@ var zoneStepFsmCmd = &cobra.Command{
 		zm = zr.Zones
 
 		if zr.Msg != "" {
-		   fmt.Printf("%s\n", zr.Msg)
+			fmt.Printf("%s\n", zr.Msg)
 		}
 		z := zr.Zones[zone]
 		if z.StopReason != "" {
-		   fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
+			fmt.Printf("Latest stop-reason: %s\n", z.StopReason)
 		}
 
 		if zr.Error {
@@ -304,14 +336,16 @@ var listZonesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// zr, err := ListZones()
 
-		zone := "fluffmunk.se." // must have something, not used
+		if zonename == "" {
+			zonename = "zone-name-not-set.se." // must have something, not used
+		}
 		data := music.ZonePost{
 			Command: "list",
-			Zone:	 music.Zone{
-					Name: zone,  
-				 },
+			Zone: music.Zone{
+				Name: zonename,
+			},
 		}
-		zr, err := SendZoneCommand(zone, data)
+		zr, err := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if err != nil {
 			fmt.Printf("Error from ListZones: %v\n", err)
@@ -326,7 +360,7 @@ func init() {
 	zoneCmd.AddCommand(addZoneCmd, deleteZoneCmd, listZonesCmd, zoneJoinGroupCmd,
 		zoneLeaveGroupCmd, zoneFsmCmd, zoneStepFsmCmd,
 		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
-		zoneMetaCmd)
+		zoneMetaCmd, statusZoneCmd)
 
 	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "normal", "type of zone, 'normal' or 'debug")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
@@ -364,7 +398,8 @@ func SendZoneCommand(zonename string, data music.ZonePost) (music.ZoneResponse, 
 
 	}
 	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
+		fmt.Println()
+		fmt.Printf("SendZoneCommand Status: %d\n", status)
 	}
 
 	var zr music.ZoneResponse
@@ -373,267 +408,6 @@ func SendZoneCommand(zonename string, data music.ZonePost) (music.ZoneResponse, 
 		log.Fatalf("Error from unmarshal: %v\n", err)
 	}
 	return zr, err
-}
-
-func xxxZoneMeta(zone, metakey, metavalue string) (bool, string) {
-	if zone == "" {
-		log.Fatalf("ZoneMeta: zone not specified. Terminating.\n")
-	}
-
-	switch metakey {
-	case "":
-		log.Fatalf("ZoneMeta: Metadata key not specified. Terminating.\n")
-
-	case "parentaddr":
-		err := validate.Var(metavalue, "required,hostname_port")
-		if err != nil {
-			log.Fatalf("ZoneMeta: Metadata value not a host:port: %v\n", err)
-		}
-	}
-
-	data := music.ZonePost{
-		Command: "meta",
-		Zone: music.Zone{
-			Name: zone,
-		},
-		Metakey:   metakey,
-		Metavalue: metavalue,
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return true, err.Error()
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Error, zr.ErrorMsg
-}
-
-func xxxZoneFsm(zone, fsm string) (bool, string) {
-	if zone == "" {
-		log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
-	}
-
-	if fsm == "" {
-		log.Fatalf("ZoneFsm: FSM not specified. Terminating.\n")
-	}
-
-	data := music.ZonePost{
-		Command: "fsm",
-		Zone: music.Zone{
-			Name: zone,
-		},
-		FSM: fsm,
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return true, err.Error()
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Error, zr.ErrorMsg
-}
-
-func xxxZoneStepFsm(zone string) (bool, string, map[string]music.Zone) {
-	if zone == "" {
-		log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
-	}
-
-	zm, err := xxxListZones()
-	 if err != nil {
-		log.Fatalf("ZoneStepFsm: Error from ListZones: %v\n", err)
-	}
-
-	fsm := zm[zone].FSM
-
-	if fsm == "" || fsm == "none" {
-		log.Fatalf("ZoneStepFsm: Zone %s is not attached to any FSM. Terminating.\n", zone)
-	}
-
-	data := music.ZonePost{
-		Command: "step-fsm",
-		Zone: music.Zone{
-			Name: zone,
-		},
-		FsmNextState: fsmnextstate,
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return true, err.Error(), map[string]music.Zone{}
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Error, zr.ErrorMsg, zr.Zones
-}
-
-func xxxZoneJoinGroup(zone, group string) (bool, string) {
-	if zone == "" {
-		log.Fatalf("ZoneJoinGroup: zone not specified. Terminating.\n")
-	}
-
-	if group == "" {
-		log.Fatalf("ZoneJoinGroup: signer group not specified. Terminating.\n")
-	}
-
-	data := music.ZonePost{
-		Command: "join",
-		Zone: music.Zone{
-			Name: zone,
-		},
-		SignerGroup: group,
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return true, err.Error()
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Error, zr.ErrorMsg
-}
-
-func xxxZoneLeaveGroup(zone, group string) (bool, string) {
-	if zone == "" {
-		log.Fatalf("ZoneLeaveGroup: zone not specified. Terminating.\n")
-	}
-
-	if group == "" {
-		log.Fatalf("ZoneLeaveGroup: signer group not specified. Terminating.\n")
-	}
-
-	data := music.ZonePost{
-		Command: "leave",
-		Zone: music.Zone{
-			Name: zone,
-		},
-		SignerGroup: group,
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return true, err.Error()
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Error, zr.ErrorMsg
-}
-
-func xxxDeleteZone() error {
-	data := music.ZonePost{
-		Command: "delete",
-		Zone: music.Zone{
-			Name: dns.Fqdn(zonename),
-		},
-	}
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return err
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return nil
-}
-
-func xxxListZones() (map[string]music.Zone, error) {
-	data := music.ZonePost{
-		Command: "list",
-	}
-
-	bytebuf := new(bytes.Buffer)
-	json.NewEncoder(bytebuf).Encode(data)
-
-	status, buf, err := api.Post("/zone", bytebuf.Bytes())
-	if err != nil {
-		log.Println("Error from APIpost:", err)
-		return map[string]music.Zone{}, err
-	}
-	if cliconf.Debug {
-		fmt.Printf("Status: %d\n", status)
-	}
-
-	var zr music.ZoneResponse
-	err = json.Unmarshal(buf, &zr)
-	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
-	}
-
-	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	return zr.Zones, nil
 }
 
 func ZoneGetRRsets(zone, owner, rrtype string) (bool, string, map[string][]string) {

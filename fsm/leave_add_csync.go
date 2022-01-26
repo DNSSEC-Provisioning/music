@@ -26,7 +26,15 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	   return true
 	}
 
-	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	sg := z.SignerGroup()
+	if sg == nil {
+	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+	}
+	
+	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
+	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
@@ -111,8 +119,8 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 
 // Semantics:
 // 1. Lookup zone signergroup (can only be one)
-// 2. Lookup all signers in signergroup.PendingRemoval
-// 3. For each signer in that list (should really only be one) go through the steps below.
+// 2. Lookup FSMSigner for the zone (can only be one)
+// 3. Go through the steps below.
 // 4. Celebrate Christmas
 
 func LeaveAddCsyncAction(z *music.Zone) bool {
@@ -121,7 +129,15 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	   return true
 	}
 
-	leavingSignerName := "signer2.catch22.se." // Issue #34: Static leaving signer until metadata is in place
+	sg := z.SignerGroup()
+	if sg == nil {
+	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+	}
+	
+	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
+	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe

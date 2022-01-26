@@ -43,42 +43,35 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	delstmt, err := mdb.Prepare("DELETE FROM signers WHERE name=?")
-	if err != nil {
-		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
-	}
-	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr) VALUES (?, ?, ?, ?)")
+
+	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port) VALUES (?, ?, ?, ?, ?)")
+
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = delstmt.Exec(dbsigner.Name)
-	if err != nil {
-		mdb.mu.Unlock()
-		return err, ""
-	}
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
-		dbsigner.Auth, dbsigner.Address)
+		dbsigner.Auth, dbsigner.Address, dbsigner.Port)
 	mdb.mu.Unlock()
 
 	if err != nil {
-		fmt.Printf("AddSigner: failure: %s, %s, %s, %s\n",
+		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.Auth,
-			dbsigner.Address)
+			dbsigner.Address, dbsigner.Port)
 		return err, ""
 	}
 
 	if group != "" {
 		log.Printf("AddSigner: signer %s has the signergroup %s specified so we set that too\n", dbsigner.Name, group)
 		dbsigner, _ := mdb.GetSigner(dbsigner, false) // no need for apisafe
-		mdb.SignerJoinGroup(dbsigner, group) // we know that the signer exist
+		mdb.SignerJoinGroup(dbsigner, group)          // we know that the signer exist
 		return nil, fmt.Sprintf(
 			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
 	}
 
-	log.Printf("AddSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
-			       dbsigner.Method, dbsigner.Auth, dbsigner.Address)
+	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
+		dbsigner.Method, dbsigner.Auth, dbsigner.Address, dbsigner.Port)
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
@@ -99,81 +92,36 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ? WHERE name = ?")
+	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ?, port = ? WHERE name = ?")
 	if err != nil {
 		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address, dbsigner.Name)
+		dbsigner.Address, dbsigner.Name, dbsigner.Port)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", "", err, false) {
 		return err, ""
 	}
 
-	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s\n", dbsigner.Name,
+	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address)
+		dbsigner.Address, dbsigner.Port)
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
-
-// func (mdb *MusicDB) xxGetSignerByName(signername string) (*Signer, error) {
-//	return mdb.GetSigner(&Signer{Name: signername})
-// }
-
-// func (mdb *MusicDB) xxGetSigner(s *Signer) (*Signer, error) {
-// 	sqlcmd := "SELECT name, method, auth, COALESCE (addr, '') AS address, COALESCE (sgroup, '') AS signergroup FROM signers WHERE name=?"
-// 	stmt, err := mdb.Prepare(sqlcmd)
-// 	if err != nil {
-// 		fmt.Printf("GetSigner: Error from db.Prepare: %v\n", err)
-// 	}
-// 
-// 	row := stmt.QueryRow(s.Name)
-// 
-// 	var name, method, auth, address, signergroup string
-// 	switch err = row.Scan(&name, &method, &auth, &address, &signergroup); err {
-// 	case sql.ErrNoRows:
-// 		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
-// 		return &Signer{
-// 			Name:    s.Name,
-// 			Exists:  false,
-// 			Method:  s.Method,
-// 			Auth:    s.Auth,
-// 			Address: s.Address,
-// 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
-// 
-// 	case nil:
-// 		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name, method, auth, address, signergroup)
-// 		return &Signer{
-// 			Name:        name,
-// 			Exists:      true,
-// 			Method:      method,
-// 			Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
-// 			Address:     address,
-// 			SignerGroup: signergroup,
-// 			DB:          mdb,
-// 		}, nil
-// 
-// 	default:
-// 		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s, err)
-// 	}
-// 	return &Signer{
-// 		Name:   s.Name,
-// 		Exists: false,
-// 	}, err
-// }
 
 const (
 	SJGsql2 = "INSERT OR IGNORE INTO group_signers (name, signer) VALUES (?, ?)"
 )
 
-// SignerJoinGroup(): add an already defined signer to an already
-// defined signer group.
+// SignerJoinGroup(): add an already defined signer to an already defined signer group.
 //
 // Note: this should trigger all zones attached to this signer group to enter
 // the "add-signer" process and the signer will be put in the PendingAddition slot until the zones
 // are done with that process.
+
+// XXX: I think we have this one more or less correct now.
 
 func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) {
 	var sg *SignerGroup
@@ -187,23 +135,23 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		return err, ""
 	}
 
+	if _, already_member := sg.SignerMap[dbsigner.Name]; already_member {
+		return fmt.Errorf("Signer %s is already a member of group %s", dbsigner.Name, sg.Name), ""
+	}
+
 	if sg.PendingAddition != "" {
-	   return fmt.Errorf("Signer group %s has signer '%s' in the PendingAddition slot already",
-	   	  sg.Name, sg.PendingAddition), ""
+		return fmt.Errorf("Signer group %s has signer %s in the PendingAddition slot already",
+			sg.Name, sg.PendingAddition), ""
 	}
 
 	if sg.PendingRemoval != "" {
-	   return fmt.Errorf("Signer group %s has signer '%s' in the PendingRemoval slot, and only one process at a time is possible",
-	   	  sg.Name, sg.PendingRemoval), ""
+		return fmt.Errorf("Signer group %s has signer %s in the PendingRemoval slot, and only one process at a time is possible",
+			sg.Name, sg.PendingRemoval), ""
 	}
 
 	if sg.CurrentProcess != "" {
-	   return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer addition",
-	   	  sg.Name, sg.CurrentProcess), ""
-	}
-
-	if _, already_member := sg.SignerMap[dbsigner.Name]; already_member {
-	   return fmt.Errorf("Signer %s is already a member of group %s", dbsigner.Name, sg.Name), ""
+		return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer addition",
+			sg.Name, sg.CurrentProcess), ""
 	}
 
 	mdb.mu.Lock()
@@ -218,7 +166,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	}
 	mdb.mu.Unlock()
 
- 	fmt.Printf("SignerJoinGroup: signers in group %s: %v\n", sg.Name, sg.SignerMap)
+	fmt.Printf("SignerJoinGroup: signers in group %s: %v\n", sg.Name, sg.SignerMap)
 	if sg, err = mdb.GetSignerGroup(g, false); err != nil { // not apisafe
 		return err, ""
 	}
@@ -226,31 +174,31 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	// if we now have more than one signer in the signer group it is possible that they
 	// are unsynced. Then we must enter the "add-signer" process to get them in sync.
 	if len(sg.SignerMap) > 1 {
-	   	
+
 		zones, err := mdb.GetSignerGroupZones(sg)
 		if err != nil {
 			return err, ""
 		}
 
 		if len(zones) == 0 {
-		   	return nil, fmt.Sprintf(
-			"Signer %s has joined signer group %s, which now has %d signers but no zones.",
+			return nil, fmt.Sprintf(
+				"Signer %s has joined signer group %s, which now has %d signers but no zones.",
 				dbsigner.Name, sg.Name)
 		}
 
-		// At this stage we know that there are now more than one signer and more than zero zones. Hence we
-		// need to enter the add-signer process for all the zones.
+		// At this stage we know that there are now more than one signer and more than zero
+		// zones. Hence we need to enter the add-signer process for all the zones.
 		const sqlq = "UPDATE signergroups SET curprocess=?, pendadd=? WHERE name=?"
 
 		mdb.mu.Lock()
 		stmt, err := mdb.Prepare(sqlq)
 		if err != nil {
-		   log.Printf("Error from db.Prepare '%s': %v\n", sqlq, err)
+			log.Printf("Error from db.Prepare '%s': %v\n", sqlq, err)
 		}
 		_, err = stmt.Exec(SignerJoinGroupProcess, dbsigner.Name, sg.Name)
 		if CheckSQLError("SignerJoinGroup", sqlq, err, false) {
-		   mdb.mu.Unlock()
-		   return err, ""
+			mdb.mu.Unlock()
+			return err, ""
 		}
 		mdb.mu.Unlock()
 
@@ -259,7 +207,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		// XXX: this is inefficient, but I don't think we will have enough
 		//      zones in the system for that to be an issue
 		for _, z := range zones {
-			mdb.ZoneAttachFsm(z, SignerJoinGroupProcess) // we know that z exist
+			mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
 		}
 		return nil, fmt.Sprintf(
 			"Signer %s has joined signer group %s and %d zones have entered the 'add-signer' process.",
@@ -293,22 +241,22 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	}
 
 	if _, member := sg.SignerMap[dbsigner.Name]; !member {
-	   return fmt.Errorf("Signer %s is not a member of group %s", dbsigner.Name, sg.Name), ""
-	}
-
-	if sg.PendingAddition != "" {
-	   return fmt.Errorf("Signer group %s has signer '%s' in the PendingAddition slot, and only one process at a time is possible",
-	   	  sg.Name, sg.PendingAddition), ""
+		return fmt.Errorf("Signer %s is not a member of group %s", dbsigner.Name, sg.Name), ""
 	}
 
 	if sg.PendingRemoval != "" {
-	   return fmt.Errorf("Signer group %s has signer '%s' in the PendingRemoval slot already",
-	   	  sg.Name, sg.PendingRemoval), ""
+		return fmt.Errorf("Signer group %s has signer %s in the PendingRemoval slot already",
+			sg.Name, sg.PendingRemoval), ""
+	}
+
+	if sg.PendingAddition != "" {
+		return fmt.Errorf("Signer group %s has signer %s in the PendingAddition slot, and only one process at a time is possible",
+			sg.Name, sg.PendingAddition), ""
 	}
 
 	if sg.CurrentProcess != "" {
-	   return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer removal",
-	   	  sg.Name, sg.CurrentProcess), ""
+		return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer removal",
+			sg.Name, sg.CurrentProcess), ""
 	}
 
 	zones, err := mdb.GetSignerGroupZones(sg)
@@ -316,21 +264,39 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		return err, ""
 	}
 
-	// It is not legal to remove the last signer in a signer group with zones (as
-	// that would cause rather obvious problems).
-	if len(sg.SignerMap) == SignerGroupMinimumSigners && len(zones) > 0 {
+	const (
+		SLGsql2 = "DELETE FROM group_signers WHERE name=? AND signer=?"
+		SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=? WHERE name=?"
+	)
+
+	// If the signer group has no zones attached to it, then it is ok to remove a signer immediately
+	if len(zones) == 0 {
+		mdb.mu.Lock()
+		stmt, err := mdb.Prepare(SLGsql2)
+		if err != nil {
+			fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql2, err)
+		}
+
+		_, err = stmt.Exec(sg.Name, dbsigner.Name)
+		if CheckSQLError("SignerLeaveGroup", SLGsql2, err, false) {
+			mdb.mu.Unlock()
+			return err, ""
+		}
+		mdb.mu.Unlock()
+		return nil, fmt.Sprintf(
+			"Signer %s was removed from signer group %s immediately (because the signer group has no zones).",
+			dbsigner.Name, g)
+	}
+
+	// It is not legal to remove the last signer in a signer group with zones
+	// (as that would cause rather obvious problems).
+	if len(sg.SignerMap) == SignerGroupMinimumSigners {
 		return fmt.Errorf(
 			"The signer group %s has %d zones but only %d signer, %s, which can therefore not be removed.",
 			sg.Name, len(zones), SignerGroupMinimumSigners, dbsigner.Name), ""
 	}
 
-	const (
-      	      SLGsql2 = "DELETE FROM signergroups WHERE name=? AND signer=?"
-	      SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=? WHERE name=?"
-	)
-
 	mdb.mu.Lock()
-	// new model: signer group mapping is stored with the signer group
 	stmt, err := mdb.Prepare(SLGsql3)
 	if err != nil {
 		fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql3, err)
@@ -346,7 +312,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
-		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess) // we know that z exist
+		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess, dbsigner.Name) // we know that z exist
 	}
 	return nil, fmt.Sprintf(
 		"Signer %s is in pending removal from signer group %s and therefore %d zones entered the '%s' process.",
@@ -369,7 +335,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 		// }
 		return fmt.Errorf(
 			"Signer %s can not be deleted as it is part of the signer groups %v.",
-				dbsigner.Name, sgs), ""
+			dbsigner.Name, sgs), ""
 	}
 
 	stmt, err := mdb.Prepare(DSsql)
@@ -384,6 +350,8 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 		return err, ""
 	}
 
+	// This should be a no-op, as the signer must not be a member of any group.
+	// But we keep it as a GC mechanism in case something has gone wrong.
 	stmt, err = mdb.Prepare(DSsql2)
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
@@ -400,7 +368,7 @@ func (mdb *MusicDB) DeleteSigner(dbsigner *Signer) (error, string) {
 
 const (
 	LSIGsql = `
-SELECT name, method, addr, auth, COALESCE (sgroup, '') AS signergroup
+SELECT name, method, addr, auth, port
 FROM signers`
 )
 
@@ -418,27 +386,28 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	if CheckSQLError("ListSigners", LSIGsql, err, false) {
 		return sl, err
 	} else {
-		var name, method, address, auth, signergroup string
+		var name, method, address, auth, port string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &address, &auth, &signergroup)
+			err := rows.Scan(&name, &method, &address, &auth, &port)
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}
 
 			s := Signer{
-				Name:        name,
-				Exists:      true,
-				Method:      method,
-				Address:     address,
-				Auth:        auth, // AuthDataTmp(auth), // TODO: Issue #28
+				Name:    name,
+				Exists:  true,
+				Method:  method,
+				Address: address,
+				Auth:    auth, // AuthDataTmp(auth), // TODO: Issue #28
+				Port:    port,
 			}
 			sgs, err := mdb.GetSignerGroups(name)
 			if err != nil {
-			   log.Fatalf("mdb.ListSigners: Error from mdb.GetSignerGroups: %v",
-			   				err)
+				log.Fatalf("mdb.ListSigners: Error from mdb.GetSignerGroups: %v",
+					err)
 			}
 			s.SignerGroups = sgs
-			sl[name] = s			
+			sl[name] = s
 		}
 	}
 	return sl, nil
