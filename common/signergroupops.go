@@ -34,7 +34,7 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 const (
       GSGsql1 = `
 SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
-  COALESCE(pendremove, '') AS prem, numzones, numprocesszones
+  COALESCE(pendremove, '') AS prem
 FROM signergroups WHERE name=?`
 )
 
@@ -50,11 +50,9 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 
 	row := stmt.QueryRow(sg)
 
-	var locked bool
+	var sqllocked int
 	var name, curprocess, pendadd, pendremove string
-	var numzones, numprocesszones int
-	switch err = row.Scan(&name, &locked, &curprocess, &pendadd,
-	       	     		     &pendremove, &numzones, &numprocesszones); err {
+	switch err = row.Scan(&name, &sqllocked, &curprocess, &pendadd, &pendremove); err {
 	case sql.ErrNoRows:
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
@@ -64,20 +62,30 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 		if apisafe {
 		   dbref = nil
 		}
-		return &SignerGroup{
+
+		 sg := SignerGroup{
 			Name:			name,
-			Locked:			locked,
-			NumZones:		numzones,
-			NumProcessZones:	numprocesszones,
+			Locked:			sqllocked == 1,
 			CurrentProcess:		curprocess,
 			PendingAddition:	pendadd,
 			PendingRemoval:		pendremove,
 			SignerMap:		sm,
 			DB:        		dbref,
-		}, nil
+		}
+
+		zones, _ := mdb.GetSignerGroupZones(&sg)
+		pzones := 0
+		for _, z := range zones {
+		    if z.FSM != "" {
+		       pzones++
+		    }
+		}
+		sg.NumZones = len(zones)
+		sg.NumProcessZones = pzones
+		return &sg, nil
 
 	default:
-		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", sg, err)
+		log.Fatalf("GetSignerGroup: error from row.Scan(): name=%s, err=%v", sg, err)
 	}
 	return &SignerGroup{}, err
 }
@@ -122,7 +130,7 @@ func (mdb *MusicDB) DeleteSignerGroup(group string) error {
 const (
 	LSGsql  = `
 SELECT name, COALESCE(curprocess, '') AS curp, COALESCE (pendadd, '') AS padd,
-   COALESCE(pendremove, '') AS prem
+   COALESCE(pendremove, '') AS prem, locked
 FROM signergroups`
 	LSGsql2 = "SELECT DISTINCT name FROM signergroups"
 	LSGsql3 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
@@ -133,17 +141,19 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 
 	rows, err := mdb.db.Query(LSGsql)
 
-	if CheckSQLError("ListSignerGroups", LSGsql2, err, false) {
+	if CheckSQLError("ListSignerGroups", LSGsql, err, false) {
 		return sgl, err
 	} else {
 		var name, curp, pendadd, pendrem string
+		var sqllocked int
 		for rows.Next() {
-			err := rows.Scan(&name, &curp, &pendadd, &pendrem)
+			err := rows.Scan(&name, &curp, &pendadd, &pendrem, &sqllocked)
 			if err != nil {
 				log.Fatal("ListSignerGroups: Error from rows.Next():", err)
 			}
 			sgl[name] = SignerGroup{
 				  Name:			name,
+				  Locked:		sqllocked == 1,
 				  CurrentProcess:	curp,
 				  PendingAddition:	pendadd,
 				  PendingRemoval:	pendrem,
@@ -181,14 +191,19 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 				} else {
 					signers[signer] = s
 				}
-				zones, _ = mdb.GetSignerGroupZones(&sg)
 			}
-//			sgl[sgname] = SignerGroup{
-//				Name:      sgname,
-//				SignerMap: signers,
-//			}
+			zones, _ = mdb.GetSignerGroupZones(&sg)
+
+			pzones := 0
+			for _, z := range zones {
+			    if z.FSM != "" {
+			       pzones++
+			    }
+			}
+
 			sg.SignerMap = signers
 			sg.NumZones  = len(zones)
+			sg.NumProcessZones = pzones
 			sgl[sgname] = sg
 		}
 	}
@@ -315,3 +330,46 @@ func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[str
 	}
 	return nil, signers
 }
+
+func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
+        var msg string
+	zones, _ := mdb.GetSignerGroupZones(sg)
+	pzones := 0
+	for _, z := range zones {
+	    if z.FSM != "" {
+	       pzones++
+	    }
+	}
+
+	if pzones == 0 {
+	   msg = fmt.Sprintf("Signer group %s: process %s is now complete. Unlocking group.",
+	   		      sg.Name, sg.CurrentProcess)
+	   log.Printf(msg)
+			      
+	   var sqlq string
+	   cp := sg.CurrentProcess
+	   if cp == SignerJoinGroupProcess {
+	      sqlq = "UPDATE signergroups SET locked=0, curprocess='', pendadd='' WHERE name=?"
+	   } else if cp == SignerLeaveGroupProcess {
+	      sqlq = "UPDATE signergroups SET locked=0, curprocess='', pendremove='' WHERE name=?"
+	   } else if cp == "" { // curprocess is "" for zones in verify-zone-sync
+	      sqlq = "UPDATE signergroups SET locked=0, curprocess='', pendremove='' WHERE name=?"
+	   } else {
+	     log.Fatalf("CheckIfProcessIsComplete: Unknown process: %s. Terminating.", cp)
+	   }
+
+	   mdb.mu.Lock()
+	   stmt, err := mdb.Prepare(sqlq)
+	   if err != nil {
+	      log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
+	   }
+	   _, err = stmt.Exec(false, sg.Name)
+	   if err != nil {
+	      log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
+	   }
+	   mdb.mu.Unlock()
+	   return true, msg
+	}
+	return false, ""
+}
+

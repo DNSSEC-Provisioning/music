@@ -57,12 +57,10 @@ UNIQUE (name)
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
 id          INTEGER PRIMARY KEY,
 name        TEXT,
-locked	    BOOLEAN NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)),
+locked	    INTEGER NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)),
 curprocess  TEXT,
 pendadd	    TEXT NOT NULL DEFAULT '',
 pendremove  TEXT NOT NULL DEFAULT '',
-numzones    INTEGER NOT NULL DEFAULT 0,
-numprocesszones	INTEGER NOT NULL DEFAULT 0,
 UNIQUE (name)
 )`,
 

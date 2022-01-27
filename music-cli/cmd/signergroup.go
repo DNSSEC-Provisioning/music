@@ -77,7 +77,7 @@ var listSignerGroupsCmd = &cobra.Command{
 		if len(sgr.SignerGroups) > 0 {
 			var out []string
 			if cliconf.Verbose || showheaders {
-				out = append(out, "Group name|Signers in group|Zones|Current Process|PendingAddition|PendingRemoval")
+				out = append(out, "Group|Locked|Signers|# Zones|# Proc Zones|Current Process|PendingAddition|PendingRemoval")
 			}
 
 			for k, v := range sgr.SignerGroups {
@@ -100,7 +100,8 @@ var listSignerGroupsCmd = &cobra.Command{
 				if pr == "" {
 				   pr = "---"
 				}
-				out = append(out, fmt.Sprintf("%s|%s|%d|%s|%s|%s", k, ss, v.NumZones, cp, pa, pr))
+				out = append(out, fmt.Sprintf("%s|%v|%s|%d|%d|%s|%s|%s", k, v.Locked, ss,
+				      		  v.NumZones, v.NumProcessZones, cp, pa, pr))
 			}
 			fmt.Printf("%s\n", columnize.SimpleFormat(out))
 		}

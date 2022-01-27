@@ -154,6 +154,11 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 			sg.Name, sg.CurrentProcess), ""
 	}
 
+	if sg.NumProcessZones != 0 {
+		return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer addition",
+			sg.Name, sg.NumProcessZones), ""
+	}
+
 	mdb.mu.Lock()
 	stmt, err := mdb.Prepare(SJGsql2)
 	if err != nil {
@@ -188,7 +193,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 
 		// At this stage we know that there are now more than one signer and more than zero
 		// zones. Hence we need to enter the add-signer process for all the zones.
-		const sqlq = "UPDATE signergroups SET curprocess=?, pendadd=? WHERE name=?"
+		const sqlq = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
 
 		mdb.mu.Lock()
 		stmt, err := mdb.Prepare(sqlq)
@@ -207,7 +212,14 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		// XXX: this is inefficient, but I don't think we will have enough
 		//      zones in the system for that to be an issue
 		for _, z := range zones {
-			mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
+		        log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
+						     z.Name, SignerJoinGroupProcess, dbsigner.Name)
+			err, msg := mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
+			if err != nil {
+			   log.Printf("SJG: Error from ZAF: %v", err)
+			} else {
+			   log.Printf("SJG: Message from ZAF: %s", msg)
+			}
 		}
 		return nil, fmt.Sprintf(
 			"Signer %s has joined signer group %s and %d zones have entered the 'add-signer' process.",
