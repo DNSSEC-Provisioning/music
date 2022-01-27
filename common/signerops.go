@@ -278,7 +278,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 
 	const (
 		SLGsql2 = "DELETE FROM group_signers WHERE name=? AND signer=?"
-		SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=? WHERE name=?"
+		SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
 	)
 
 	// If the signer group has no zones attached to it, then it is ok to remove a signer immediately
