@@ -56,13 +56,13 @@ var addZoneCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		zonename = dns.Fqdn(zonename)
 		if zonetype == "" {
-		   zonetype = "normal"
+			zonetype = "normal"
 		}
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
-				Name:		zonename,
-				ZoneType:	zonetype,
+				Name:     zonename,
+				ZoneType: zonetype,
 			},
 			SignerGroup: sgroupname, // may be unspecified
 		}
@@ -84,7 +84,7 @@ var updateZoneCmd = &cobra.Command{
 		}
 
 		if zonetype != "" {
-		   data.Zone.ZoneType = zonetype
+			data.Zone.ZoneType = zonetype
 		}
 		zr := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
@@ -132,7 +132,7 @@ var zoneLeaveGroupCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "leave",
 			Zone: music.Zone{
-				Name:	zonename,
+				Name: zonename,
 			},
 			SignerGroup: sgroupname,
 		}
@@ -149,7 +149,7 @@ var deleteZoneCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "delete",
 			Zone: music.Zone{
-				Name:	zonename,
+				Name: zonename,
 			},
 		}
 		zr := SendZoneCommand(zonename, data)
@@ -188,7 +188,7 @@ var zoneMetaCmd = &cobra.Command{
 			Metavalue: metavalue,
 		}
 		if zonetype != "" {
-		   data.Zone.ZoneType = zonetype
+			data.Zone.ZoneType = zonetype
 		}
 
 		zr := SendZoneCommand(zone, data)
@@ -210,7 +210,7 @@ command.`,
 		// failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
 
 		fmt.Println(
-`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
+			`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
 up to the signer group. This command is only here for development and debuging
 reasons and will disappear.`)
 
@@ -232,7 +232,7 @@ reasons and will disappear.`)
 			Zone: music.Zone{
 				Name: zone,
 			},
-			FSM: fsmname,
+			FSM:       fsmname,
 			FSMSigner: signername,
 		}
 		zr := SendZoneCommand(zone, data)
@@ -297,7 +297,7 @@ var zoneGetRRsetsCmd = &cobra.Command{
 	Short: "Retrieve an rrset from the signers in the signer group for this zone",
 	Run: func(cmd *cobra.Command, args []string) {
 		failure, errmsg, rrsets := ZoneGetRRsets(dns.Fqdn(zonename), dns.Fqdn(ownername),
-			 	 	   				     rrtype)
+			rrtype)
 		if failure {
 			fmt.Printf("Error: %s\n", errmsg)
 		} else {
@@ -358,12 +358,12 @@ var listZonesCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(zoneCmd)
 	zoneCmd.AddCommand(addZoneCmd, updateZoneCmd, deleteZoneCmd, listZonesCmd,
-				       zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
-				       zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
-				       zoneCopyRRsetCmd, zoneMetaCmd, statusZoneCmd)
+		zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
+		zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
+		zoneCopyRRsetCmd, zoneMetaCmd, statusZoneCmd)
 
 	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
-							"type of zone, 'normal' or 'debug'")
+		"type of zone, 'normal' or 'debug'")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
 	zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",
@@ -389,7 +389,7 @@ func SendZoneCommand(zonename string, data music.ZonePost) music.ZoneResponse {
 	// IsDomainName() is too liberal, we need a stricter test.
 	if _, ok := dns.IsDomainName(zonename); !ok {
 		log.Fatalf("SendZoneCommand: Error: '%s' is not a legal domain name. Terminating.",
-					     zonename)
+			zonename)
 	}
 
 	bytebuf := new(bytes.Buffer)
@@ -563,9 +563,9 @@ func PrintZones(zm map[string]music.Zone) {
 
 	for _, zn := range zonenames {
 		zone = zm[zn]
-	        zname := zn
+		zname := zn
 		if zone.ZoneType == "debug" {
-		   zname += "[D]"
+			zname += "[D]"
 		}
 
 		group := "---"
@@ -581,7 +581,7 @@ func PrintZones(zm map[string]music.Zone) {
 		if zone.State == "" {
 			zone.State = "---"
 			if zone.FSM == "" {
-			   zone.State = "IN-SYNC"
+				zone.State = "IN-SYNC"
 			}
 		}
 
