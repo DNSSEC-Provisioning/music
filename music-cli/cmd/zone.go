@@ -357,10 +357,10 @@ var listZonesCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(zoneCmd)
-	zoneCmd.AddCommand(addZoneCmd, deleteZoneCmd, listZonesCmd, zoneJoinGroupCmd,
-		zoneLeaveGroupCmd, zoneFsmCmd, zoneStepFsmCmd,
-		zoneGetRRsetsCmd, zoneListRRsetCmd, zoneCopyRRsetCmd,
-		zoneMetaCmd, statusZoneCmd)
+	zoneCmd.AddCommand(addZoneCmd, updateZoneCmd, deleteZoneCmd, listZonesCmd,
+				       zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
+				       zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
+				       zoneCopyRRsetCmd, zoneMetaCmd, statusZoneCmd)
 
 	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
 							"type of zone, 'normal' or 'debug'")

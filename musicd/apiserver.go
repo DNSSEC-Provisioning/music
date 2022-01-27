@@ -234,6 +234,15 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				resp.ErrorMsg = err.Error()
 			}
 
+		case "update":
+			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
+			err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone)
+			if err != nil {
+				// log.Printf("Error from UpdateZone: %v", err)
+				resp.Error = true
+				resp.ErrorMsg = err.Error()
+			}
+
 		case "delete":
 			err, resp.Msg = mdb.DeleteZone(dbzone)
 			if err != nil {
