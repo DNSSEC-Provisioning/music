@@ -75,33 +75,51 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
-func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
+const (
+      USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=? WHERE name =?"
+)
+
+func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	var err error
 	if !dbsigner.Exists {
 		return fmt.Errorf("Signer %s not present in system.",
 			dbsigner.Name), ""
 	}
 
-	// s.Method = strings.ToLower(s.Method)
-
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
-
 	if !ok {
 		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
+			"Unknown signer method: %s. Known methods are: %v",
+				 		dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ?, port = ? WHERE name = ?")
+	stmt, err := mdb.Prepare(USsql)
 	if err != nil {
-		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
+		log.Printf("UpdateSigner: Error from db.Prepare(%s): %v\n", USsql, err)
+	}
+
+	if us.Method != "" {
+	   dbsigner.Method = us.Method
+	}
+
+	if us.Auth != "" {
+	   dbsigner.Auth = us.Auth
+	}
+
+	if us.Address != "" {
+	   dbsigner.Address = us.Address
+	}
+
+	if us.Port != "" {
+	   dbsigner.Port = us.Port
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address, dbsigner.Name, dbsigner.Port)
+	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, dbsigner.Address,
+	       	 			    dbsigner.Port, dbsigner.Name)
 	mdb.mu.Unlock()
-	if CheckSQLError("UpdateSigner", "", err, false) {
+	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
 	}
 

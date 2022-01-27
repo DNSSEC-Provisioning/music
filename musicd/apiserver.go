@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/miekg/dns"
@@ -61,6 +62,11 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("APIping: received /ping request from %s.\n", r.RemoteAddr)
 
+		tls := ""
+		if r.TLS != nil {
+		   tls = "TLS "
+		}
+
 		decoder := json.NewDecoder(r.Body)
 		var pp music.PingPost
 		err := decoder.Decode(&pp)
@@ -77,10 +83,11 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			conf.Internal.DesecUpdate <- music.SignerOp{}
 		}
 
+		host, _ := os.Hostname()
 		response := music.PingResponse{
 			Time:    time.Now(),
 			Client:  r.RemoteAddr,
-			Message: "pong",
+			Message: fmt.Sprintf("%spong from musicd @ %s", tls, host),
 			Pings:   pp.Pings + 1,
 			Pongs:   pongs}
 
@@ -406,10 +413,6 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		dbsigner, _ := mdb.GetSigner(&sp.Signer, false) // not apisafe
 
-		//        if sp.Command != "list" {
-		//            dbsigner, err = mdb.GetSigner(sp.Signer.Name)
-		//        }
-
 		switch sp.Command {
 		case "list":
 			ss, err := mdb.ListSigners()
@@ -427,7 +430,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "update":
-			err, resp.Msg = mdb.UpdateSigner(dbsigner)
+			err, resp.Msg = mdb.UpdateSigner(dbsigner, sp.Signer)
 			if err != nil {
 				// log.Printf("Error from UpdateSigner: %v", err)
 				resp.Error = true

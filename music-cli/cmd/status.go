@@ -12,23 +12,21 @@ import (
 
 func ZoneStatus() {
 	zone := "fluffmunk.se." // must have something, not used
-	data := music.ZonePost{
+	zr := SendZoneCommand(zone, music.ZonePost{
 		Command: "list",
 		Zone: music.Zone{
 			Name: zone,
 		},
-	}
-	zr, err := SendZoneCommand(zone, data)
+	})
 	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	if err != nil {
-		fmt.Printf("Error from ListZones: %v\n", err)
-	} else {
-		PrintZones(zr.Zones)
-	}
+	PrintZones(zr.Zones)
 }
 
 func SignerStatus() {
-	ListSigners()
+	sr := SendSignerCmd(music.SignerPost{
+		Command: "list",
+	})
+	PrintSigners(sr)
 }
 
 func SignerGroupStatus() {
