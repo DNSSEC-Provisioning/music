@@ -211,7 +211,7 @@ command.`,
 
 		fmt.Println(
 			`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
-up to the signer group. This command is only here for development and debuging
+up to the signer group. This command is only here for development and debugging
 reasons and will disappear.`)
 
 		zone := dns.Fqdn(zonename)
