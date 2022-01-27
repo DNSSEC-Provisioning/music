@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 // Transition SIGNERS-UNSYNCHED --> DNSKEYS-SYNCHED:
@@ -47,8 +47,8 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 	log.Printf("VerifyDnskeysSynched: Fetching all ZSKs for %s.\n", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("VerifyDnskeysSynched: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("VerifyDnskeysSynched: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -58,6 +58,7 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			return false
 		}
 
 		signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
@@ -124,8 +125,8 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 	log.Printf("%s: Syncing DNSKEYs in group %s", z.Name, z.SGroup.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinSyncDnskeys: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinSyncDnskeys: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -135,6 +136,7 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			return false
 		}
 
 		// signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}

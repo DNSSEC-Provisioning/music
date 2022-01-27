@@ -111,7 +111,7 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
@@ -179,7 +179,7 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	in, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
+	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
@@ -245,7 +245,7 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	// c := new(dns.Client)
 	c := dns.Client{Net: "tcp"}
 	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
-	r, _, err := c.Exchange(m, signer.Address+signer.Port) // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Error from Exchange: %v. Returning response chan + call stack\n", err)
 		fdop.Response <- SignerOpResult{Error: err}
