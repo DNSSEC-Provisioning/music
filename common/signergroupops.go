@@ -363,7 +363,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
 	   if err != nil {
 	      log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
 	   }
-	   _, err = stmt.Exec(false, sg.Name)
+	   _, err = stmt.Exec(sg.Name)
 	   if err != nil {
 	      log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
 	   }

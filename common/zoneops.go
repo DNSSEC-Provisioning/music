@@ -48,9 +48,14 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	if group != "" {
 		fmt.Printf("AddGroup: notice that the zone %s has the signergroup %s specified so we set that too\n", z.Name, group)
 		dbzone, _ := mdb.GetZone(z.Name)
-		mdb.ZoneJoinGroup(dbzone, group) // we know that the zone exist
-		return nil, fmt.Sprintf(
+		err, _ := mdb.ZoneJoinGroup(dbzone, group) // we know that the zone exist
+		if err != nil {
+		   return err, fmt.Sprintf(
+			"Zone %s was added, but failed to attach to signer group %s.", fqdn, group)
+		} else {
+		  return nil, fmt.Sprintf(
 			"Zone %s was added and immediately attached to signer group %s.", fqdn, group)
+		}
 	}
 	return nil, fmt.Sprintf("Zone %s was added but is not yet attached to any signer group.", fqdn)
 }
