@@ -347,7 +347,7 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 	// Is the signer group locked (because of being in a process
 	// that precludes zones joining or leaving)?
 	if group.Locked {
-		return errors.New(fmt.Sprintf("Signer group %s locked from zones joining or leaving due to ongoing %s process\n",
+		return errors.New(fmt.Sprintf("Signer group %s locked from zones joining or leaving due to ongoing '%s' process.",
 			group.Name, group.CurrentProcess)), ""
 
 	}

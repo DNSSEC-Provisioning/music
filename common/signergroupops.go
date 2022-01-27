@@ -345,7 +345,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
 	}
 
 	if pzones == 0 {
-		msg = fmt.Sprintf("Signer group %s: process %s is now complete. Unlocking group.",
+		msg = fmt.Sprintf("Signer group %s: process '%s' is now complete. Unlocking group.",
 			sg.Name, sg.CurrentProcess)
 		log.Printf(msg)
 
