@@ -44,9 +44,10 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
-		fmt.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
+		log.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
 	}
 
+	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
 	_, err = stmt.Exec(fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		mdb.mu.Unlock()
@@ -128,18 +129,14 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 	   	 // 1. Zone leaves process
 		 // 2. Count of #zones in process in signergroup is decremented
 		 err, msg := mdb.ZoneDetachFsm(dbzone, fsmname, "")
-
-		 sqlq := "UPDATE signergroups SET numprocesszones=numprocesszones-1 WHERE name=?"
-		 stmt, err := mdb.Prepare(sqlq)
 		 if err != nil {
-		    fmt.Printf("DetachFsm: Error from db.Prepare: %v\n", err)
+		    log.Printf("ZoneStepFsm: Error from ZoneDetachFsm(%s, %s): %v",
+		    			     dbzone.Name, fsmname, err)
 		 }
 
-		 sgname := dbzone.SignerGroup().Name
-		 _, err = stmt.Exec(sgname)
-		 if CheckSQLError("DetachFsm", sqlq, err, false) {
-		    mdb.mu.Unlock()
-		    return true, err, msg
+		 res, msg2 := mdb.CheckIfProcessComplete(dbzone.SignerGroup())
+		 if res {
+		    return true, nil, msg2	// "process complete" is the more important message
 		 }
 		 return true, nil, msg
 	}
