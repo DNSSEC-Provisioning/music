@@ -136,7 +136,7 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 
 		 res, msg2 := mdb.CheckIfProcessComplete(dbzone.SignerGroup())
 		 if res {
-		    return true, nil, msg2	// "process complete" is the more important message
+		    return true, nil, fmt.Sprintf("%s\n%s", msg, msg2)	// "process complete" is the more important message
 		 }
 		 return true, nil, msg
 	}
