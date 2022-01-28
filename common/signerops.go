@@ -75,33 +75,51 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
-func (mdb *MusicDB) UpdateSigner(dbsigner *Signer) (error, string) {
+const (
+      USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=? WHERE name =?"
+)
+
+func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	var err error
 	if !dbsigner.Exists {
 		return fmt.Errorf("Signer %s not present in system.",
 			dbsigner.Name), ""
 	}
 
-	// s.Method = strings.ToLower(s.Method)
-
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
-
 	if !ok {
 		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
+			"Unknown signer method: %s. Known methods are: %v",
+				 		dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.Prepare("UPDATE signers SET method = ?, auth = ?, addr = ?, port = ? WHERE name = ?")
+	stmt, err := mdb.Prepare(USsql)
 	if err != nil {
-		fmt.Printf("UpdateSigner: Error from db.Prepare: %v\n", err)
+		log.Printf("UpdateSigner: Error from db.Prepare(%s): %v\n", USsql, err)
+	}
+
+	if us.Method != "" {
+	   dbsigner.Method = us.Method
+	}
+
+	if us.Auth != "" {
+	   dbsigner.Auth = us.Auth
+	}
+
+	if us.Address != "" {
+	   dbsigner.Address = us.Address
+	}
+
+	if us.Port != "" {
+	   dbsigner.Port = us.Port
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth,
-		dbsigner.Address, dbsigner.Name, dbsigner.Port)
+	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, dbsigner.Address,
+	       	 			    dbsigner.Port, dbsigner.Name)
 	mdb.mu.Unlock()
-	if CheckSQLError("UpdateSigner", "", err, false) {
+	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
 	}
 
@@ -150,19 +168,19 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 	}
 
 	if sg.CurrentProcess != "" {
-		return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer addition",
+		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer addition.",
 			sg.Name, sg.CurrentProcess), ""
 	}
 
 	if sg.NumProcessZones != 0 {
-		return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer addition",
+		return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer addition.",
 			sg.Name, sg.NumProcessZones), ""
 	}
 
 	mdb.mu.Lock()
 	stmt, err := mdb.Prepare(SJGsql2)
 	if err != nil {
-		log.Printf("SignerJoinGroup: Error from db.Prepare: %v\n", err)
+		log.Printf("SignerJoinGroup: Error from mdb.Prepare(%s): %v\n", SJGsql2, err)
 	}
 	_, err = stmt.Exec(g, dbsigner.Name)
 	if CheckSQLError("SignerJoinGroup", SJGsql2, err, false) {
@@ -188,7 +206,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		if len(zones) == 0 {
 			return nil, fmt.Sprintf(
 				"Signer %s has joined signer group %s, which now has %d signers but no zones.",
-				dbsigner.Name, sg.Name)
+				dbsigner.Name, sg.Name, len(sg.SignerMap))
 		}
 
 		// At this stage we know that there are now more than one signer and more than zero
@@ -267,7 +285,7 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	}
 
 	if sg.CurrentProcess != "" {
-		return fmt.Errorf("Signer group %s is currently in the %s process and does not accept signer removal",
+		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer removal.",
 			sg.Name, sg.CurrentProcess), ""
 	}
 

@@ -57,7 +57,35 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 			"Zone %s was added and immediately attached to signer group %s.", fqdn, group)
 		}
 	}
-	return nil, fmt.Sprintf("Zone %s was added but is not yet attached to any signer group.", fqdn)
+	return nil, fmt.Sprintf("Zone %s was added but is not yet attached to any signer group.",
+	       	    		      fqdn)
+}
+
+const (
+      UZsql = "UPDATE zones SET zonetype=? WHERE name=?"
+)
+
+func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone) (error, string) {
+	log.Printf("UpdateZone: zone: %v", uz)
+
+	stmt, err := mdb.Prepare(UZsql)
+	if err != nil {
+		fmt.Printf("Error in SQL prepare(%s): %v", UZsql, err)
+	}
+
+	if uz.ZoneType != "" {
+	   dbzone.ZoneType = uz.ZoneType
+	}
+
+	mdb.mu.Lock()
+	_, err = stmt.Exec(dbzone.ZoneType, dbzone.Name)
+	if CheckSQLError("UpdateZone", UZsql, err, false) {
+		mdb.mu.Unlock()
+		return err, ""
+	}
+	mdb.mu.Unlock()
+
+	return nil, fmt.Sprintf("Zone %s updated.", dbzone.Name)
 }
 
 func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
