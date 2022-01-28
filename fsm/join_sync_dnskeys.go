@@ -57,7 +57,9 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
+			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			log.Printf("%s\n", stopreason)
 			return false
 		}
 
@@ -135,7 +137,9 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
+			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			log.Printf("%s\n", stopreason)
 			return false
 		}
 
