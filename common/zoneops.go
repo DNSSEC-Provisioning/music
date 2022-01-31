@@ -121,7 +121,12 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	}
 
 	mdb.mu.Unlock()
-	return nil, fmt.Sprintf("Zone %s deleted.", z.Name)
+	deletemsg := fmt.Sprintf("Zone %s deleted.", z.Name)
+	processcomplete, msg  := mdb.CheckIfProcessComplete(sg)
+	if processcomplete {
+	   return nil, deletemsg + "\n" + msg
+	}
+	return nil, deletemsg
 }
 
 func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {

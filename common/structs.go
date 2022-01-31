@@ -66,6 +66,8 @@ type Signer struct {
 	Name         string
 	Exists       bool
 	Method       string // "ddns" | "desec" | ...
+	UseTcp	     bool   // debugging tools, easier to check UDP
+	UseTSIG	     bool   // debugging tool, not for production
 	Address      string
 	Port         string
 	Auth         string   // AuthDataTmp // TODO: Issue #28

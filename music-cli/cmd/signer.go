@@ -17,6 +17,7 @@ import (
 )
 
 var signermethod, signerauth, signeraddress, signerport string
+var signernotcp, signernotsig bool
 
 // signerCmd represents the signer command
 var signerCmd = &cobra.Command{
@@ -49,6 +50,8 @@ var addSignerCmd = &cobra.Command{
 				Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 				Address: signeraddress,
 				Port:    signerport, // set to 53 if not specified
+				UseTcp:	 !signernotcp,
+				UseTSIG: !signernotsig,
 			},
 			SignerGroup: sgroupname, // may be unspecified
 		})
@@ -74,6 +77,8 @@ var updateSignerCmd = &cobra.Command{
 				Method:  strings.ToLower(signermethod),
 				Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 				Port:    signerport, // set to 53 if not specified
+				UseTcp:	 !signernotcp,
+				UseTSIG: !signernotsig,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -193,6 +198,8 @@ func init() {
 		"IP address of signer")
 	signerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",
 		"Port of signer")
+	signerCmd.PersistentFlags().BoolVarP(&signernotcp, "notcp", "", false,	"Don't use TCP (use UDP), debug")
+	signerCmd.PersistentFlags().BoolVarP(&signernotsig, "notsig", "", false, "Don't use TSIG, debug")
 }
 
 func SendSignerCmd(data music.SignerPost) music.SignerResponse {

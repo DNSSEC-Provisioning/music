@@ -131,6 +131,7 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]
 
 func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	rrtype uint16) (error, []dns.RR) {
+	log.Printf("DDNS: FetchRRset: signer: %s zone: %s fqdn: %s rrtype: %s", signer.Name, zone, fqdn, dns.TypeToString[rrtype])
 	if signer.Address == "" {
 		return fmt.Errorf("No ip|host for signer %s", signer.Name), []dns.RR{}
 	}
@@ -141,17 +142,33 @@ func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	if len(tsig) != 2 {
 		return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name), []dns.RR{}
 	}
+	log.Printf("DDNS: FetchRRset: tsig slice: '%v'", tsig)
 
 	m := new(dns.Msg)
 	m.SetQuestion(fqdn, rrtype)
 	// m.SetEdns0(4096, true)
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
+	if signer.UseTSIG {
+	   m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
+	}
 
-	// c := new(dns.Client)
-	c := dns.Client{Net: "tcp"}
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	var c dns.Client
+	if signer.UseTcp {
+	   c = dns.Client{Net: "tcp"}
+	} else {
+	   log.Printf("DDNS: FetchRRset: accessing signer %s over UDP. This is a debugging mechanism only", signer.Name)
+	   c = dns.Client{Net: "udp"}
+	}
+
+	if signer.UseTSIG {
+	   c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	   log.Printf("DDNS: FetchRRset: TsigSecret: %v", c.TsigSecret)
+	} else {
+	   log.Printf("DDNS: FetchRRset: accessing signer % without TSIG. This is a debugging mechanism only", signer.Name)
+	}
+	
 	r, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
+	        log.Printf("DDNS: FetchRRset: dns.Exchange error: err: %v r: %v", err, r)
 		return err, []dns.RR{}
 	}
 

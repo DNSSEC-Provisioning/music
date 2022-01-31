@@ -51,6 +51,8 @@ auth        TEXT,
 addr        TEXT,
 port        TEXT,
 status      TEXT,
+usetcp	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetcp IN (0, 1)),
+usetsig	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetsig IN (0, 1)),
 UNIQUE (name)
 )`,
 
@@ -178,7 +180,7 @@ func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, e
 const (
 	GSsql = `
 SELECT name, method, auth,
-  COALESCE (addr, '') AS address, port
+  COALESCE (addr, '') AS address, port, usetcp, usetsig
 FROM signers WHERE name=?`
 )
 
@@ -191,7 +193,8 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 	row := stmt.QueryRow(s.Name)
 
 	var name, method, auth, address, port string
-	switch err = row.Scan(&name, &method, &auth, &address, &port); err {
+	var usetcp, usetsig bool
+	switch err = row.Scan(&name, &method, &auth, &address, &port, &usetcp, &usetsig); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
 		return &Signer{
@@ -201,6 +204,8 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 			Auth:    s.Auth,
 			Address: s.Address,
 			Port:    s.Port,
+			UseTcp:	 s.UseTcp,
+			UseTSIG: s.UseTSIG,
 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
 
 	case nil:
@@ -222,6 +227,8 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 			Auth:         auth, // AuthDataTmp(auth), // TODO: Issue #28
 			Address:      address,
 			Port:         port,
+			UseTcp:	      usetcp,
+			UseTSIG:      usetsig,
 			SignerGroups: sgs,
 			DB:           dbref,
 		}, nil

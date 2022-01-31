@@ -44,7 +44,7 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	}
 
 
-	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port) VALUES (?, ?, ?, ?, ?)")
+	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)")
 
 	if err != nil {
 		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
@@ -52,13 +52,13 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 
 	mdb.mu.Lock()
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
-		dbsigner.Auth, dbsigner.Address, dbsigner.Port)
+		dbsigner.Auth, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
 	mdb.mu.Unlock()
 
 	if err != nil {
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.Auth,
-			dbsigner.Address, dbsigner.Port)
+			dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
 		return err, ""
 	}
 
@@ -76,7 +76,7 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 }
 
 const (
-      USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=? WHERE name =?"
+      USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
 )
 
 func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
@@ -115,9 +115,18 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	   dbsigner.Port = us.Port
 	}
 
+	// Cannot check for existence of a bool value by whether it is true or not
+	// if us.UseTcp {
+	   dbsigner.UseTcp = us.UseTcp
+	// }
+
+	// if us.UseTSIG {
+	   dbsigner.UseTSIG = us.UseTSIG
+	// }
+
 	mdb.mu.Lock()
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, dbsigner.Address,
-	       	 			    dbsigner.Port, dbsigner.Name)
+	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, dbsigner.Address, dbsigner.Port,
+	       	 			    dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
