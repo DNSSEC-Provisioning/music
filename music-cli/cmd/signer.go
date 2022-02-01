@@ -39,6 +39,11 @@ var addSignerCmd = &cobra.Command{
 			log.Fatalf("Error: signer address unspecified. Terminating.\n")
 		}
 
+		var authdata music.AuthData
+		if signerauth != "" {
+		   authdata = music.ParseSignerAuth(signerauth, signermethod)
+		}
+
 		//		if signerport == "" {
 		//			signerport = "53"
 		//		}
@@ -47,7 +52,8 @@ var addSignerCmd = &cobra.Command{
 			Signer: music.Signer{
 				Name:    signername,
 				Method:  strings.ToLower(signermethod),
-				Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
+				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
+				Auth:    authdata,
 				Address: signeraddress,
 				Port:    signerport, // set to 53 if not specified
 				UseTcp:	 !signernotcp,
@@ -69,13 +75,19 @@ var updateSignerCmd = &cobra.Command{
 			log.Fatalf("Error: signer to update not specified. Terminating.\n")
 		}
 
+		var authdata music.AuthData
+		if signerauth != "" {
+		   authdata = music.ParseSignerAuth(signerauth, signermethod)
+		}
+
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "update",
 			Signer: music.Signer{
 				Name:    signername,
 				Address: signeraddress,
 				Method:  strings.ToLower(signermethod),
-				Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
+				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
+				Auth:    authdata,
 				Port:    signerport, // set to 53 if not specified
 				UseTcp:	 !signernotcp,
 				UseTSIG: !signernotsig,

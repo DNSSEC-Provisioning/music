@@ -70,7 +70,8 @@ type Signer struct {
 	UseTSIG	     bool   // debugging tool, not for production
 	Address      string
 	Port         string
-	Auth         string   // AuthDataTmp // TODO: Issue #28
+	AuthStr         string   // AuthDataTmp // TODO: Issue #28
+	Auth         AuthData
 	SignerGroup  string   // single signer group for join/leave
 	SignerGroups []string // all signer groups signer is member of
 	DB           *MusicDB

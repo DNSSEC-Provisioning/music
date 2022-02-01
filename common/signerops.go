@@ -8,6 +8,7 @@ import (
 	// "database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
@@ -43,6 +44,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
 	}
 
+	if dbsigner.Method == "ddns" || dbsigner.Method == "rlddns" {
+		if dbsigner.Auth.TSIGKey != "" {
+			dbsigner.AuthStr = fmt.Sprintf("%s:%s:%s", dbsigner.Auth.TSIGAlg,
+				dbsigner.Auth.TSIGName, dbsigner.Auth.TSIGKey)
+		}
+	}
 
 	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)")
 
@@ -52,12 +59,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 
 	mdb.mu.Lock()
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
-		dbsigner.Auth, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
+		dbsigner.AuthStr, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
 	mdb.mu.Unlock()
 
 	if err != nil {
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
-			dbsigner.Name, dbsigner.Method, dbsigner.Auth,
+			dbsigner.Name, dbsigner.Method, dbsigner.AuthStr,
 			dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
 		return err, ""
 	}
@@ -71,12 +78,12 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 	}
 
 	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
-		dbsigner.Method, dbsigner.Auth, dbsigner.Address, dbsigner.Port)
+		dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port)
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
 const (
-      USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
+	USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
 )
 
 func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
@@ -91,7 +98,7 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	if !ok {
 		return fmt.Errorf(
 			"Unknown signer method: %s. Known methods are: %v",
-				 		dbsigner.Method, updatermap), ""
+			dbsigner.Method, updatermap), ""
 	}
 
 	stmt, err := mdb.Prepare(USsql)
@@ -100,33 +107,34 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	}
 
 	if us.Method != "" {
-	   dbsigner.Method = us.Method
-	}
+		dbsigner.Method = us.Method
 
-	if us.Auth != "" {
-	   dbsigner.Auth = us.Auth
+		if us.Auth.TSIGKey != "" { // only possible to update auth data together with method
+			dbsigner.Auth = us.Auth
+			dbsigner.AuthStr = fmt.Sprintf("%s:%s:%s", us.Auth.TSIGAlg, us.Auth.TSIGName, us.Auth.TSIGKey)
+		}
 	}
 
 	if us.Address != "" {
-	   dbsigner.Address = us.Address
+		dbsigner.Address = us.Address
 	}
 
 	if us.Port != "" {
-	   dbsigner.Port = us.Port
+		dbsigner.Port = us.Port
 	}
 
 	// Cannot check for existence of a bool value by whether it is true or not
 	// if us.UseTcp {
-	   dbsigner.UseTcp = us.UseTcp
+	dbsigner.UseTcp = us.UseTcp
 	// }
 
 	// if us.UseTSIG {
-	   dbsigner.UseTSIG = us.UseTSIG
+	dbsigner.UseTSIG = us.UseTSIG
 	// }
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.Auth, dbsigner.Address, dbsigner.Port,
-	       	 			    dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
+	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
+		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
 	mdb.mu.Unlock()
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
@@ -239,13 +247,13 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		// XXX: this is inefficient, but I don't think we will have enough
 		//      zones in the system for that to be an issue
 		for _, z := range zones {
-		        log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
-						     z.Name, SignerJoinGroupProcess, dbsigner.Name)
+			log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
+				z.Name, SignerJoinGroupProcess, dbsigner.Name)
 			err, msg := mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
 			if err != nil {
-			   log.Printf("SJG: Error from ZAF: %v", err)
+				log.Printf("SJG: Error from ZAF: %v", err)
 			} else {
-			   log.Printf("SJG: Message from ZAF: %s", msg)
+				log.Printf("SJG: Message from ZAF: %s", msg)
 			}
 		}
 		return nil, fmt.Sprintf(
@@ -425,19 +433,30 @@ func (mdb *MusicDB) ListSigners() (map[string]Signer, error) {
 	if CheckSQLError("ListSigners", LSIGsql, err, false) {
 		return sl, err
 	} else {
-		var name, method, address, auth, port string
+		var name, method, address, authstr, port string
 		for rows.Next() {
-			err := rows.Scan(&name, &method, &address, &auth, &port)
+			err := rows.Scan(&name, &method, &address, &authstr, &port)
 			if err != nil {
 				log.Fatal("ListSigners: Error from rows.Next():", err)
 			}
 
+			auth := AuthData{}
+			authparts := strings.Split(authstr, ":")
+			log.Printf("ListSigners: authparts: '%s'", authparts)
+			if len(authparts) == 3 {
+				auth = AuthData{
+					TSIGAlg:  authparts[0],
+					TSIGName: authparts[1],
+					TSIGKey:  authparts[2],
+				}
+			}
 			s := Signer{
 				Name:    name,
 				Exists:  true,
 				Method:  method,
 				Address: address,
-				Auth:    auth, // AuthDataTmp(auth), // TODO: Issue #28
+				AuthStr: authstr, // AuthDataTmp(auth), // TODO: Issue #28
+				Auth:    auth,    // AuthDataTmp(auth), // TODO: Issue #28
 				Port:    port,
 			}
 			sgs, err := mdb.GetSignerGroups(name)
