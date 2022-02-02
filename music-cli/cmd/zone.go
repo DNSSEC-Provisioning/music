@@ -338,8 +338,6 @@ var listZonesCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all zones known to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		// zr, err := ListZones()
-
 		if zonename == "" {
 			zonename = "zone-name-not-set.se." // must have something, not used
 		}
@@ -548,56 +546,58 @@ func PrintZoneResponse(iserr bool, errormsg, msg string) {
 }
 
 func PrintZones(zm map[string]music.Zone) {
-	var out []string
-	var zone music.Zone
+	if len(zm) != 0 {
+		var out []string
+		var zone music.Zone
 
-	if cliconf.Verbose || showheaders {
-		out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
-	}
-
-	zonenames := make([]string, 0, len(zm))
-	for k := range zm {
-		zonenames = append(zonenames, k)
-	}
-	sort.Strings(zonenames)
-
-	for _, zn := range zonenames {
-		zone = zm[zn]
-		zname := zn
-		if zone.ZoneType == "debug" {
-			zname += "[D]"
+		if cliconf.Verbose || showheaders {
+			out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
 		}
 
-		group := "---"
-		if zone.SGname != "" {
-			group = zone.SGname
+		zonenames := make([]string, 0, len(zm))
+		for k := range zm {
+			zonenames = append(zonenames, k)
 		}
+		sort.Strings(zonenames)
 
-		fsm := "---"
-		if zone.FSM != "" {
-			fsm = zone.FSM
-		}
-
-		if zone.State == "" {
-			zone.State = "---"
-			if zone.FSM == "" {
-				zone.State = "IN-SYNC"
+		for _, zn := range zonenames {
+			zone = zm[zn]
+			zname := zn
+			if zone.ZoneType == "debug" {
+				zname += "[D]"
 			}
-		}
 
-		if zone.ZskState == "" {
-			zone.ZskState = "---"
-		}
+			group := "---"
+			if zone.SGname != "" {
+				group = zone.SGname
+			}
 
-		nextStates := []string{}
-		for k, _ := range zone.NextState {
-			nextStates = append(nextStates, k)
+			fsm := "---"
+			if zone.FSM != "" {
+				fsm = zone.FSM
+			}
+
+			if zone.State == "" {
+				zone.State = "---"
+				if zone.FSM == "" {
+					zone.State = "IN-SYNC"
+				}
+			}
+
+			if zone.ZskState == "" {
+				zone.ZskState = "---"
+			}
+
+			nextStates := []string{}
+			for k, _ := range zone.NextState {
+				nextStates = append(nextStates, k)
+			}
+			out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zname, group, fsm,
+				zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
+				strings.Join(nextStates, " "), zone.ZskState))
 		}
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zname, group, fsm,
-			zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
-			strings.Join(nextStates, " "), zone.ZskState))
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}
-	fmt.Printf("%s\n", columnize.SimpleFormat(out))
 }
 
 func PrintRRsets(msrrs map[string][]string) {

@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	music "github.com/DNSSEC-Provisioning/music/common"
 )
 
@@ -16,19 +18,31 @@ func ZoneStatus() {
 		},
 	})
 	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-	PrintZones(zr.Zones)
+	if len(zr.Zones) != 0 {
+		PrintZones(zr.Zones)
+	} else {
+		fmt.Printf("*** There are 0 zones in the system.\n")
+	}
 }
 
 func SignerStatus() {
 	sr := SendSignerCmd(music.SignerPost{
 		Command: "list",
 	})
-	PrintSigners(sr)
+	if len(sr.Signers) != 0 {
+		PrintSigners(sr)
+	} else {
+		fmt.Printf("*** There are 0 signers in the system.\n")
+	}
 }
 
 func SignerGroupStatus() {
 	sgr := SendSignerGroupCmd("none", music.SignerGroupPost{
 		Command: "list",
 	})
-	PrintSignerGroups(sgr)
+	if len(sgr.SignerGroups) != 0 {
+		PrintSignerGroups(sgr)
+	} else {
+		fmt.Printf("*** There are 0 signers in the system.\n")
+	}
 }

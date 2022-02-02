@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-        // "github.com/DNSSEC-Provisioning/music/common"
+	// "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, string) {
-     log.Printf("ZAF: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
+func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string,
+	preempt bool) (error, string) {
+	var msg string
+	log.Printf("ZAF: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
@@ -32,10 +34,14 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 		return fmt.Errorf("Process %s unknown. Sorry.", fsm), ""
 	}
 
-	if dbzone.FSM != "" && dbzone.FSM != "---" {
-		return fmt.Errorf(
-			"Zone %s already attached to process %s. Only one process at a time possible.\n",
-			dbzone.Name, dbzone.FSM), ""
+	if dbzone.FSM != "" {
+		if preempt {
+			msg = fmt.Sprintf("Zone %s was in process '%s', which is now preempted by new process '%'\n", dbzone.Name, dbzone.FSM)
+		} else {
+			return fmt.Errorf(
+				"Zone %s already attached to process %s. Only one process at a time possible.\n",
+				dbzone.Name, dbzone.FSM), ""
+		}
 	}
 
 	initialstate := process.InitialState
@@ -51,10 +57,10 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 	_, err = stmt.Exec(fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		mdb.mu.Unlock()
-		return err, ""
+		return err, msg
 	}
 	mdb.mu.Unlock()
-	return nil, fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
+	return nil, msg + fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
 		dbzone.Name, fsm, initialstate)
 }
 
@@ -126,19 +132,19 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 	state := dbzone.State
 
 	if state == FsmStateStop {
-	   	 // 1. Zone leaves process
-		 // 2. Count of #zones in process in signergroup is decremented
-		 err, msg := mdb.ZoneDetachFsm(dbzone, fsmname, "")
-		 if err != nil {
-		    log.Printf("ZoneStepFsm: Error from ZoneDetachFsm(%s, %s): %v",
-		    			     dbzone.Name, fsmname, err)
-		 }
+		// 1. Zone leaves process
+		// 2. Count of #zones in process in signergroup is decremented
+		err, msg := mdb.ZoneDetachFsm(dbzone, fsmname, "")
+		if err != nil {
+			log.Printf("ZoneStepFsm: Error from ZoneDetachFsm(%s, %s): %v",
+				dbzone.Name, fsmname, err)
+		}
 
-		 res, msg2 := mdb.CheckIfProcessComplete(dbzone.SignerGroup())
-		 if res {
-		    return true, nil, fmt.Sprintf("%s\n%s", msg, msg2)	// "process complete" is the more important message
-		 }
-		 return true, nil, msg
+		res, msg2 := mdb.CheckIfProcessComplete(dbzone.SignerGroup())
+		if res {
+			return true, nil, fmt.Sprintf("%s\n%s", msg, msg2) // "process complete" is the more important message
+		}
+		return true, nil, msg
 	}
 
 	var CurrentState FSMState
@@ -240,7 +246,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	// If post-condition==false ==> bump hold time
 	// XXX: This should be changed to t.PreCondition once all states have pre conditions
 	if t.PreCondition(z) {
-	        log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
+		log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
 		t.Action(z)
 		if t.PostCondition != nil {
 			postcond := t.PostCondition(z)

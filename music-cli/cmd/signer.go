@@ -41,7 +41,7 @@ var addSignerCmd = &cobra.Command{
 
 		var authdata music.AuthData
 		if signerauth != "" {
-		   authdata = music.ParseSignerAuth(signerauth, signermethod)
+			authdata = music.ParseSignerAuth(signerauth, signermethod)
 		}
 
 		//		if signerport == "" {
@@ -50,13 +50,13 @@ var addSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "add",
 			Signer: music.Signer{
-				Name:    signername,
-				Method:  strings.ToLower(signermethod),
+				Name:   signername,
+				Method: strings.ToLower(signermethod),
 				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 				Auth:    authdata,
 				Address: signeraddress,
 				Port:    signerport, // set to 53 if not specified
-				UseTcp:	 !signernotcp,
+				UseTcp:  !signernotcp,
 				UseTSIG: !signernotsig,
 			},
 			SignerGroup: sgroupname, // may be unspecified
@@ -77,7 +77,7 @@ var updateSignerCmd = &cobra.Command{
 
 		var authdata music.AuthData
 		if signerauth != "" {
-		   authdata = music.ParseSignerAuth(signerauth, signermethod)
+			authdata = music.ParseSignerAuth(signerauth, signermethod)
 		}
 
 		sr := SendSignerCmd(music.SignerPost{
@@ -89,7 +89,7 @@ var updateSignerCmd = &cobra.Command{
 				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 				Auth:    authdata,
 				Port:    signerport, // set to 53 if not specified
-				UseTcp:	 !signernotcp,
+				UseTcp:  !signernotcp,
 				UseTSIG: !signernotsig,
 			},
 		})
@@ -210,7 +210,7 @@ func init() {
 		"IP address of signer")
 	signerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",
 		"Port of signer")
-	signerCmd.PersistentFlags().BoolVarP(&signernotcp, "notcp", "", false,	"Don't use TCP (use UDP), debug")
+	signerCmd.PersistentFlags().BoolVarP(&signernotcp, "notcp", "", false, "Don't use TCP (use UDP), debug")
 	signerCmd.PersistentFlags().BoolVarP(&signernotsig, "notsig", "", false, "Don't use TSIG, debug")
 }
 
@@ -247,19 +247,21 @@ func PrintSignerResponse(iserr bool, errormsg, msg string) {
 }
 
 func PrintSigners(sr music.SignerResponse) {
-	var out []string
-	if cliconf.Verbose || showheaders {
-		out = append(out, "Signer|Method|Address|Port|SignerGroups")
-	}
-
-	for _, v := range sr.Signers {
-		groups := []string{"---"}
-		if len(v.SignerGroups) != 0 {
-			groups = v.SignerGroups
+	if len(sr.Signers) != 0 {
+		var out []string
+		if cliconf.Verbose || showheaders {
+			out = append(out, "Signer|Method|Address|Port|SignerGroups")
 		}
-		gs := strings.Join(groups, ", ")
-		out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s", v.Name, v.Method,
-			v.Address, v.Port, gs))
+
+		for _, v := range sr.Signers {
+			groups := []string{"---"}
+			if len(v.SignerGroups) != 0 {
+				groups = v.SignerGroups
+			}
+			gs := strings.Join(groups, ", ")
+			out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s", v.Name, v.Method,
+				v.Address, v.Port, gs))
+		}
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}
-	fmt.Printf("%s\n", columnize.SimpleFormat(out))
 }

@@ -146,10 +146,6 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
 }
 
-const (
-	SJGsql2 = "INSERT OR IGNORE INTO group_signers (name, signer) VALUES (?, ?)"
-)
-
 // SignerJoinGroup(): add an already defined signer to an already defined signer group.
 //
 // Note: this should trigger all zones attached to this signer group to enter
@@ -170,8 +166,13 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		return err, ""
 	}
 
-	if _, already_member := sg.SignerMap[dbsigner.Name]; already_member {
+	if _, member := sg.SignerMap[dbsigner.Name]; member {
 		return fmt.Errorf("Signer %s is already a member of group %s", dbsigner.Name, sg.Name), ""
+	}
+
+	if sg.CurrentProcess != "" {
+		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer addition.",
+			sg.Name, sg.CurrentProcess), ""
 	}
 
 	if sg.PendingAddition != "" {
@@ -184,15 +185,13 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 			sg.Name, sg.PendingRemoval), ""
 	}
 
-	if sg.CurrentProcess != "" {
-		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer addition.",
-			sg.Name, sg.CurrentProcess), ""
-	}
+	// johani: Issue #116
+	// if sg.NumProcessZones != 0 {
+	//	return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer addition.",
+	//		sg.Name, sg.NumProcessZones), ""
+	// }
 
-	if sg.NumProcessZones != 0 {
-		return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer addition.",
-			sg.Name, sg.NumProcessZones), ""
-	}
+	const SJGsql2 = "INSERT OR IGNORE INTO group_signers (name, signer) VALUES (?, ?)"
 
 	mdb.mu.Lock()
 	stmt, err := mdb.Prepare(SJGsql2)
@@ -228,15 +227,16 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 
 		// At this stage we know that there are now more than one signer and more than zero
 		// zones. Hence we need to enter the add-signer process for all the zones.
-		const sqlq = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
+		
+		const SJGsql3 = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
 
 		mdb.mu.Lock()
-		stmt, err := mdb.Prepare(sqlq)
+		stmt, err := mdb.Prepare(SJGsql3)
 		if err != nil {
-			log.Printf("Error from db.Prepare '%s': %v\n", sqlq, err)
+			log.Printf("Error from db.Prepare(%s): %v\n", SJGsql3, err)
 		}
 		_, err = stmt.Exec(SignerJoinGroupProcess, dbsigner.Name, sg.Name)
-		if CheckSQLError("SignerJoinGroup", sqlq, err, false) {
+		if CheckSQLError("SignerJoinGroup", SJGsql3, err, false) {
 			mdb.mu.Unlock()
 			return err, ""
 		}
@@ -249,7 +249,8 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 		for _, z := range zones {
 			log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
 				z.Name, SignerJoinGroupProcess, dbsigner.Name)
-			err, msg := mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, dbsigner.Name) // we know that z exist
+			err, msg := mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, // we know that z exist
+			     	    			 dbsigner.Name, true)    // true=preempt
 			if err != nil {
 				log.Printf("SJG: Error from ZAF: %v", err)
 			} else {
@@ -291,6 +292,11 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 		return fmt.Errorf("Signer %s is not a member of group %s", dbsigner.Name, sg.Name), ""
 	}
 
+	if sg.CurrentProcess != "" {
+		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer removal.",
+			sg.Name, sg.CurrentProcess), ""
+	}
+
 	if sg.PendingRemoval != "" {
 		return fmt.Errorf("Signer group %s has signer %s in the PendingRemoval slot already",
 			sg.Name, sg.PendingRemoval), ""
@@ -301,22 +307,21 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 			sg.Name, sg.PendingAddition), ""
 	}
 
-	if sg.CurrentProcess != "" {
-		return fmt.Errorf("Signer group %s is currently in the '%s' process and does not accept signer removal.",
-			sg.Name, sg.CurrentProcess), ""
-	}
+	// johani: Issue #116
+	// if sg.NumProcessZones != 0 {
+	//	return fmt.Errorf("Signer group %s has %d zones executing processes and does not accept signer removal.",
+	//		sg.Name, sg.NumProcessZones), ""
+	// }
 
 	zones, err := mdb.GetSignerGroupZones(sg)
 	if err != nil {
 		return err, ""
 	}
 
-	const (
-		SLGsql2 = "DELETE FROM group_signers WHERE name=? AND signer=?"
-		SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
-	)
+	const SLGsql2 = "DELETE FROM group_signers WHERE name=? AND signer=?"
 
-	// If the signer group has no zones attached to it, then it is ok to remove a signer immediately
+	// If the signer group has no zones attached to it, then it is ok to remove
+	// a signer immediately
 	if len(zones) == 0 {
 		mdb.mu.Lock()
 		stmt, err := mdb.Prepare(SLGsql2)
@@ -343,6 +348,8 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 			sg.Name, len(zones), SignerGroupMinimumSigners, dbsigner.Name), ""
 	}
 
+	const SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
+
 	mdb.mu.Lock()
 	stmt, err := mdb.Prepare(SLGsql3)
 	if err != nil {
@@ -359,7 +366,8 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
-		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess, dbsigner.Name) // we know that z exist
+		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess, // we know that z exist
+				     dbsigner.Name, true)     // true=preempt
 	}
 	return nil, fmt.Sprintf(
 		"Signer %s is in pending removal from signer group %s and therefore %d zones entered the '%s' process.",
