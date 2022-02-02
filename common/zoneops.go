@@ -121,7 +121,12 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	}
 
 	mdb.mu.Unlock()
-	return nil, fmt.Sprintf("Zone %s deleted.", z.Name)
+	deletemsg := fmt.Sprintf("Zone %s deleted.", z.Name)
+	processcomplete, msg  := mdb.CheckIfProcessComplete(sg)
+	if processcomplete {
+	   return nil, deletemsg + "\n" + msg
+	}
+	return nil, deletemsg
 }
 
 func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
@@ -233,16 +238,22 @@ func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool) {
 	return zone, exists
 }
 
+const (
+      GZsql = `
+SELECT name, zonetype, state, COALESCE(statestamp, datetime('now')) AS timestamp,
+       fsm, fsmsigner, COALESCE(sgroup, '') AS signergroup
+FROM zones WHERE name=?`
+)
+
 func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
-	sqlq := "SELECT name, zonetype, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm, COALESCE(sgroup, '') AS signergroup FROM zones WHERE name=?"
-	stmt, err := mdb.Prepare(sqlq)
+	stmt, err := mdb.Prepare(GZsql)
 	if err != nil {
-		fmt.Printf("GetZone: Error from db.Prepare: %v\n", err)
+		log.Printf("GetZone: Error from db.Prepare(%s): %v\n", GZsql, err)
 	}
 	row := stmt.QueryRow(zonename)
 
-	var name, zonetype, state, timestamp, fsm, signergroup string
-	switch err = row.Scan(&name, &zonetype, &state, &timestamp, &fsm, &signergroup); err {
+	var name, zonetype, state, timestamp, fsm, fsmsigner, signergroup string
+	switch err = row.Scan(&name, &zonetype, &state, &timestamp, &fsm, &fsmsigner, &signergroup); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetZone: Zone \"%s\" does not exist\n", zonename)
 		return &Zone{
@@ -271,6 +282,7 @@ func (mdb *MusicDB) GetZone(zonename string) (*Zone, bool) {
 			Statestamp: t,
 			NextState:  next,
 			FSM:        fsm,
+			FSMSigner:  fsmsigner,
 			SGroup:     sg,
 			SGname:     sg.Name,
 			MusicDB:    mdb, // can not be json encoded, i.e. not used in API

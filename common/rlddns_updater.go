@@ -3,7 +3,7 @@ package music
 import (
 	"fmt"
 	"log"
-	"strings"
+	// "strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -82,18 +82,16 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 		err = fmt.Errorf("Inserts and removes empty, nothing to do")
 	} else if signer.Address == "" {
 		err = fmt.Errorf("No ip|host for signer %s", signer.Name)
-	} else if signer.Auth == "" {
+	} else if signer.Auth.TSIGKey == "" {
 		err = fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2) // is this safe if signer.Auth == ""?
-	if len(tsig) != 2 {
-		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
-	}
+
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetUpdate(owner)
 	if inserts != nil {
@@ -106,11 +104,9 @@ func RLDdnsUpdate(udop SignerOp) (bool, int, error) {
 			m.Remove(remove)
 		}
 	}
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	// c := new(dns.Client)
-	c := dns.Client{Net: "tcp"}
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)
+
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
@@ -157,28 +153,24 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 	if signer.Address == "" {
 		err = fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
-	if signer.Auth == "" {
+	if signer.Auth.TSIGKey == "" {
 		err = fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2)
-	if len(tsig) != 2 {
-		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
-	}
+
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
 		return false, 0, nil // return to ddnsmgr: no rate-limiting, no hold
 	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetUpdate(udop.Owner)
 	for _, rrset := range rrsets {
 		m.RemoveRRset(rrset)
 	}
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	// c := new(dns.Client)
-	c := dns.Client{Net: "tcp"}
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)	
+
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		udop.Response <- SignerOpResult{Error: err}
@@ -223,13 +215,10 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 	if signer.Address == "" {
 		err = fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
-	if signer.Auth == "" {
+	if signer.Auth.TSIGKey == "" {
 		err = fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2)
-	if len(tsig) != 2 {
-		err = fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
-	}
+
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Pre-req error: %v. Returning response chan + call stack\n", err)
 		fdop.Response <- SignerOpResult{Error: err}
@@ -237,14 +226,13 @@ func RLDdnsFetchRRset(fdop SignerOp) (bool, int, error) {
 		return false, 0, nil
 	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetQuestion(owner, rrtype)
 	// m.SetEdns0(4096, true)
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	// c := new(dns.Client)
-	c := dns.Client{Net: "tcp"}
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)
+
 	r, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		fmt.Printf("RLDdnsFetchRRset: Error from Exchange: %v. Returning response chan + call stack\n", err)

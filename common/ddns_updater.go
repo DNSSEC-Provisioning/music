@@ -3,7 +3,7 @@ package music
 import (
 	"fmt"
 	"log"
-	"strings"
+	// "strings"
 	"time"
 
 	"github.com/miekg/dns"
@@ -27,6 +27,29 @@ func (u *DdnsUpdater) SetApi(api Api) {
 func (u *DdnsUpdater) GetApi() Api {
 	// no-op
 	return Api{}
+}
+
+func (signer *Signer) NewDnsClient() dns.Client {
+	var c dns.Client
+	if signer.UseTcp {
+		c = dns.Client{Net: "tcp"}
+	} else {
+		log.Printf("DDNS: Accessing signer %s via UDP. This is a debugging mechanism only",
+			signer.Name)
+		c = dns.Client{Net: "udp"}
+	}
+	return c
+}
+
+func (signer *Signer) PrepareTSIGExchange(c *dns.Client, m *dns.Msg) error {
+	if signer.UseTSIG {
+		m.SetTsig(signer.Auth.TSIGName, signer.Auth.TSIGAlg, 300, time.Now().Unix())
+		c.TsigSecret = map[string]string{signer.Auth.TSIGName: signer.Auth.TSIGKey}
+		// log.Printf("DDNS: FetchRRset: TsigSecret: %v", c.TsigSecret)
+	} else {
+		log.Printf("PrepareTSIGExchange: accessing signer % without TSIG. This is a debugging mechanism only", signer.Name)
+	}
+	return nil
 }
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
@@ -54,14 +77,11 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 	if signer.Address == "" {
 		return fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
-	if signer.Auth == "" {
+	if signer.Auth.TSIGKey == "" {
 		return fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2)
-	if len(tsig) != 2 {
-		return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
-	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetUpdate(fqdn)
 	if inserts != nil {
@@ -74,10 +94,9 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 			m.Remove(remove)
 		}
 	}
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	c := new(dns.Client)
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)
+
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		return err
@@ -101,23 +120,19 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]
 	if signer.Address == "" {
 		return fmt.Errorf("No ip|host for signer %s", signer.Name)
 	}
-	if signer.Auth == "" {
+	if signer.Auth.TSIGKey == "" {
 		return fmt.Errorf("No TSIG for signer %s", signer.Name)
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2)
-	if len(tsig) != 2 {
-		return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name)
-	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetUpdate(fqdn)
 	for _, rrset := range rrsets {
 		m.RemoveRRset(rrset)
 	}
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	c := new(dns.Client)
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)
+
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
 		return err
@@ -131,27 +146,24 @@ func (u *DdnsUpdater) RemoveRRset(signer *Signer, zone, fqdn string, rrsets [][]
 
 func (u *DdnsUpdater) FetchRRset(signer *Signer, zone, fqdn string,
 	rrtype uint16) (error, []dns.RR) {
+	log.Printf("DDNS: FetchRRset: signer: %s zone: %s fqdn: %s rrtype: %s", signer.Name, zone, fqdn, dns.TypeToString[rrtype])
 	if signer.Address == "" {
 		return fmt.Errorf("No ip|host for signer %s", signer.Name), []dns.RR{}
 	}
-	if signer.Auth == "" {
+	if signer.Auth.TSIGKey == "" {
 		return fmt.Errorf("No TSIG for signer %s", signer.Name), []dns.RR{}
 	}
-	tsig := strings.SplitN(signer.Auth, ":", 2)
-	if len(tsig) != 2 {
-		return fmt.Errorf("Incorrect TSIG for signer %s", signer.Name), []dns.RR{}
-	}
 
+	c := signer.NewDnsClient()
 	m := new(dns.Msg)
 	m.SetQuestion(fqdn, rrtype)
 	// m.SetEdns0(4096, true)
-	m.SetTsig(tsig[0]+".", dns.HmacSHA256, 300, time.Now().Unix())
 
-	// c := new(dns.Client)
-	c := dns.Client{Net: "tcp"}
-	c.TsigSecret = map[string]string{tsig[0] + ".": tsig[1]}
+	signer.PrepareTSIGExchange(&c, m)
+
 	r, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
+		log.Printf("DDNS: FetchRRset: dns.Exchange error: err: %v r: %v", err, r)
 		return err, []dns.RR{}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/viper"
@@ -17,48 +18,50 @@ import (
 var DefaultTables = map[string]string{
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
-name        TEXT,
-zonetype    TEXT,
-state       TEXT,
+name        TEXT NOT NULL DEFAULT '',
+zonetype    TEXT NOT NULL DEFAULT '',
+state       TEXT NOT NULL DEFAULT '',
 statestamp  DATETIME,
-fsm         TEXT,
-fsmsigner   TEXT,	
-sgroup      TEXT,
+fsm         TEXT NOT NULL DEFAULT '',
+fsmsigner   TEXT NOT NULL DEFAULT '',	
+sgroup      TEXT NOT NULL DEFAULT '',
 UNIQUE (name, sgroup)
 )`,
 
 	"zone_dnskeys": `CREATE TABLE IF NOT EXISTS 'zone_dnskeys' (
 id          INTEGER PRIMARY KEY,
-zone        TEXT,
-dnskey      TEXT,
-signer      TEXT,
+zone        TEXT NOT NULL DEFAULT '',
+dnskey      TEXT NOT NULL DEFAULT '',
+signer      TEXT NOT NULL DEFAULT '',
 UNIQUE (zone, dnskey)
 )`,
 
 	"zone_nses": `CREATE TABLE IF NOT EXISTS 'zone_nses' (
 id          INTEGER PRIMARY KEY,
-zone        TEXT,
-ns          TEXT,
-signer      TEXT,
+zone        TEXT NOT NULL DEFAULT '',
+ns          TEXT NOT NULL DEFAULT '',
+signer      TEXT NOT NULL DEFAULT '',
 UNIQUE (zone, ns)
 )`,
 
 	"signers": `CREATE TABLE IF NOT EXISTS 'signers' (
 id          INTEGER PRIMARY KEY,
-name        TEXT,
-method      TEXT,
-auth        TEXT,
-addr        TEXT,
-port        TEXT,
-status      TEXT,
+name        TEXT NOT NULL DEFAULT '',
+method      TEXT NOT NULL DEFAULT '',
+auth        TEXT NOT NULL DEFAULT '',
+addr        TEXT NOT NULL DEFAULT '',
+port        TEXT NOT NULL DEFAULT '',
+status      TEXT NOT NULL DEFAULT '',
+usetcp	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetcp IN (0, 1)),
+usetsig	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetsig IN (0, 1)),
 UNIQUE (name)
 )`,
 
 	"signergroups": `CREATE TABLE IF NOT EXISTS 'signergroups' (
 id          INTEGER PRIMARY KEY,
-name        TEXT,
+name        TEXT NOT NULL DEFAULT '',
 locked	    INTEGER NOT NULL DEFAULT 0 CHECK (locked IN (0, 1)),
-curprocess  TEXT,
+curprocess  TEXT NOT NULL DEFAULT '',
 pendadd	    TEXT NOT NULL DEFAULT '',
 pendremove  TEXT NOT NULL DEFAULT '',
 UNIQUE (name)
@@ -66,8 +69,8 @@ UNIQUE (name)
 
 	"group_signers": `CREATE TABLE IF NOT EXISTS 'group_signers' (
 id          INTEGER PRIMARY KEY,
-name        TEXT,
-signer	    TEXT,
+name        TEXT NOT NULL DEFAULT '',
+signer	    TEXT NOT NULL DEFAULT '',
 UNIQUE (name, signer)
 )`,
 
@@ -82,10 +85,10 @@ rdata       TEXT
 
 	"metadata": `CREATE TABLE IF NOT EXISTS 'metadata' (
 id         INTEGER PRIMARY KEY,
-zone       TEXT,
-key        TEXT,
+zone       TEXT NOT NULL DEFAULT '',
+key        TEXT NOT NULL DEFAULT '',
 time	   DATETIME,
-value      TEXT,
+value      TEXT NOT NULL DEFAULT '',
 UNIQUE (zone, key)
 )`,
 }
@@ -178,7 +181,7 @@ func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, e
 const (
 	GSsql = `
 SELECT name, method, auth,
-  COALESCE (addr, '') AS address, port
+  COALESCE (addr, '') AS address, port, usetcp, usetsig
 FROM signers WHERE name=?`
 )
 
@@ -190,25 +193,39 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 
 	row := stmt.QueryRow(s.Name)
 
-	var name, method, auth, address, port string
-	switch err = row.Scan(&name, &method, &auth, &address, &port); err {
+	var name, method, authstr, address, port string
+	var usetcp, usetsig bool
+	switch err = row.Scan(&name, &method, &authstr, &address, &port, &usetcp, &usetsig); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetSigner: Signer \"%s\" does not exist\n", s.Name)
 		return &Signer{
 			Name:    s.Name,
 			Exists:  false,
 			Method:  s.Method,
+			AuthStr: s.AuthStr,
 			Auth:    s.Auth,
 			Address: s.Address,
 			Port:    s.Port,
+			UseTcp:  s.UseTcp,
+			UseTSIG: s.UseTSIG,
 		}, fmt.Errorf("Signer %s is unknown.", s.Name)
 
 	case nil:
 		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name,
-		// 			  method, auth, address, signergroup)
+		// 			  method, authstr, address, signergroup)
 		sgs, err := mdb.GetSignerGroups(s.Name)
 		if err != nil {
 			log.Fatalf("mdb.GetSigner: Error from signer.GetSignerGroups: %v", err)
+		}
+
+		auth := AuthData{}
+		p := strings.Split(authstr, ":")
+		if len(p) == 3 {
+			auth = AuthData{
+				TSIGAlg:  p[0],
+				TSIGName: p[1],
+				TSIGKey:  p[2],
+			}
 		}
 
 		dbref := mdb
@@ -219,9 +236,12 @@ func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
 			Name:         name,
 			Exists:       true,
 			Method:       method,
+			AuthStr:      authstr,
 			Auth:         auth, // AuthDataTmp(auth), // TODO: Issue #28
 			Address:      address,
 			Port:         port,
+			UseTcp:       usetcp,
+			UseTSIG:      usetsig,
 			SignerGroups: sgs,
 			DB:           dbref,
 		}, nil

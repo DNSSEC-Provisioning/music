@@ -14,7 +14,7 @@ import (
 )
 
 func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string) (error, string) {
-
+     log.Printf("ZAF: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
