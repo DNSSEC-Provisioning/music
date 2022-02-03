@@ -22,18 +22,18 @@ var FsmJoinWaitDs = music.FSMTransition{
 	MermaidActionDesc:   "Sync NS RRsets between all signers",
 	MermaidPostCondDesc: "Verify that NS RRsets are in sync",
 
-	PreCondition:  JoinWaitDsPreCondition,
-	Action:        JoinWaitDsAction,
+	PreCondition: JoinWaitDsPreCondition,
+	Action:       JoinWaitDsAction,
 	PostCondition: func(z *music.Zone) bool {
-		       	      // verify that the NS RRset is in sync for all signers
-		       	      return true
-		       },
+		// verify that the NS RRset is in sync for all signers
+		return true
+	},
 }
 
 func JoinWaitDsPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinWaitDsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinWaitDsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	if until, ok := zoneWaitDs[z.Name]; ok {
@@ -75,8 +75,6 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 		}
 	}
 
-	// parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
-
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
 		return false
@@ -109,7 +107,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	until := time.Now().Add((time.Duration(5) * time.Second))
 
 	stopreason := fmt.Sprintf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl,
-		      		       until.String(), time.Until(until).String())
+		until.String(), time.Until(until).String())
 	err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
 	log.Printf("%s\n", stopreason)
 
@@ -122,8 +120,8 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	log.Printf("JoinWaitDsAction: %s: Fetch all NS records from all signers", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinWaitDsAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinWaitDsAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	nses := make(map[string][]*dns.NS)

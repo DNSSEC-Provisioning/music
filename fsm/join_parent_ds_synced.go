@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmJoinParentDsSynced = music.FSMTransition{
@@ -26,8 +26,8 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -35,7 +35,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 		m.SetQuestion(z.Name, dns.TypeCDS)
 
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port) // TODO: add DnsAddress or solve this in a better way
 
 		if err != nil {
 			log.Printf("%s: Unable to fetch CDSes from %s: %s", z.Name, s.Name, err)
@@ -50,12 +50,10 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 			}
 
 			log.Printf("%s: Signer %s CDS found: %d %d %d %s", z.Name,
-					s.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
+				s.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
 			cdses[s.Name] = append(cdses[s.Name], cds)
 		}
 	}
-
-	// parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
@@ -79,7 +77,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 		}
 
 		log.Printf("%s: Parent DS found: %d %d %d %s", z.Name, ds.KeyTag,
-				       	  ds.Algorithm, ds.DigestType, ds.Digest)
+			ds.Algorithm, ds.DigestType, ds.Digest)
 		dses = append(dses, ds)
 	}
 
@@ -89,7 +87,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	for _, keys := range cdses {
 		for _, key := range keys {
 			cdsmap[fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm,
-					       key.DigestType, key.Digest)] = key
+				key.DigestType, key.Digest)] = key
 			delete(removedses, fmt.Sprintf("%d %d %d %s", key.KeyTag, key.Algorithm, key.DigestType, key.Digest))
 		}
 	}
@@ -122,12 +120,19 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 }
 
 func JoinParentDsSyncedAction(z *music.Zone) bool {
+	log.Printf("JoinParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
+	return true
+}
+
+// The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
+/*
+func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinParentDsSyncedAction: zone %s (DEBUG) is automatically ok",
-	   					 z.Name)
-	   return true
+		log.Printf("JoinParentDsSyncedAction: zone %s (DEBUG) is automatically ok",
+			z.Name)
+		return true
 	}
 
 	cds := new(dns.CDS)
@@ -148,13 +153,20 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 
 	return true
 }
+*/
 
+func VerifyCdsRemoved(z *music.Zone) bool {
+	return true
+}
+
+// The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
+/*
 func VerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("VerifyCdsRemoved: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("VerifyCdsRemoved: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, signer := range z.SGroup.SignerMap {
@@ -183,3 +195,4 @@ func VerifyCdsRemoved(z *music.Zone) bool {
 
 	return true
 }
+*/

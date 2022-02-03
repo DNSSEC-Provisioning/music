@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var zoneWaitNs map[string]time.Time // Issue #34: using local store for now
@@ -21,16 +21,16 @@ var FsmLeaveWaitNs = music.FSMTransition{
 	MermaidPreCondDesc:  "Wait long enough for parent NS records to propagate",
 	MermaidActionDesc:   "Continue after waiting (no action)",
 	MermaidPostCondDesc: "None",
-	
-	PreCondition:   LeaveWaitNsPreCondition,
-	Action:      	LeaveWaitNsAction,
-	PostCondition:	func (z *music.Zone) bool { return true },
+
+	PreCondition:  LeaveWaitNsPreCondition,
+	Action:        LeaveWaitNsAction,
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
 func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	if until, ok := zoneWaitNs[z.Name]; ok {
@@ -45,9 +45,9 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	sg := z.SignerGroup()
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
+
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
@@ -68,7 +68,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeNS)
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
 			log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
 			return false
@@ -89,7 +89,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	m := new(dns.Msg)
 	m.SetQuestion(z.Name, dns.TypeNS)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, leavingSigner.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
 		log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
@@ -105,8 +105,6 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 			ttl = ns.Header().Ttl
 		}
 	}
-
-	// parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
@@ -144,10 +142,9 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 }
 
 func LeaveWaitNsAction(z *music.Zone) bool {
-     	// XXX: What should we do about the delete() after the state transition?
+	// XXX: What should we do about the delete() after the state transition?
 	// z.StateTransition(FsmStateParentNsSynced, FsmStateNsPropagated)
 	// The delete action has moved to the true-branch of the PreCondition
 	// delete(zoneWaitNs, z.Name)
 	return true
 }
-

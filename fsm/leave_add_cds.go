@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmLeaveAddCDS = music.FSMTransition{
@@ -15,23 +15,23 @@ var FsmLeaveAddCDS = music.FSMTransition{
 	MermaidActionDesc:   "TEXT",
 	MermaidPostCondDesc: "TEXT",
 
-	PreCondition:    LeaveAddCDSPreCondition,
-	Action:      	 LeaveAddCDSAction,
-	PostCondition:	 func (z *music.Zone) bool { return true },
+	PreCondition:  LeaveAddCDSPreCondition,
+	Action:        LeaveAddCDSAction,
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
 func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	sg := z.SignerGroup()
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
-	leavingSignerName := z.FSMSigner  // Issue #34: Static leaving signer until metadata is in place
+
+	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
 	}
@@ -44,7 +44,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	}
 
 	log.Printf("%s: Verifying that leaving signer %s DNSKEYs has been removed from all signers",
-			z.Name, leavingSigner.Name)
+		z.Name, leavingSigner.Name)
 
 	stmt, err := z.MusicDB.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
 	if err != nil {
@@ -74,7 +74,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
 			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
 			return false
@@ -100,8 +100,8 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveAddCdsAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveAddCdsAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	cdses := []dns.RR{}
@@ -112,7 +112,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 
 		if err != nil {
 			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
@@ -146,4 +146,3 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 
 	return true
 }
-

@@ -4,8 +4,8 @@ import (
 	// "fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmLeaveAddCsync = music.FSMTransition{
@@ -14,23 +14,23 @@ var FsmLeaveAddCsync = music.FSMTransition{
 	MermaidPreCondDesc:  "Wait for all NS RRsets to be in sync in all signers",
 	MermaidActionDesc:   "Create and publish CSYNC record in all signers",
 	MermaidPostCondDesc: "Verify that the CSYNC record has been removed everywhere",
-	
-	PreCondition:   LeaveAddCsyncPreCondition,
-	Action:      	LeaveAddCsyncAction,
-	PostCondition:	func (z *music.Zone) bool { return true },
+
+	PreCondition:  LeaveAddCsyncPreCondition,
+	Action:        LeaveAddCsyncAction,
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
 func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	sg := z.SignerGroup()
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
+
 	log.Printf("LeaveAddCsyncPreCondition: z: %v", z)
 
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
@@ -75,7 +75,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeNS)
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
 			log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
 			return false
@@ -97,7 +97,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	m := new(dns.Msg)
 	m.SetQuestion(z.Name, dns.TypeNS)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, leavingSigner.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
 		log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
@@ -127,15 +127,15 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 
 func LeaveAddCsyncAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	sg := z.SignerGroup()
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
+
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
@@ -157,7 +157,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeSOA)
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, signer.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, signer.Address+":"+signer.Port)
 		if err != nil {
 			log.Printf("%s: Unable to fetch SOA from %s: %s", z.Name, signer.Name, err)
 			return false
@@ -188,7 +188,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	m := new(dns.Msg)
 	m.SetQuestion(z.Name, dns.TypeSOA)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, leavingSigner.Address+":53") // TODO: add DnsAddress or solve this in a better way
+	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
 		log.Printf("%s: Unable to fetch SOA from %s: %s", z.Name, leavingSigner.Name, err)
 		return false
@@ -218,4 +218,3 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 
 	return true
 }
-
