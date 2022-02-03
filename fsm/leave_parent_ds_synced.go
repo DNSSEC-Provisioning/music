@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmLeaveParentDsSynced = music.FSMTransition{
@@ -15,9 +15,9 @@ var FsmLeaveParentDsSynced = music.FSMTransition{
 	MermaidActionDesc:   "Remove CDS/CDNSKEYs from all signers",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEYs have been removed",
 
-	PreCondition:	     LeaveParentDsSyncedPreCondition,
-	Action:		     LeaveParentDsSyncedAction,
-	PostCondition:	     func(z *music.Zone) bool { return true }, // XXX: TODO
+	PreCondition:  LeaveParentDsSyncedPreCondition,
+	Action:        LeaveParentDsSyncedAction,
+	PostCondition: func(z *music.Zone) bool { return true }, // XXX: TODO
 }
 
 func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
@@ -26,8 +26,8 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Verifying that DSes in parent are up to date compared to signers CDSes", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveParentDsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -35,7 +35,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 		m.SetQuestion(z.Name, dns.TypeCDS)
 
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 
 		if err != nil {
 			log.Printf("%s: Unable to fetch CDSes from %s: %s", z.Name, s.Name, err)
@@ -51,8 +51,6 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 			cdsmap[fmt.Sprintf("%d %d %d %s", cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)] = cds
 		}
 	}
-
-	// parentAddress := "13.48.238.90:53" // Issue #33: using static IP address for msat1.catch22.se for now
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
@@ -84,6 +82,13 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 }
 
 func LeaveParentDsSyncedAction(z *music.Zone) bool {
+	log.Printf("LeaveParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
+	return true
+}
+
+// The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
+/*
+func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
 	if z.ZoneType == "debug" {
@@ -112,4 +117,4 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	// TODO: remove state/metadata around leaving signer
 	//       tables: zone_dnskeys, zone_nses
 }
-
+*/

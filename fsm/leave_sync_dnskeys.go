@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmLeaveSyncDnskeys = music.FSMTransition{
@@ -15,9 +15,9 @@ var FsmLeaveSyncDnskeys = music.FSMTransition{
 	MermaidActionDesc:   "Remove DNSKEYs that originated with the leaving signer",
 	MermaidPostCondDesc: "todo",
 
-	PreCondition:    LeaveSyncDnskeysPreCondition,
-	Action:      	 LeaveSyncDnskeysAction,
-	PostCondition:	 func (z *music.Zone) bool { return true },
+	PreCondition:  LeaveSyncDnskeysPreCondition,
+	Action:        LeaveSyncDnskeysAction,
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
 func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
@@ -26,15 +26,15 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 
 func LeaveSyncDnskeysAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveSyncDnskeysAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveSyncDnskeysAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
-  sg := z.SignerGroup()
+	sg := z.SignerGroup()
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
+
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name in for zone %s unset.", z.Name)
@@ -77,7 +77,7 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
-		r, _, err := c.Exchange(m, s.Address+":53") // TODO: add DnsAddress or solve this in a better way
+		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
 			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
 			return false
@@ -108,4 +108,3 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 
 	return true
 }
-
