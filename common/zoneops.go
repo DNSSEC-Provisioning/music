@@ -19,10 +19,9 @@ func (z *Zone) SignerGroup() *SignerGroup {
 	return z.SGroup
 }
 
-const (
-	AZsql = `
-INSERT INTO zones(name, zonetype, state, statestamp, fsm) VALUES (?, ?, ?, datetime('now'), ?)`
-)
+const AZsql = `
+    INSERT INTO zones(name, zonetype, state, statestamp, fsm) VALUES (?, ?, ?, datetime('now'), ?)`
+
 
 func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	log.Printf("AddZone: zone: %v", z)
@@ -38,7 +37,7 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(fqdn, z.ZoneType, "---", "---")
+	_, err = stmt.Exec(fqdn, z.ZoneType, "", "")
 	if CheckSQLError("AddZone", AZsql, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
@@ -408,11 +407,12 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 
 	dbzone, _ = mdb.GetZone(dbzone.Name)
 
-	// If the new zone is not already in a process then we put it in the VerifyZoneInSyncProcess
-	// as a method of ensuring that it is in sync. This process is currently a no-op, but doesn't
-	// have to be.
+	// If the new zone is not already in a process then we put it in the
+	// VerifyZoneInSyncProcess as a method of ensuring that it is in sync.
+	// This process is currently a no-op, but doesn't have to be.
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
-		err, msg := mdb.ZoneAttachFsm(dbzone, VerifyZoneInSyncProcess, "all")
+		err, msg := mdb.ZoneAttachFsm(dbzone, SignerJoinGroupProcess,
+		     	    			      "all", false) // false=no preempting
 		if err != nil {
 			return err, msg
 		}
