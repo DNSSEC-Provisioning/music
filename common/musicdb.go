@@ -16,6 +16,11 @@ import (
 )
 
 var DefaultTables = map[string]string{
+
+// zones: fsmmode = {auto,manual}, if auto then the fsmengine in musicd will try to move the zone
+//        forward through its process until it hits a stop. "stop" is indicated by fststate="stop"
+//        and then there should be a documented stop-reason in the metadata table.
+
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
 name        TEXT NOT NULL DEFAULT '',
@@ -24,6 +29,8 @@ state       TEXT NOT NULL DEFAULT '',
 statestamp  DATETIME,
 fsm         TEXT NOT NULL DEFAULT '',
 fsmsigner   TEXT NOT NULL DEFAULT '',	
+fsmmode     TEXT NOT NULL DEFAULT '',
+fsmstate    TEXT NOT NULL DEFAULT '',
 sgroup      TEXT NOT NULL DEFAULT '',
 UNIQUE (name, sgroup)
 )`,

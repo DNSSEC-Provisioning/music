@@ -22,7 +22,7 @@ import (
 )
 
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
-var metakey, metavalue string
+var metakey, metavalue, fsmmode string
 
 var zoneCmd = &cobra.Command{
 	Use:   "zone",
@@ -58,11 +58,15 @@ var addZoneCmd = &cobra.Command{
 		if zonetype == "" {
 			zonetype = "normal"
 		}
+		if fsmmode == "" {
+			fsmmode = "manual"
+		}
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
 				Name:     zonename,
 				ZoneType: zonetype,
+				FSMMode:  fsmmode,
 			},
 			SignerGroup: sgroupname, // may be unspecified
 		}
@@ -85,6 +89,9 @@ var updateZoneCmd = &cobra.Command{
 
 		if zonetype != "" {
 			data.Zone.ZoneType = zonetype
+		}
+		if fsmmode != "" {
+			data.Zone.FSMMode = fsmmode
 		}
 		zr := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
@@ -362,6 +369,8 @@ func init() {
 
 	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
 		"type of zone, 'normal' or 'debug'")
+	zoneCmd.PersistentFlags().StringVarP(&fsmmode, "fsmmode", "", "manual",
+		"FSM mode ('auto' or 'manual')")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
 	zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",

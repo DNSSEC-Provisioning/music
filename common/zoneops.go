@@ -496,12 +496,12 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 
 	stmt, err := mdb.Prepare(LZsqlq)
 	if err != nil {
-		fmt.Printf("ListZones: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ListZones: Error from db.Prepare: %v", err)
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		log.Printf("ListZones: Error from db query: %v\n", err)
+		log.Printf("ListZones: Error from db query: %v", err)
 	}
 	defer rows.Close()
 
