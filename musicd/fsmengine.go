@@ -16,12 +16,12 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
         mdb := conf.Internal.MusicDB
 	var err error
 
-	log.Printf("Starting FSM Engine")
-
 	runinterval := viper.GetInt("fsmengine.interval")
 	if runinterval < 10 || runinterval > 3600 {
 		runinterval = 60
 	}
+
+	log.Printf("Starting FSM Engine (will run once every %d seconds)", runinterval)
 
 	ticker := time.NewTicker(time.Duration(runinterval) * time.Second)
 

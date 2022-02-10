@@ -30,7 +30,7 @@ statestamp  DATETIME,
 fsm         TEXT NOT NULL DEFAULT '',
 fsmsigner   TEXT NOT NULL DEFAULT '',	
 fsmmode     TEXT NOT NULL DEFAULT '',
-fsmstate    TEXT NOT NULL DEFAULT '',
+fsmstatus   TEXT NOT NULL DEFAULT '',
 sgroup      TEXT NOT NULL DEFAULT '',
 UNIQUE (name, sgroup)
 )`,

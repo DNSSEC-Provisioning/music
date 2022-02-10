@@ -81,6 +81,7 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone) (error, string) {
 	if uz.ZoneType != "" {
 	   dbzone.ZoneType = uz.ZoneType
 	}
+	
 	if uz.FSMMode != "" {
 	   dbzone.FSMMode = uz.FSMMode
 	}
@@ -140,14 +141,61 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 	return nil, deletemsg
 }
 
+func (z *Zone) SetStopReason(value string) (error, string) {
+     mdb := z.MusicDB
+     err, msg := mdb.ZoneSetMeta(z, "stop-reason", value)
+     if err != nil {
+     	return err, msg
+     }
+
+     const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
+     stmt, err1 := mdb.Prepare(DSsql)
+     if err1 != nil {
+     	log.Fatalf("DocumentStop: Error from mdb.Prepare(%s): %v", DSsql, err)
+     }
+
+     _, err1 = stmt.Exec(z.Name)
+     if err1 != nil {
+     	log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
+     }
+     log.Printf("%s\n", value)
+     return err, msg
+}
+
+// XXX: SetDelayReason is not yet in use, but is needed for the wait-for-parent-ds stuff
+func (z *Zone) SetDelayReason(value string, delay time.Duration) (error, string) {
+     mdb := z.MusicDB
+     err, msg := mdb.ZoneSetMeta(z, "delay-reason", value)
+     if err != nil {
+     	return err, msg
+     }
+
+     const DSsql = "UPDATE zones SET fsmstatus='delayed' WHERE name=?"
+     stmt, err1 := mdb.Prepare(DSsql)
+     if err1 != nil {
+     	log.Fatalf("DocumentStop: Error from mdb.Prepare(%s): %v", DSsql, err)
+     }
+
+     _, err1 = stmt.Exec(z.Name)
+     if err1 != nil {
+     	log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
+     }
+     log.Printf("%s\n", value)
+     return err, msg
+}
+
+const (
+      ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
+)
+
 func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 	if !z.Exists {
 		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
 	}
 
-	mstmt, err := mdb.Prepare("INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)")
+	mstmt, err := mdb.Prepare(ZSMsql)
 	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from db.Prepare 1: %v\n", err)
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare(%s) 1: %v\n", ZSMsql, err)
 	}
 	zstmt, err := mdb.Prepare("UPDATE zones SET zonetype=? WHERE name=?")
 	if err != nil {
@@ -172,19 +220,23 @@ func (mdb *MusicDB) ZoneSetMeta(z *Zone, key, value string) (error, string) {
 		z.Name, key, value)
 }
 
+const (
+      ZGMsql = "SELECT value FROM metadata WHERE zone=? AND key=?"
+)
+
 func (mdb *MusicDB) ZoneGetMeta(z *Zone, key string) (error, string) {
 	if !z.Exists {
 		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
 	}
 
 	mdb.mu.Lock()
-	stmt, err := mdb.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+	stmt, err := mdb.Prepare(ZGMsql)
 	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ZoneSetMeta: Error from db.Prepare(%s): %v\n", ZGMsql, err)
 	}
 
 	row := stmt.QueryRow(z.Name, key)
-	if CheckSQLError("ZoneGetMeta", "SELECT value FROM metadata", err, false) {
+	if CheckSQLError("ZoneGetMeta", ZGMsql, err, false) {
 		mdb.mu.Unlock()
 		return err, ""
 	}
@@ -487,7 +539,7 @@ func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
 const (
 	layout = "2006-01-02 15:04:05"
 	LZsqlq = `
-SELECT name, zonetype, state, fsm, fsmmode,
+SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
   COALESCE(statestamp, datetime('now')) AS timestamp,
   COALESCE(sgroup, '') AS signergroup
 FROM zones`
@@ -511,11 +563,12 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 		return zl, err
 	} else {
 		rowcounter := 0
-		var name, zonetype, state, fsm, fsmmode string
+		var name, zonetype, state, fsm, fsmmode, fsmstatus string
 		var timestamp string
-		var signergroup string
+		var signergroup, stopreason string
 		for rows.Next() {
-			err := rows.Scan(&name, &zonetype, &state, &fsm, &fsmmode, &timestamp, &signergroup)
+			err := rows.Scan(&name, &zonetype, &state, &fsm, &fsmmode,
+			       			&fsmstatus, &timestamp, &signergroup)
 			if err != nil {
 				log.Fatal("ListZones: Error from rows.Next():", err)
 			}
@@ -534,17 +587,27 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 				next[k] = true
 			}
 
-			zl[name] = Zone{
+			tz := Zone{
 				Name:       name,
+				Exists:	    true,
 				ZoneType:   zonetype,
 				State:      state,
 				FSMMode:    fsmmode,
+				FSMStatus:  fsmstatus,
 				Statestamp: t,
 				NextState:  next,
 				FSM:        fsm,
 				SGroup:     sg,
 				SGname:     sg.Name,
 			}
+
+			if fsmstatus == "blocked" {
+			   _, stopreason = mdb.ZoneGetMeta(&tz, "stop-reason")
+			   log.Printf("ListZones: zone %s is blocked. reason: '%s'", name, stopreason)
+			   tz.StopReason = stopreason
+			}
+			zl[name] = tz
+
 			rowcounter++
 		}
 		// fmt.Printf("ListZones: rowcounter: %d zonemap: %v\n", rowcounter, zl)

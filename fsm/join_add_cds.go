@@ -37,7 +37,7 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 		updater := music.GetUpdater(s.Method)
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v\n", s.Name, err)
+			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v", s.Name, err)
 		}
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
@@ -147,8 +147,8 @@ func JoinAddCdsAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
-			log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
-				z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
+				signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets",
@@ -206,18 +206,14 @@ func VerifyCdsPublished(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		err, cdsrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDS)
 		if err != nil {
-			stopreason := fmt.Sprintf("%s: Unable to fetch CDS RRset from %s: %v",
-				z.Name, signer.Name, err)
-			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			log.Printf("%s\n", stopreason)
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CDS RRset from %s: %v",
+				signer.Name, err))
 			return false
 		}
 		err, cdnskeyrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCDNSKEY)
 		if err != nil {
-			stopreason := fmt.Sprintf("%s: Unable to fetch CDNSKEY RRset from %s: %v",
-				z.Name, signer.Name, err)
-			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			log.Printf("%s\n", stopreason)
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CDNSKEY RRset from %s: %v",
+				signer.Name, err))
 			return false
 		}
 
@@ -228,18 +224,14 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			}
 			cdsmap2[cds.KeyTag] = cds	// put the CDS into cdsmap2
 			if _, exist := cdsmap[cds.KeyTag]; !exist {
-			      	stopreason := fmt.Sprintf("CDS RR with keyid=%d published by signer %s should not exist", cds.KeyTag, signer.Name)
-			        err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-				log.Printf("%s\n", stopreason)
+				err, _ = z.SetStopReason(fmt.Sprintf("CDS RR with keyid=%d published by signer %s should not exist", cds.KeyTag, signer.Name))
 				return false
 			}
 		}
 		for _, revcds := range cdsmap {
 			if _, exist := cdsmap2[revcds.KeyTag]; !exist {
-				stopreason := fmt.Sprintf("CDS RR with keyid=%d should be published by %s, but is not\n",
-					revcds.KeyTag, signer.Name)
-				err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-				log.Printf("%s\n", stopreason)
+				err, _ = z.SetStopReason(fmt.Sprintf("CDS RR with keyid=%d should be published by %s, but is not",
+					revcds.KeyTag, signer.Name))
 				return false
 			}
 		}
@@ -251,18 +243,15 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			}
 			cdnskeymap2[cdnskey.KeyTag()] = cdnskey
 			if _, exist := cdnskeymap[cdnskey.KeyTag()]; !exist {
-				stopreason := fmt.Sprintf("CDNSKEY RR with keyid=%d published by %s should not exist\n",
-					cdnskey.KeyTag, signer.Name)
-				err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-				log.Printf("%s\n", stopreason)
+				err, _ = z.SetStopReason(fmt.Sprintf("CDNSKEY RR with keyid=%d published by %s should not exist",
+				     cdnskey.KeyTag, signer.Name))
 				return false
 			}
 		}
 		for _, revcdnskey := range cdnskeymap {
 			if _, exist := cdnskeymap2[revcdnskey.KeyTag()]; !exist {
-				stopreason := fmt.Sprintf("CDNSKEY RR with keyid=%d should be published by %s, but is not\n",
-					revcdnskey.KeyTag, signer.Name)
-				err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+				err, _ = z.SetStopReason(fmt.Sprintf("CDNSKEY RR with keyid=%d should be published by %s, but is not",
+					revcdnskey.KeyTag, signer.Name))
 				return false
 			}
 		}

@@ -10,8 +10,8 @@ import (
 
 const (
       AutoZones = `
-SELECT name, zonetype, fsm, fsmsigner, fsmstate
-FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstate != 'stop'`
+SELECT name, zonetype, fsm, fsmsigner, fsmstatus
+FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'stop'`
 )
 
 // PushZones: Try to move all "auto" zones forward through their respective processes until they

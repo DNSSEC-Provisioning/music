@@ -36,9 +36,8 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			stopreason := fmt.Sprintf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
-			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			log.Printf("%s\n", stopreason)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s",
+							    s.Name, err))
 			return false
 		}
 
@@ -64,7 +63,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false
+		return false	// stop-reason defined in GetParentAddressOrStop()
 	}
 
 	m := new(dns.Msg)
@@ -72,9 +71,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		stopreason := fmt.Sprintf("%s: Unable to fetch NSes from parent: %s", z.Name, err)
-		err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-		log.Printf("%s\n", stopreason)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -88,11 +85,11 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	}
 
 	if len(nsmap) > 0 {
+	   	missing_ns := []string{}
 		for ns, _ := range nsmap {
-			stopreason := fmt.Sprintf("%s: Missing NS %s in parent", z.Name, ns)
-			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			log.Printf("%s\n", stopreason)
+			missing_ns = append(missing_ns, ns)
 		}
+		z.SetStopReason(fmt.Sprintf("Missing NS in parent: %v", missing_ns))
 		return false
 	}
 
@@ -115,9 +112,8 @@ func JoinParentNsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
-			stopreason := fmt.Sprintf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, signer.Name, err)
-			err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			log.Printf("%s\n", stopreason)
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+							    signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)

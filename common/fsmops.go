@@ -296,12 +296,7 @@ func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var parentAddress string
 	var exist bool
 	if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
-		err, _ := z.MusicDB.ZoneSetMeta(z, "stop-reason", fmt.Sprintf("No parent-agent address registered"))
-		if err != nil {
-			log.Printf("GetParentAddressOrStop: Error from ZoneSetMeta: %v\n", err)
-		}
-		log.Printf("GetParentAddressOrStop: Zone %s has no parent address registered.",
-			z.Name)
+		z.SetStopReason("No parent-agent address registered")
 		return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
 	}
 	return parentAddress, nil
