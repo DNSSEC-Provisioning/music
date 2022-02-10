@@ -51,16 +51,25 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 		}
 	}
 
-	addstmt, err := mdb.Prepare("INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)")
+	const sqlq = "INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+	addstmt, err := mdb.Prepare(sqlq)
 
 	if err != nil {
-		fmt.Printf("AddSigner: Error from db.Prepare: %v\n", err)
+		fmt.Printf("AddSigner: Error from db.Prepare(%s): %v\n", sqlq, err)
 	}
 
-	mdb.mu.Lock()
+//	mdb.mu.Lock()
+	tx, err := mdb.Begin()
+	if err != nil {
+	       log.Printf("AddSigner: Error from db.Begin(): %v", err)
+	}
+//	defer tx.Commit()
+
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
 		dbsigner.AuthStr, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-	mdb.mu.Unlock()
+//	mdb.mu.Unlock()
+	tx.Commit()
 
 	if err != nil {
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
@@ -124,18 +133,20 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	}
 
 	// Cannot check for existence of a bool value by whether it is true or not
-	// if us.UseTcp {
 	dbsigner.UseTcp = us.UseTcp
-	// }
-
-	// if us.UseTSIG {
 	dbsigner.UseTSIG = us.UseTSIG
-	// }
 
-	mdb.mu.Lock()
+//	mdb.mu.Lock()
+	tx, err := mdb.Begin()
+	if err != nil {
+	   log.Printf("UpdateSigner: Error from mdb.Begin(): %v", err)
+	}
+	
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
 		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
-	mdb.mu.Unlock()
+//	mdb.mu.Unlock()
+	tx.Commit()
+	
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
 	}

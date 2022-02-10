@@ -145,6 +145,10 @@ func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
 	return mdb.db.Prepare(sqlq)
 }
 
+func (mdb *MusicDB) Begin() (*sql.Tx, error) {
+	return mdb.db.Begin()
+}
+
 const (
 	GSGsql  = "SELECT name FROM signergroups WHERE signer=?"
 	GSGsql2 = "SELECT name FROM group_signers WHERE signer=?"
