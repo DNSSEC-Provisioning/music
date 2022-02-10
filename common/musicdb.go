@@ -121,10 +121,13 @@ func dbSetupTables(db *sql.DB) bool {
 
 func NewDB(force bool) *MusicDB {
 	dbfile := viper.GetString("common.db")
-	fmt.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
-	if err := os.Chmod(dbfile, 0664); err != nil {
-		log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v",
-			err)
+	log.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
+
+	_, err := os.Stat(dbfile)
+	if !os.IsNotExist(err) {
+	   if err := os.Chmod(dbfile, 0664); err != nil {
+		log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", err)
+	   }
 	}
 	db, err := sql.Open("sqlite3", dbfile)
 	if err != nil {

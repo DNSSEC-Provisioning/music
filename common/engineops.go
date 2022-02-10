@@ -2,49 +2,11 @@
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
 //
 
-package main
+package music
 
 import (
 	"log"
-	"time"
-
-	"github.com/DNSSEC-Provisioning/music/common"
-	"github.com/spf13/viper"
 )
-
-func FSMEngine(conf *Config, stopch chan struct{}) {
-        mdb := conf.Internal.MusicDB
-	var err error
-
-	log.Printf("Starting FSM Engine")
-
-	runinterval := viper.GetInt("fsmengine.interval")
-	if runinterval < 10 || runinterval > 3600 {
-		runinterval = 60
-	}
-
-	ticker := time.NewTicker(time.Duration(runinterval) * time.Second)
-
-	err = mdb.PushZones()
-	if err != nil {
-		log.Printf("FSMEngine: Error from PushZones: %v", err)
-	}
-	
-	for {
-		select {
-		case <-ticker.C:
-			err = mdb.PushZones()
-			if err != nil {
-				log.Printf("FSMEngine: Error from PushZones: %v", err)
-			}
-
-		case <-stopch:
-			ticker.Stop()
-			log.Println("FSM Engine: stop signal received.")
-			return
-		}
-	}
-}
 
 const (
       AutoZones = `
@@ -59,8 +21,7 @@ FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstate != 'stop'`
 // (a) trying stopped zones, but less frequently, as they may have become unwedged
 // (b) 
 
-func PushZones(conf *Config) error {
-     mdb := conf.Internal.MusicDB
+func (mdb *MusicDB) PushZones() error {
      var zones []string
      stmt, err := mdb.Prepare(AutoZones)
      if err != nil {
@@ -78,7 +39,7 @@ func PushZones(conf *Config) error {
 	}
 	defer rows.Close()
 
-	if music.CheckSQLError("PushZones", AutoZones, err, false) {
+	if CheckSQLError("PushZones", AutoZones, err, false) {
 		return err
 	} else {
 	  var name, zonetype, fsm, fsmsigner, fsmstate string
@@ -96,13 +57,12 @@ func PushZones(conf *Config) error {
 	
 	log.Printf("PushZones: will push on these zones: %v", zones)
 	for _, z := range zones {
-	    PushZone(conf, z)
+	    mdb.PushZone(z)
 	}
 	return nil
 }
 
-func PushZone(conf *Config, z string) error {
-     mdb := conf.Internal.MusicDB
+func (mdb *MusicDB) PushZone(z string) error {
      dbzone, _ := mdb.GetZone(z)
      success, _, _ := mdb.ZoneStepFsm(dbzone, "")
      oldstate := dbzone.State

@@ -570,10 +570,18 @@ func PrintZones(zm map[string]music.Zone) {
 		sort.Strings(zonenames)
 
 		for _, zn := range zonenames {
+		        modebits := ""
 			zone = zm[zn]
 			zname := zn
+			if zone.FSMMode == "auto" {
+				modebits += "A"
+			}
+
 			if zone.ZoneType == "debug" {
-				zname += "[D]"
+				modebits += "D"
+			}
+			if len(modebits) != 0 {
+			   zname += fmt.Sprintf("[%s]", modebits)
 			}
 
 			group := "---"

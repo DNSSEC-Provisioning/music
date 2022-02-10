@@ -173,5 +173,7 @@ func main() {
 	go APIdispatcher(&conf)
 	go deSECmgr(&conf, done)
 	go ddnsmgr(&conf, done)
+	go FSMEngine(&conf, done)
+
 	mainloop(&conf, apistopper)
 }

@@ -160,7 +160,7 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 		transitions = append(transitions, k)
 	}
 
-	msgtmpl := "Zone %s transitioned to state '%s' in process '%s'."
+	// msgtmpl := "Zone %s transitioned to state '%s' in process '%s'."
 	// transittmpl := "Zone %s transitioned to state '%s' in process '%s'."
 	// notransittmpl := "Zone %s did not transition to state '%s' (post-condition failed)."
 
@@ -200,30 +200,30 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 	}
 
 	// More than one possible next state: this can happen; old version
-	if len(CurrentState.Next) > 1 {
-		if nextstate != "" {
-			if _, exist := CurrentState.Next[nextstate]; exist {
-				if CurrentState.Next[nextstate].Criteria(dbzone) {
-					CurrentState.Next[nextstate].Action(dbzone)
-					return true, nil,
-						fmt.Sprintf(msgtmpl, dbzone.Name,
-							nextstate, fsmname)
-				} else {
-					return false, fmt.Errorf(
-						"State '%s' is a possible next state from '%s' but criteria failed",
-						nextstate, state), ""
-				}
-			} else {
-				return false, fmt.Errorf(
-					"State '%s' is not a possible next state from '%s'",
-					nextstate, state), ""
-			}
-		} else {
-			return false, fmt.Errorf(
-				"Multiple possible next states from '%s': [%s] but next state not specified",
-				state, strings.Join(transitions, " ")), ""
-		}
-	}
+//	if len(CurrentState.Next) > 1 {
+//		if nextstate != "" {
+//			if _, exist := CurrentState.Next[nextstate]; exist {
+//				if CurrentState.Next[nextstate].Criteria(dbzone) {
+//					CurrentState.Next[nextstate].Action(dbzone)
+//					return true, nil,
+//						fmt.Sprintf(msgtmpl, dbzone.Name,
+//							nextstate, fsmname)
+//				} else {
+//					return false, fmt.Errorf(
+//						"State '%s' is a possible next state from '%s' but criteria failed",
+//						nextstate, state), ""
+//				}
+//			} else {
+//				return false, fmt.Errorf(
+//					"State '%s' is not a possible next state from '%s'",
+//					nextstate, state), ""
+//			}
+//		} else {
+//			return false, fmt.Errorf(
+//				"Multiple possible next states from '%s': [%s] but next state not specified",
+//				state, strings.Join(transitions, " ")), ""
+//		}
+//	}
 
 	// Arriving here equals len(CurrentState.Next) == 0, i.e. you are in a
 	// state with no "next" state. If that happens the FSM is likely buggy.
