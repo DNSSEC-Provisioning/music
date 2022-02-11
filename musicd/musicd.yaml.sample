@@ -7,9 +7,10 @@ apiserver:
 fsmengine:
    active:	true
    intervals:
-      target:	20
+      target:	20	# check non-blocked zones this often
       minimum:	15
       maximum:	900
+      complete:	7200	# check ALL zones this often
 
 signers:
    ddns:

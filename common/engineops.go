@@ -5,6 +5,7 @@
 package music
 
 import (
+        "database/sql"
 	"log"
 )
 
@@ -12,9 +13,9 @@ const (
 	AutoZones = `
 SELECT name, zonetype, fsm, fsmsigner, fsmstatus
 FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked'`
-	AutoZone = `
+	AllAutoZones = `
 SELECT name, zonetype, fsm, fsmsigner, fsmstatus
-FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked' AND name=?` 
+FROM zones WHERE fsmmode='auto' AND fsm != ''` 
 )
 
 // PushZones: Try to move all "auto" zones forward through their respective processes until they
@@ -24,9 +25,16 @@ FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked' AND nam
 // (a) trying stopped zones, but less frequently, as they may have become unwedged
 // (b)
 
-func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]Zone, error) {
+func (mdb *MusicDB) PushZones(checkzones map[string]bool, checkall bool) ([]Zone, error) {
 	var zones []Zone
-	stmt, err := mdb.Prepare(AutoZones)
+	var stmt *sql.Stmt
+	var err error
+
+	if checkall {
+	   stmt, err = mdb.Prepare(AllAutoZones)
+	} else {
+	   stmt, err = mdb.Prepare(AutoZones)
+	}
 	if err != nil {
 		log.Fatalf("PushZones: Error from mdb.Prepare(%s): %v", AutoZones, err)
 	}
