@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	// "fmt"
+	"fmt"
 	"log"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -41,7 +41,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("LeaveAddCsyncPreCondition: %s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -77,7 +77,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -88,7 +88,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 			}
 
 			if _, ok := nses[ns.Ns]; ok {
-				log.Printf("%s: NS %s still exists in signer %s", z.Name, ns.Ns, s.Name)
+				z.SetStopReason(fmt.Sprintf("NS %s still exists in signer %s", ns.Ns, s.Name))
 				return false
 			}
 		}
@@ -99,7 +99,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -110,7 +110,8 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		}
 
 		if _, ok := nses[ns.Ns]; ok {
-			log.Printf("%s: NS %s still exists in signer %s", z.Name, ns.Ns, leavingSigner.Name)
+			z.SetStopReason(fmt.Sprintf("NS %s still exists in signer %s",
+							ns.Ns, leavingSigner.Name))
 			return false
 		}
 	}
@@ -144,7 +145,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -159,7 +160,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, signer.Address+":"+signer.Port)
 		if err != nil {
-			log.Printf("%s: Unable to fetch SOA from %s: %s", z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch SOA from %s: %s", signer.Name, err))
 			return false
 		}
 
@@ -178,7 +179,8 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 			updater := music.GetUpdater(signer.Method)
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-				log.Printf("%s: Unable to update %s with CSYNC record sets: %s", z.Name, signer.Name, err)
+				z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+								    signer.Name, err))
 				return false
 			}
 			log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, signer.Name)
@@ -190,7 +192,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		log.Printf("%s: Unable to fetch SOA from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch SOA from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -209,8 +211,8 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		updater := music.GetUpdater(leavingSigner.Method)
 		if err := updater.Update(leavingSigner, z.Name, z.Name,
 			&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-			log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
-				z.Name, leavingSigner.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+				leavingSigner.Name, err))
 			return false
 		}
 		log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, leavingSigner.Name)

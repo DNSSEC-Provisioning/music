@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	// "fmt"
+	"fmt"
 	"log"
 	"time"
 
@@ -35,6 +35,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
+		   	// XXX: Here we need z.SetDelayReason(reason, duration)
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
 			return false
 		}
@@ -56,7 +57,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -70,7 +71,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -91,7 +92,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -108,7 +109,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false
+		return false	// stop-reason set in GetParentAddressOrStop()
 	}
 
 	m = new(dns.Msg)
@@ -116,7 +117,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	c = new(dns.Client)
 	r, _, err = c.Exchange(m, parentAddress)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from parent: %s", z.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -137,6 +138,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	log.Printf("%s: Largest TTL found was %d, waiting until %s (%s)", z.Name, ttl, until.String(), time.Until(until).String())
 
+	// XXX: Here we need the z.SetDelayReason()
 	zoneWaitNs[z.Name] = until
 	return false
 }

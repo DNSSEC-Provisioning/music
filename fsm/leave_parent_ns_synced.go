@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	// "fmt"
+	"fmt"
 	"log"
 
 	music "github.com/DNSSEC-Provisioning/music/common"
@@ -40,7 +40,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -54,7 +54,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -75,7 +75,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -100,7 +100,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false
+		return false	// stop-reason set in GetParentAddressOrStop()
 	}
 
 	m = new(dns.Msg)
@@ -108,7 +108,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	c = new(dns.Client)
 	r, _, err = c.Exchange(m, parentAddress)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from parent: %s", z.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -119,7 +119,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 		}
 
 		if _, ok := nsmap[ns.Ns]; !ok {
-			log.Printf("%s: NS %s still exists in parent", z.Name, ns.Ns)
+			z.SetStopReason(fmt.Sprintf("NS %s still exists in parent", ns.Ns))
 			return false
 		}
 	}
@@ -147,7 +147,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -160,8 +160,8 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
-			log.Printf("%s: Unable to remove CSYNC record sets from %s: %s",
-				z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+				signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
@@ -169,7 +169,8 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 
 	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
-		log.Printf("%s: Unable to remove CSYNC record sets from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+						    leavingSigner.Name, err))
 		return false
 	}
 	log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)
