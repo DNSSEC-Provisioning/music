@@ -12,6 +12,9 @@ const (
 	AutoZones = `
 SELECT name, zonetype, fsm, fsmsigner, fsmstatus
 FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked'`
+	AutoZone = `
+SELECT name, zonetype, fsm, fsmsigner, fsmstatus
+FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked' AND name=?` 
 )
 
 // PushZones: Try to move all "auto" zones forward through their respective processes until they
@@ -21,7 +24,7 @@ FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked'`
 // (a) trying stopped zones, but less frequently, as they may have become unwedged
 // (b)
 
-func (mdb *MusicDB) PushZones() (int, error) {
+func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]string, error) {
 	var zones []string
 	stmt, err := mdb.Prepare(AutoZones)
 	if err != nil {
@@ -40,7 +43,7 @@ func (mdb *MusicDB) PushZones() (int, error) {
 	defer rows.Close()
 
 	if CheckSQLError("PushZones", AutoZones, err, false) {
-		return 0, err
+		return zones, err
 	} else {
 		var name, zonetype, fsm, fsmsigner, fsmstate string
 		for rows.Next() {
@@ -49,8 +52,13 @@ func (mdb *MusicDB) PushZones() (int, error) {
 				log.Fatalf("PushZones: Error from rows.Scan: %v", err)
 			}
 
-			zones = append(zones, name)
-
+			if len(checkzones) == 0 {
+			   zones = append(zones, name)
+			} else {
+			   if checkzones[name] {
+			      zones = append(zones, name)
+			   }
+			}
 		}
 	}
 	tx.Commit()
@@ -60,10 +68,8 @@ func (mdb *MusicDB) PushZones() (int, error) {
 		for _, z := range zones {
 			mdb.PushZone(z)
 		}
-	} else {
-		log.Printf("PushZones: All zones are currently blocked.")
-	}
-	return len(zones), nil
+	} 
+	return zones, nil
 }
 
 func (mdb *MusicDB) PushZone(z string) error {

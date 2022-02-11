@@ -21,6 +21,10 @@ type DBUpdate struct {
 	Type string
 }
 
+type EngineCheck struct {
+     		 Zone	string
+}
+
 type Zone struct {
 	Name       string
 	Exists     bool // true if zone is present in system

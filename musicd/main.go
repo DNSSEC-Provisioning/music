@@ -137,6 +137,7 @@ func main() {
 	conf.Internal = InternalConf{}
 
 	apistopper := make(chan struct{})
+	conf.Internal.EngineCheck = make(chan music.EngineCheck)
 
 	conf.Internal.MusicDB = music.NewDB(false) // Don't drop status tables if they exist
 	conf.Internal.TokViper = tokvip

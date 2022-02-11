@@ -23,8 +23,7 @@ const AZsql = `
     INSERT INTO zones(name, zonetype, state, statestamp, fsm, fsmmode)
     VALUES (?, ?, ?, datetime('now'), ?, ?)`
 
-func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
-	log.Printf("AddZone: zone: %v", z)
+func (mdb *MusicDB) AddZone(z *Zone, group string, enginecheck chan EngineCheck) (error, string) {
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _ := mdb.GetZone(fqdn)
 	if dbzone.Exists {
@@ -47,7 +46,7 @@ func (mdb *MusicDB) AddZone(z *Zone, group string) (error, string) {
 	if group != "" {
 		fmt.Printf("AddGroup: the zone %s has the signergroup %s specified so we set that too\n", z.Name, group)
 		dbzone, _ := mdb.GetZone(z.Name)
-		err, _ := mdb.ZoneJoinGroup(dbzone, group) // we know that the zone exist
+		err, _ := mdb.ZoneJoinGroup(dbzone, group, enginecheck) // we know that the zone exist
 		if err != nil {
 			return err, fmt.Sprintf(
 				"Zone %s was added, but failed to attach to signer group %s.", fqdn, group)
@@ -64,7 +63,7 @@ const (
 	UZsql = "UPDATE zones SET zonetype=?, fsmmode=? WHERE name=?"
 )
 
-func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone) (error, string) {
+func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (error, string) {
 	log.Printf("UpdateZone: zone: %v", uz)
 
 	tx, err := mdb.Begin()
@@ -89,6 +88,10 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone) (error, string) {
 	_, err = stmt.Exec(dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
 	if CheckSQLError("UpdateZone", UZsql, err, false) {
 		return err, ""
+	}
+
+	if uz.FSMMode == "auto" {
+	   enginecheck <- EngineCheck{ Zone: dbzone.Name }
 	}
 
 	return nil, fmt.Sprintf("Zone %s updated.", dbzone.Name)
@@ -428,7 +431,7 @@ func (mdb *MusicDB) GetSignerGroupZones(sg *SignerGroup) ([]*Zone, error) {
 // perhaps the right thing is to "lock" the signer group when the entire
 // group enters a proceess (and unlock when all zones are done)
 
-func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
+func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string, enginecheck chan EngineCheck) (error, string) {
 	var group *SignerGroup
 	var err error
 
@@ -483,10 +486,12 @@ func (mdb *MusicDB) ZoneJoinGroup(dbzone *Zone, g string) (error, string) {
 			return err, msg
 		}
 
+	        enginecheck <- EngineCheck{ Zone: dbzone.Name }
 		return nil, fmt.Sprintf(
 			"Zone %s has joined signer group %s and started the process '%s'.",
 			dbzone.Name, g, SignerJoinGroupProcess)
 	}
+        enginecheck <- EngineCheck{ Zone: dbzone.Name }
 	return nil, fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'
 as the zone is already in process '%s'. Problematic.`, dbzone.Name, g, SignerJoinGroupProcess, dbzone.FSM)

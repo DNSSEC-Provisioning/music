@@ -13,36 +13,46 @@ import (
 )
 
 func NewInterval(current, target, mininterval, maxinterval, count int) int {
-     if count == 0 {
-     	if current < maxinterval {
-	   current = current *2
+	if count == 0 {
+		if current < maxinterval {
+			current = current * 2
+		}
+		if current > maxinterval {
+			current = maxinterval
+		}
+		return current
 	}
-	if current > maxinterval {
-	   current = maxinterval
+	current = target
+	if current < mininterval {
+		current = mininterval
 	}
 	return current
-     }
-     current = target
-     if current < mininterval {
-     	current = mininterval
-     }
-     return current
 }
 
 func FSMEngine(conf *Config, stopch chan struct{}) {
-        mdb := conf.Internal.MusicDB
+	mdb := conf.Internal.MusicDB
 	var err error
 	var count int
+	var zones []string
+	var foo music.EngineCheck
+	var z	string
+	var emptymap = map[string]bool{}
+	checkch := conf.Internal.EngineCheck
+
+	if !viper.GetBool("fsmengine.active") {
+		log.Printf("FSM Engine is NOT active. All state transitions must be managed manually.")
+		return
+	}
 
 	mininterval := viper.GetInt("fsmengine.intervals.minimum")
 	if mininterval < 15 {
-	   mininterval = 15
-	   viper.Set("fsmengine.mininterval", 15)
+		mininterval = 15
+		viper.Set("fsmengine.mininterval", 15)
 	}
 	maxinterval := viper.GetInt("fsmengine.intervals.maximum")
 	if maxinterval > 3600 {
-	   maxinterval = 3600
-	   viper.Set("fsmengine.maxinterval", 3600)
+		maxinterval = 3600
+		viper.Set("fsmengine.maxinterval", 3600)
 	}
 
 	target := viper.GetInt("fsmengine.intervals.target")
@@ -55,25 +65,57 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 
 	ticker := time.NewTicker(time.Duration(current) * time.Second)
 
-	_, err = mdb.PushZones()
+	_, err = mdb.PushZones(emptymap)
 	if err != nil {
 		log.Printf("FSMEngine: Error from PushZones: %v", err)
 	}
-	
+
+	UpdateTicker := func() {
+		ni := NewInterval(current, target, mininterval, maxinterval, count)
+		if ni != current {
+			ticker.Stop()
+			log.Printf("FSM Engine: changing run interval from %d to %d seconds", current, ni)
+			current = ni
+			ticker = time.NewTicker(time.Duration(current) * time.Second)
+		}
+	}
+
+	ReportProgress := func() {
+		count = len(zones)
+		if count > 0 {
+			log.Printf("FSM Engine: tried to move these zones forward: %v (will run every %d seconds)",
+					zones, current)
+		} else {
+			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)",
+					current)
+		}
+	}
+
 	for {
 		select {
-		case <-ticker.C:
-			count, err = mdb.PushZones()
+		case foo = <-checkch:
+		        z = foo.Zone
+		        if z != "" {
+			   log.Printf("FSM Engine: Someone wants me to check the zone '%s', so I'll do that.",
+			   		   z)
+			   zones, err = mdb.PushZones(map[string]bool{ z: true })
+			} else {
+			   log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
+			   zones, err = mdb.PushZones(map[string]bool{})
+			}
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
 			}
-			ni := NewInterval(current, target, mininterval, maxinterval, count)
-			if ni != current {
-			   ticker.Stop()
-			   log.Printf("FSM Engine: changing run interval from %d to %d seconds", current, ni) 
-			   current = ni
-			   ticker = time.NewTicker(time.Duration(current) * time.Second)
+			ReportProgress()
+			UpdateTicker()
+
+		case <-ticker.C:
+			zones, err = mdb.PushZones(emptymap)
+			if err != nil {
+				log.Printf("FSMEngine: Error from PushZones: %v", err)
 			}
+			ReportProgress()
+			UpdateTicker()
 
 		case <-stopch:
 			ticker.Stop()
@@ -84,7 +126,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 }
 
 const (
-      AutoZones = `
+	AutoZones = `
 SELECT name, zonetype, fsm, fsmsigner, fsmstate
 FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstate != 'stop'`
 )
@@ -94,22 +136,22 @@ FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstate != 'stop'`
 //
 // Note that we also need to add management for:
 // (a) trying stopped zones, but less frequently, as they may have become unwedged
-// (b) 
+// (b)
 
 func PushZones(conf *Config) error {
-     mdb := conf.Internal.MusicDB
-     var zones []string
-     stmt, err := mdb.Prepare(AutoZones)
-     if err != nil {
-     	log.Fatalf("PushZones: Error from mdb.Prepare(%s): %v", AutoZones, err)
-     }
+	mdb := conf.Internal.MusicDB
+	var zones []string
+	stmt, err := mdb.Prepare(AutoZones)
+	if err != nil {
+		log.Fatalf("PushZones: Error from mdb.Prepare(%s): %v", AutoZones, err)
+	}
 
-     tx, err := mdb.Begin()
-     if err != nil {
-     	log.Fatalf("PushZones: Error from mdb.Begin(): %v", err)
-     }
+	tx, err := mdb.Begin()
+	if err != nil {
+		log.Fatalf("PushZones: Error from mdb.Begin(): %v", err)
+	}
 
-     	rows, err := stmt.Query()
+	rows, err := stmt.Query()
 	if err != nil {
 		log.Printf("PushZones: Error from stmt query(%s): %v", AutoZones, err)
 	}
@@ -118,38 +160,38 @@ func PushZones(conf *Config) error {
 	if music.CheckSQLError("PushZones", AutoZones, err, false) {
 		return err
 	} else {
-	  var name, zonetype, fsm, fsmsigner, fsmstate string
-	  for rows.Next() {
-	      err := rows.Scan(&name, &zonetype, &fsm, &fsmsigner, &fsmstate)
-	      if err != nil {
-	      	 log.Fatalf("PushZones: Error from rows.Scan: %v", err)
-	      }
+		var name, zonetype, fsm, fsmsigner, fsmstate string
+		for rows.Next() {
+			err := rows.Scan(&name, &zonetype, &fsm, &fsmsigner, &fsmstate)
+			if err != nil {
+				log.Fatalf("PushZones: Error from rows.Scan: %v", err)
+			}
 
-	      zones = append(zones, name)
+			zones = append(zones, name)
 
-	  }
+		}
 	}
 	tx.Commit()
-	
+
 	log.Printf("PushZones: will push on these zones: %v", zones)
 	for _, z := range zones {
-	    PushZone(conf, z)
+		PushZone(conf, z)
 	}
 	return nil
 }
 
 func PushZone(conf *Config, z string) error {
-     mdb := conf.Internal.MusicDB
-     dbzone, _ := mdb.GetZone(z)
-     success, _, _ := mdb.ZoneStepFsm(dbzone, "")
-     oldstate := dbzone.State
-     if success {
-     	dbzone, _ := mdb.GetZone(z)
-     	log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
-			      z, oldstate, dbzone.State)
-     } else {
-       log.Printf("PushZone: failed to transition zone '%s' from state '%s'",
-       			     z, oldstate)
-     }
-     return nil
+	mdb := conf.Internal.MusicDB
+	dbzone, _ := mdb.GetZone(z)
+	success, _, _ := mdb.ZoneStepFsm(dbzone, "")
+	oldstate := dbzone.State
+	if success {
+		dbzone, _ := mdb.GetZone(z)
+		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
+			z, oldstate, dbzone.State)
+	} else {
+		log.Printf("PushZone: failed to transition zone '%s' from state '%s'",
+			z, oldstate)
+	}
+	return nil
 }
