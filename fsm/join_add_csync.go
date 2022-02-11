@@ -1,6 +1,7 @@
 package fsm
 
 import (
+        "fmt"
 	"log"
 
 	"github.com/miekg/dns"
@@ -34,6 +35,7 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			// XXX: johani: is it meaningful to continue here? why not just return false?
 		}
 
 		nses[s.Name] = []*dns.NS{}
@@ -71,14 +73,14 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 				}
 			}
 			if !found {
-				log.Printf("%s: NS %s is missing in signer %s", z.Name, ns.Ns, signer)
+				z.SetStopReason(fmt.Sprintf("NS %s is missing in signer %s", ns.Ns, signer))
 				group_nses_synced = false
 			}
 		}
 	}
 
 	if !group_nses_synced {
-		return false
+		return false  // stop-reason defined above
 	}
 
 	log.Printf("%s: All NSes synced between all signers", z.Name)
@@ -124,8 +126,8 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 			updater := music.GetUpdater(signer.Method)
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-				log.Printf("%s: Unable to update %s with CSYNC record sets: %s",
-					z.Name, signer.Name, err)
+				z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+					signer.Name, err))
 				return false
 			}
 			log.Printf("%s: Updated signer %s successfully with CSYNC record sets",

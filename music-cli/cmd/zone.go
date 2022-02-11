@@ -22,7 +22,7 @@ import (
 )
 
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
-var metakey, metavalue string
+var metakey, metavalue, fsmmode string
 
 var zoneCmd = &cobra.Command{
 	Use:   "zone",
@@ -45,7 +45,7 @@ var statusZoneCmd = &cobra.Command{
 		zr := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if len(zr.Zones) > 0 {
-			PrintZones(zr.Zones)
+			PrintZones(zr.Zones, true, "")
 		}
 	},
 }
@@ -58,11 +58,15 @@ var addZoneCmd = &cobra.Command{
 		if zonetype == "" {
 			zonetype = "normal"
 		}
+		if fsmmode == "" {
+			fsmmode = "manual"
+		}
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
 				Name:     zonename,
 				ZoneType: zonetype,
+				FSMMode:  fsmmode,
 			},
 			SignerGroup: sgroupname, // may be unspecified
 		}
@@ -85,6 +89,9 @@ var updateZoneCmd = &cobra.Command{
 
 		if zonetype != "" {
 			data.Zone.ZoneType = zonetype
+		}
+		if fsmmode != "" {
+			data.Zone.FSMMode = fsmmode
 		}
 		zr := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
@@ -287,7 +294,7 @@ var zoneStepFsmCmd = &cobra.Command{
 			fmt.Printf("Error: %s\n", zr.ErrorMsg)
 		}
 		if cliconf.Verbose {
-			PrintZones(zm)
+			PrintZones(zm, true, "")
 		}
 	},
 }
@@ -349,7 +356,26 @@ var listZonesCmd = &cobra.Command{
 		}
 		zr := SendZoneCommand(zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
-		PrintZones(zr.Zones)
+		PrintZones(zr.Zones, true, "")
+	},
+}
+
+var listBlockedZonesCmd = &cobra.Command{
+	Use:   "blocked",
+	Short: "List zones that are blocked for some reason",
+	Run: func(cmd *cobra.Command, args []string) {
+		if zonename == "" {
+			zonename = "zone-name-not-set.se." // must have something, not used
+		}
+		data := music.ZonePost{
+			Command: "list",
+			Zone: music.Zone{
+				Name: zonename,
+			},
+		}
+		zr := SendZoneCommand(zonename, data)
+		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
+		PrintZones(zr.Zones, false, "blocked")
 	},
 }
 
@@ -359,9 +385,12 @@ func init() {
 		zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
 		zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
 		zoneCopyRRsetCmd, zoneMetaCmd, statusZoneCmd)
+	listZonesCmd.AddCommand(listBlockedZonesCmd)
 
 	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
 		"type of zone, 'normal' or 'debug'")
+	zoneCmd.PersistentFlags().StringVarP(&fsmmode, "fsmmode", "", "manual",
+		"FSM mode ('auto' or 'manual')")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
 	zoneStepFsmCmd.Flags().StringVarP(&fsmnextstate, "nextstate", "", "",
@@ -545,13 +574,20 @@ func PrintZoneResponse(iserr bool, errormsg, msg string) {
 	}
 }
 
-func PrintZones(zm map[string]music.Zone) {
+func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 	if len(zm) != 0 {
 		var out []string
 		var zone music.Zone
 
 		if cliconf.Verbose || showheaders {
-			out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
+			// out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
+			if showall {
+			   out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)")
+			} else if fsmstatus == "blocked" {
+			  out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Stop reason")
+			} else if fsmstatus == "delayed" {
+			  out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Delay reason|Until")
+			}
 		}
 
 		zonenames := make([]string, 0, len(zm))
@@ -561,10 +597,18 @@ func PrintZones(zm map[string]music.Zone) {
 		sort.Strings(zonenames)
 
 		for _, zn := range zonenames {
+		        modebits := ""
 			zone = zm[zn]
 			zname := zn
+			if zone.FSMMode == "auto" {
+				modebits += "A"
+			}
+
 			if zone.ZoneType == "debug" {
-				zname += "[D]"
+				modebits += "D"
+			}
+			if len(modebits) != 0 {
+			   zname += fmt.Sprintf("[%s]", modebits)
 			}
 
 			group := "---"
@@ -584,17 +628,23 @@ func PrintZones(zm map[string]music.Zone) {
 				}
 			}
 
-			if zone.ZskState == "" {
-				zone.ZskState = "---"
-			}
+			// if zone.ZskState == "" {
+			//	zone.ZskState = "---"
+			// }
 
 			nextStates := []string{}
 			for k, _ := range zone.NextState {
 				nextStates = append(nextStates, k)
 			}
-			out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]|%s", zname, group, fsm,
+			if  showall {
+			   out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]", zname, group, fsm,
 				zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
-				strings.Join(nextStates, " "), zone.ZskState))
+				strings.Join(nextStates, " ")))
+			} else if zone.FSMStatus == fsmstatus {
+			   out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|%s", zname, group, fsm,
+				zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
+				zone.StopReason))
+			}
 		}
 		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}

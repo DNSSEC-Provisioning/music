@@ -4,6 +4,13 @@ apiserver:
    certFile: ../etc/certs/localhost.crt
    keyFile: ../etc/certs/localhost.key
 
+fsmengine:
+   active:	true
+   intervals:
+      target:	20
+      minimum:	15
+      maximum:	900
+
 signers:
    ddns:
       limits:

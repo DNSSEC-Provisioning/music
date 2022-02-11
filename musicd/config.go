@@ -65,6 +65,7 @@ type CommonConf struct {
 type InternalConf struct {
 	DBUpdateCh chan music.DBUpdate
 	APIStopCh  chan struct{}
+	EngineCheck	chan music.EngineCheck
 	DB         *sql.DB
 	MusicDB    *music.MusicDB
 	TokViper   *viper.Viper

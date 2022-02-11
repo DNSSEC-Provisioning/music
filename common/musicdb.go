@@ -16,6 +16,11 @@ import (
 )
 
 var DefaultTables = map[string]string{
+
+// zones: fsmmode = {auto,manual}, if auto then the fsmengine in musicd will try to move the zone
+//        forward through its process until it hits a stop. "stop" is indicated by fststate="stop"
+//        and then there should be a documented stop-reason in the metadata table.
+
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
 name        TEXT NOT NULL DEFAULT '',
@@ -24,6 +29,8 @@ state       TEXT NOT NULL DEFAULT '',
 statestamp  DATETIME,
 fsm         TEXT NOT NULL DEFAULT '',
 fsmsigner   TEXT NOT NULL DEFAULT '',	
+fsmmode     TEXT NOT NULL DEFAULT '',
+fsmstatus   TEXT NOT NULL DEFAULT '',
 sgroup      TEXT NOT NULL DEFAULT '',
 UNIQUE (name, sgroup)
 )`,
@@ -114,10 +121,13 @@ func dbSetupTables(db *sql.DB) bool {
 
 func NewDB(force bool) *MusicDB {
 	dbfile := viper.GetString("common.db")
-	fmt.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
-	if err := os.Chmod(dbfile, 0664); err != nil {
-		log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v",
-			err)
+	log.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
+
+	_, err := os.Stat(dbfile)
+	if !os.IsNotExist(err) {
+	   if err := os.Chmod(dbfile, 0664); err != nil {
+		log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", err)
+	   }
 	}
 	db, err := sql.Open("sqlite3", dbfile)
 	if err != nil {

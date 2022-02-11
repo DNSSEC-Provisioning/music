@@ -19,7 +19,7 @@ func ZoneStatus() {
 	})
 	PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	if len(zr.Zones) != 0 {
-		PrintZones(zr.Zones)
+		PrintZones(zr.Zones, true, "")
 	} else {
 		fmt.Printf("*** There are 0 zones in the system.\n")
 	}

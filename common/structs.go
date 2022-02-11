@@ -21,13 +21,19 @@ type DBUpdate struct {
 	Type string
 }
 
+type EngineCheck struct {
+     		 Zone	string
+}
+
 type Zone struct {
 	Name       string
 	Exists     bool // true if zone is present in system
-	State      string
+	State      string  // state = state in currently ongoing process
 	Statestamp time.Time
 	NextState  map[string]bool
 	StopReason string // possible reason for a state transition not to be possible
+	FSMMode	   string // "auto" | "manual"
+	FSMStatus  string  // fsmstatus = "blocked" if next state transition is not possible
 	FSM        string
 	FSMSigner  string
 	SGroup     *SignerGroup

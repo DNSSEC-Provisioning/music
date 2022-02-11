@@ -175,6 +175,8 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
+	enginecheck := conf.Internal.EngineCheck	// need to be able to send this to Zone{Add,...}
+	
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
@@ -227,7 +229,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
-			err, resp.Msg = mdb.AddZone(&zp.Zone, zp.SignerGroup)
+			err, resp.Msg = mdb.AddZone(&zp.Zone, zp.SignerGroup, enginecheck)
 			if err != nil {
 				// log.Printf("Error from AddZone: %v", err)
 				resp.Error = true
@@ -235,8 +237,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "update":
-			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
-			err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone)
+			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup, enginecheck)
+			err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
 			if err != nil {
 				// log.Printf("Error from UpdateZone: %v", err)
 				resp.Error = true
@@ -252,7 +254,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "join":
-			err, resp.Msg = mdb.ZoneJoinGroup(dbzone, zp.SignerGroup)
+			err, resp.Msg = mdb.ZoneJoinGroup(dbzone, zp.SignerGroup, enginecheck)
 			if err != nil {
 				// log.Printf("Error from ZoneJoinGroup: %v", err)
 				resp.Error = true
@@ -561,6 +563,7 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
+	var check music.EngineCheck
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("APIprocess: received /process request from %s.\n",
@@ -589,6 +592,10 @@ func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				resp.ErrorMsg = msg
 			}
 			resp.Processes = sp
+
+		case "check":
+			conf.Internal.EngineCheck <- check
+			resp.Msg = "FSM Engine will make a run through all non-blocked zones immediately."
 
 		case "graph":
 			graph, err := mdb.GraphProcess(pp.Process)

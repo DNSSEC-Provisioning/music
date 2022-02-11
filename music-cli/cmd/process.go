@@ -36,6 +36,29 @@ var processListCmd = &cobra.Command{
 	},
 }
 
+// XXX: This really doesn't belong here, it would be more correct with
+//      an "engine check" command than this "process check" command. But
+//      this will have to do for now.
+
+var processCheckCmd = &cobra.Command{
+	Use:   "check",
+	Short: "Kick the FSM engine to immediately run through all auto zones",
+	Run: func(cmd *cobra.Command, args []string) {
+		pr, err := SendProcess(music.ProcessPost{
+						Command:	"check",
+						})
+		if err != nil {
+			fmt.Printf("Error from SendProcess: %v\n", err)
+		}
+		if pr.Error {
+		   	   fmt.Printf("%s\n", pr.ErrorMsg)
+		}
+		if pr.Msg != "" {
+		   fmt.Printf("%s\n", pr.Msg)
+	  	}
+	},
+}
+
 var processGraphCmd = &cobra.Command{
 	Use:   "graph",
 	Short: "generate a graph of the named process",
@@ -49,7 +72,7 @@ var processGraphCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(processCmd)
-	processCmd.AddCommand(processListCmd, processGraphCmd)
+	processCmd.AddCommand(processListCmd, processCheckCmd, processGraphCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
@@ -60,6 +83,42 @@ func init() {
 	// processCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	processGraphCmd.Flags().StringVarP(&processname, "process", "p", "", "name of process")
 	processGraphCmd.MarkFlagRequired("process")
+}
+
+func SendProcess(data music.ProcessPost) (music.ProcessResponse, error) {
+	var pr music.ProcessResponse
+	bytebuf := new(bytes.Buffer)
+	json.NewEncoder(bytebuf).Encode(data)
+
+	status, buf, err := api.Post("/process", bytebuf.Bytes())
+	if err != nil {
+		log.Println("Error from api.Post:", err)
+		return pr, err
+	}
+	if cliconf.Verbose {
+		fmt.Printf("Status: %d\n", status)
+	}
+
+	err = json.Unmarshal(buf, &pr)
+	if err != nil {
+		log.Fatalf("Error from unmarshal: %v\n", err)
+	}
+	return pr, nil
+}
+
+func PrintProcesses(pr music.ProcessResponse) {
+	var out []string
+	for _, p := range pr.Processes {
+		// out = append(out, fmt.Sprintf("%s|%s", p.Name, p.Desc))
+		if p.Desc == "" {
+		   out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
+		} else {
+		  fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
+		}
+	}
+	if len(out) > 0 {
+	   fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	}
 }
 
 func ListProcesses() error {
