@@ -24,8 +24,8 @@ FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked' AND nam
 // (a) trying stopped zones, but less frequently, as they may have become unwedged
 // (b)
 
-func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]string, error) {
-	var zones []string
+func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]Zone, error) {
+	var zones []Zone
 	stmt, err := mdb.Prepare(AutoZones)
 	if err != nil {
 		log.Fatalf("PushZones: Error from mdb.Prepare(%s): %v", AutoZones, err)
@@ -45,18 +45,20 @@ func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]string, error) {
 	if CheckSQLError("PushZones", AutoZones, err, false) {
 		return zones, err
 	} else {
-		var name, zonetype, fsm, fsmsigner, fsmstate string
+		var name, zonetype, fsm, fsmsigner, fsmstatus string
 		for rows.Next() {
-			err := rows.Scan(&name, &zonetype, &fsm, &fsmsigner, &fsmstate)
+			err := rows.Scan(&name, &zonetype, &fsm, &fsmsigner, &fsmstatus)
 			if err != nil {
 				log.Fatalf("PushZones: Error from rows.Scan: %v", err)
 			}
 
+			z := Zone{ Name: name, FSMStatus: fsmstatus }
+
 			if len(checkzones) == 0 {
-			   zones = append(zones, name)
+			   zones = append(zones, z)
 			} else {
 			   if checkzones[name] {
-			      zones = append(zones, name)
+			      zones = append(zones, z)
 			   }
 			}
 		}
@@ -66,18 +68,23 @@ func (mdb *MusicDB) PushZones(checkzones map[string]bool) ([]string, error) {
 	if len(zones) > 0 {
 		log.Printf("PushZones: will push on these zones: %v", zones)
 		for _, z := range zones {
-			mdb.PushZone(z)
+		        if z.FSMStatus == "delayed" {
+			   log.Printf("PushZones: zone %s is delayed until %v. Leaving for now.",
+			   			  z.Name, "Kokko")
+			} else {
+			  mdb.PushZone(z)
+			}
 		}
 	} 
 	return zones, nil
 }
 
-func (mdb *MusicDB) PushZone(z string) error {
-	dbzone, _ := mdb.GetZone(z)
+func (mdb *MusicDB) PushZone(z Zone) error {
+	dbzone, _ := mdb.GetZone(z.Name)
 	success, _, _ := mdb.ZoneStepFsm(dbzone, "")
 	oldstate := dbzone.State
 	if success {
-		dbzone, _ := mdb.GetZone(z)
+		dbzone, _ := mdb.GetZone(z.Name)
 		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
 			z, oldstate, dbzone.State)
 	} else {

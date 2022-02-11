@@ -33,7 +33,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	mdb := conf.Internal.MusicDB
 	var err error
 	var count int
-	var zones []string
+	var zones []music.Zone
 	var foo music.EngineCheck
 	var z	string
 	var emptymap = map[string]bool{}
