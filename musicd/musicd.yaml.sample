@@ -5,7 +5,10 @@ apiserver:
    keyFile: ../etc/certs/localhost.key
 
 fsmengine:
-   interval:	15
+   intervals:
+      target:	20
+      minimum:	15
+      maximum:	900
 
 signers:
    ddns:

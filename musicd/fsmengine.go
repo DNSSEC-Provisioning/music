@@ -12,20 +12,50 @@ import (
 	"github.com/spf13/viper"
 )
 
+func NewInterval(current, target, mininterval, maxinterval, count int) int {
+     if count == 0 {
+     	if current < maxinterval {
+	   current = current *2
+	}
+	if current > maxinterval {
+	   current = maxinterval
+	}
+	return current
+     }
+     current = target
+     if current < mininterval {
+     	current = mininterval
+     }
+     return current
+}
+
 func FSMEngine(conf *Config, stopch chan struct{}) {
         mdb := conf.Internal.MusicDB
 	var err error
+	var count int
 
-	runinterval := viper.GetInt("fsmengine.interval")
-	if runinterval < 10 || runinterval > 3600 {
-		runinterval = 60
+	mininterval := viper.GetInt("fsmengine.intervals.minimum")
+	if mininterval < 15 {
+	   mininterval = 15
+	   viper.Set("fsmengine.mininterval", 15)
+	}
+	maxinterval := viper.GetInt("fsmengine.intervals.maximum")
+	if maxinterval > 3600 {
+	   maxinterval = 3600
+	   viper.Set("fsmengine.maxinterval", 3600)
 	}
 
-	log.Printf("Starting FSM Engine (will run once every %d seconds)", runinterval)
+	target := viper.GetInt("fsmengine.intervals.target")
+	if target < mininterval || target > maxinterval {
+		target = mininterval
+	}
+	current := target
 
-	ticker := time.NewTicker(time.Duration(runinterval) * time.Second)
+	log.Printf("Starting FSM Engine (will run once every %d seconds)", current)
 
-	err = mdb.PushZones()
+	ticker := time.NewTicker(time.Duration(current) * time.Second)
+
+	_, err = mdb.PushZones()
 	if err != nil {
 		log.Printf("FSMEngine: Error from PushZones: %v", err)
 	}
@@ -33,9 +63,16 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	for {
 		select {
 		case <-ticker.C:
-			err = mdb.PushZones()
+			count, err = mdb.PushZones()
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
+			}
+			ni := NewInterval(current, target, mininterval, maxinterval, count)
+			if ni != current {
+			   ticker.Stop()
+			   log.Printf("FSM Engine: changing run interval from %d to %d seconds", current, ni) 
+			   current = ni
+			   ticker = time.NewTicker(time.Duration(current) * time.Second)
 			}
 
 		case <-stopch:
