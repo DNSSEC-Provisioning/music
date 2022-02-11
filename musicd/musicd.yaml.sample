@@ -5,6 +5,7 @@ apiserver:
    keyFile: ../etc/certs/localhost.key
 
 fsmengine:
+   active:	true
    intervals:
       target:	20
       minimum:	15
