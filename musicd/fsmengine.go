@@ -33,7 +33,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	mdb := conf.Internal.MusicDB
 	var err error
 	var count int
-	var zones []string
+	var zones []music.Zone
 	var foo music.EngineCheck
 	var z	string
 	var emptymap = map[string]bool{}
@@ -61,11 +61,17 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	}
 	current := target
 
+	completeinterval := viper.GetInt("fsmengine.intervals.complete")
+	if completeinterval < 3600 || completeinterval > 24*3600 {
+	   completeinterval = 7200
+	}
+
 	log.Printf("Starting FSM Engine (will run once every %d seconds)", current)
 
 	ticker := time.NewTicker(time.Duration(current) * time.Second)
+	completeticker := time.NewTicker(time.Duration(completeinterval) * time.Second)
 
-	_, err = mdb.PushZones(emptymap)
+	_, err = mdb.PushZones(emptymap, true)				 // check ALL zones
 	if err != nil {
 		log.Printf("FSMEngine: Error from PushZones: %v", err)
 	}
@@ -98,10 +104,10 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		        if z != "" {
 			   log.Printf("FSM Engine: Someone wants me to check the zone '%s', so I'll do that.",
 			   		   z)
-			   zones, err = mdb.PushZones(map[string]bool{ z: true })
+			   zones, err = mdb.PushZones(map[string]bool{ z: true }, false)
 			} else {
 			   log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
-			   zones, err = mdb.PushZones(map[string]bool{})
+			   zones, err = mdb.PushZones(map[string]bool{}, false)
 			}
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
@@ -110,7 +116,15 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			UpdateTicker()
 
 		case <-ticker.C:
-			zones, err = mdb.PushZones(emptymap)
+			zones, err = mdb.PushZones(emptymap, false)	// check non-blocked zones only
+			if err != nil {
+				log.Printf("FSMEngine: Error from PushZones: %v", err)
+			}
+			ReportProgress()
+			UpdateTicker()
+
+		case <-completeticker.C:
+			zones, err = mdb.PushZones(emptymap, true)	// check ALL zones
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
 			}

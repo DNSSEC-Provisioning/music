@@ -244,7 +244,6 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
-	// XXX: This should be changed to t.PreCondition once all states have pre conditions
 	if t.PreCondition(z) {
 		log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
 		t.Action(z)

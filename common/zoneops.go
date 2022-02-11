@@ -275,20 +275,20 @@ func (z *Zone) StateTransition(from, to string) error {
 		fsm = "---"
 	}
 
-	sqlq := "UPDATE zones SET state=?, fsm=? WHERE name=?"
+	sqlq := "UPDATE zones SET state=?, fsm=?, fsmstatus=? WHERE name=?"
 	stmt, err := mdb.Prepare(sqlq)
 	if err != nil {
 		fmt.Printf("Error from db.Prepare: %v\n", err)
 	}
 
 	mdb.mu.Lock()
-	_, err = stmt.Exec(to, fsm, z.Name)
+	_, err = stmt.Exec(to, fsm, "", z.Name)			// remove fsmstatus="blocked" if there
 	if CheckSQLError("StateTransition", sqlq, err, false) {
 		mdb.mu.Unlock()
 		return err
 	}
 	mdb.mu.Unlock()
-	err, _ = mdb.ZoneSetMeta(z, "stop-reason", "")
+	err, _ = mdb.ZoneSetMeta(z, "stop-reason", "")		// remove old stop-reason if there
 	if err != nil {
 		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
 	}
