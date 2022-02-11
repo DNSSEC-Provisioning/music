@@ -1,7 +1,7 @@
 package fsm
 
 import (
-	// "fmt"
+	"fmt"
 	"log"
 
 	"github.com/miekg/dns"
@@ -43,7 +43,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -79,7 +79,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
-			log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to remove NSes from %s: %s", signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed NSes from %s successfully", z.Name, signer.Name)
@@ -87,7 +87,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 
 	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.Update(leavingSigner, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
-		log.Printf("%s: Unable to remove NSes from %s: %s", z.Name, leavingSigner.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to remove NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 	log.Printf("%s: Removed NSes from %s successfully", z.Name, leavingSigner.Name)

@@ -38,7 +38,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 
 		if err != nil {
-			log.Printf("%s: Unable to fetch CDSes from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch CDSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -54,7 +54,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false
+		return false	// stop-reason set in GetParentAddressOrStop()
 	}
 
 	m := new(dns.Msg)
@@ -62,7 +62,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		log.Printf("%s: Unable to fetch DSes from parent: %s", z.Name, err)
+		z.SetStopReason(fmt.Sprintf("Unable to fetch DSes from parent: %s", err))
 		return false
 	}
 	for _, a := range r.Answer {
@@ -72,7 +72,8 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 		}
 
 		if _, ok := cdsmap[fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)]; !ok {
-			log.Printf("%s: Parent DS found that is not in any signer: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
+			z.SetStopReason(fmt.Sprintf("Parent DS found that is not in any signer: %d %d %d %s",
+							    ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
 			return false
 		}
 	}
@@ -106,7 +107,8 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{cds}, []dns.RR{ccds}}); err != nil {
-			log.Printf("%s: Unable to remove CDS/CDNSKEY record sets from %s: %s", z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to remove CDS/CDNSKEY record sets from %s: %s",
+							    signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)

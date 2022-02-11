@@ -161,7 +161,7 @@ func (z *Zone) SetStopReason(value string) (error, string) {
 	if err1 != nil {
 		log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
 	}
-	log.Printf("%s\n", value)
+	log.Printf("%s: %s\n", z.Name, value)
 	return err, msg
 }
 

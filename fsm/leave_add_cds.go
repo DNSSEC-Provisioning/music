@@ -39,7 +39,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
-		log.Printf("%s: Unable to get leaving signer %s: %s", z.Name, leavingSignerName, err)
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -76,7 +76,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -87,7 +87,8 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 			}
 
 			if _, ok := dnskeys[fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey)]; ok {
-				log.Printf("%s: DNSKEY %s still exists in signer %s", z.Name, dnskey.PublicKey, s.Name)
+				z.SetStopReason(fmt.Sprintf("DNSKEY %s still exists in signer %s",
+								    dnskey.PublicKey, s.Name))
 				return false
 			}
 		}
@@ -115,7 +116,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 
 		if err != nil {
-			log.Printf("%s: Unable to fetch DNSKEYs from %s: %s", z.Name, s.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -137,8 +138,8 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
-			log.Printf("%s: Unable to update %s with CDS/CDNSKEY record sets: %s",
-				z.Name, signer.Name, err)
+			z.SetStopReason(fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
+				signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets", z.Name, signer.Name)
