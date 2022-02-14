@@ -35,13 +35,18 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	var count int
 	var zones []music.Zone
 	var foo music.EngineCheck
-	var z	string
+	var z string
 	var emptymap = map[string]bool{}
 	checkch := conf.Internal.EngineCheck
 
 	if !viper.GetBool("fsmengine.active") {
 		log.Printf("FSM Engine is NOT active. All state transitions must be managed manually.")
-		return
+		for {
+			select {
+			case <-checkch: // ensure that we keep reading to keep the
+				continue // channel open (otherwise other parts of MUSIC
+			} // may block)
+		}
 	}
 
 	mininterval := viper.GetInt("fsmengine.intervals.minimum")
@@ -63,7 +68,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 
 	completeinterval := viper.GetInt("fsmengine.intervals.complete")
 	if completeinterval < 3600 || completeinterval > 24*3600 {
-	   completeinterval = 7200
+		completeinterval = 7200
 	}
 
 	log.Printf("Starting FSM Engine (will run once every %d seconds)", current)
@@ -71,7 +76,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	ticker := time.NewTicker(time.Duration(current) * time.Second)
 	completeticker := time.NewTicker(time.Duration(completeinterval) * time.Second)
 
-	_, err = mdb.PushZones(emptymap, true)				 // check ALL zones
+	_, err = mdb.PushZones(emptymap, true) // check ALL zones
 	if err != nil {
 		log.Printf("FSMEngine: Error from PushZones: %v", err)
 	}
@@ -90,24 +95,24 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		count = len(zones)
 		if count > 0 {
 			log.Printf("FSM Engine: tried to move these zones forward: %v (will run every %d seconds)",
-					zones, current)
+				zones, current)
 		} else {
 			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)",
-					current)
+				current)
 		}
 	}
 
 	for {
 		select {
 		case foo = <-checkch:
-		        z = foo.Zone
-		        if z != "" {
-			   log.Printf("FSM Engine: Someone wants me to check the zone '%s', so I'll do that.",
-			   		   z)
-			   zones, err = mdb.PushZones(map[string]bool{ z: true }, false)
+			z = foo.Zone
+			if z != "" {
+				log.Printf("FSM Engine: Someone wants me to check the zone '%s', so I'll do that.",
+					z)
+				zones, err = mdb.PushZones(map[string]bool{z: true}, false)
 			} else {
-			   log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
-			   zones, err = mdb.PushZones(map[string]bool{}, false)
+				log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
+				zones, err = mdb.PushZones(map[string]bool{}, false)
 			}
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
@@ -116,7 +121,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			UpdateTicker()
 
 		case <-ticker.C:
-			zones, err = mdb.PushZones(emptymap, false)	// check non-blocked zones only
+			zones, err = mdb.PushZones(emptymap, false) // check non-blocked zones only
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
 			}
@@ -124,7 +129,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			UpdateTicker()
 
 		case <-completeticker.C:
-			zones, err = mdb.PushZones(emptymap, true)	// check ALL zones
+			zones, err = mdb.PushZones(emptymap, true) // check ALL zones
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
 			}
