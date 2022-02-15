@@ -71,6 +71,13 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	}
 
 	for _, s := range z.SGroup.SignerMap {
+		// the leaving signer is still in the SignerMap even though the logic in this file seems to think it should not be.
+		// https://github.com/DNSSEC-Provisioning/music/issues/130
+		// common/signerops.go seems to think that it should be. We need to decided what we really want here. /rog
+		if s.Name == leavingSignerName {
+			log.Printf("the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
+			continue
+		}
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
@@ -88,7 +95,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 
 			if _, ok := dnskeys[fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey)]; ok {
 				z.SetStopReason(fmt.Sprintf("DNSKEY %s still exists in signer %s",
-								    dnskey.PublicKey, s.Name))
+					dnskey.PublicKey, s.Name))
 				return false
 			}
 		}
@@ -108,7 +115,17 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	cdses := []dns.RR{}
 	cdnskeys := []dns.RR{}
 
+	// https://github.com/DNSSEC-Provisioning/music/issues/130 / rog
+	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
+	}
+
 	for _, s := range z.SGroup.SignerMap {
+		if s.Name == leavingSignerName {
+			log.Printf("issue 130: the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
+			continue
+		}
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
@@ -135,6 +152,10 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 
 	// Create CDS/CDNSKEY records sets
 	for _, signer := range z.SGroup.SignerMap {
+		if signer.Name == leavingSignerName {
+			log.Printf("issue 130: the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
+			continue
+		}
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
