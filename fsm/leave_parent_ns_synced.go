@@ -44,6 +44,15 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 		return false
 	}
 
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_parent_ns_synced: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
+	}
+
 	nses := make(map[string][]*dns.NS)
 
 	log.Printf("%s: Verifying that NSes are in sync in the parent", z.Name)
@@ -100,7 +109,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason set in GetParentAddressOrStop()
+		return false // stop-reason set in GetParentAddressOrStop()
 	}
 
 	m = new(dns.Msg)
@@ -145,10 +154,21 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
+	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps, /rog
+
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
+	}
+
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_parent_ns_synced: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
 	}
 
 	log.Printf("%s: Removing CSYNC record sets", z.Name)
@@ -170,7 +190,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
 		z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
-						    leavingSigner.Name, err))
+			leavingSigner.Name, err))
 		return false
 	}
 	log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)

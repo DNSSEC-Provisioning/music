@@ -59,16 +59,16 @@ func (mdb *MusicDB) AddSigner(dbsigner *Signer, group string) (error, string) {
 		fmt.Printf("AddSigner: Error from db.Prepare(%s): %v\n", sqlq, err)
 	}
 
-//	mdb.mu.Lock()
+	//	mdb.mu.Lock()
 	tx, err := mdb.Begin()
 	if err != nil {
-	       log.Printf("AddSigner: Error from db.Begin(): %v", err)
+		log.Printf("AddSigner: Error from db.Begin(): %v", err)
 	}
-//	defer tx.Commit()
+	//	defer tx.Commit()
 
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
 		dbsigner.AuthStr, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-//	mdb.mu.Unlock()
+	//	mdb.mu.Unlock()
 	tx.Commit()
 
 	if err != nil {
@@ -136,17 +136,17 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	dbsigner.UseTcp = us.UseTcp
 	dbsigner.UseTSIG = us.UseTSIG
 
-//	mdb.mu.Lock()
+	//	mdb.mu.Lock()
 	tx, err := mdb.Begin()
 	if err != nil {
-	   log.Printf("UpdateSigner: Error from mdb.Begin(): %v", err)
+		log.Printf("UpdateSigner: Error from mdb.Begin(): %v", err)
 	}
-	
+
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
 		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
-//	mdb.mu.Unlock()
+	//	mdb.mu.Unlock()
 	tx.Commit()
-	
+
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
 		return err, ""
 	}
@@ -238,7 +238,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 
 		// At this stage we know that there are now more than one signer and more than zero
 		// zones. Hence we need to enter the add-signer process for all the zones.
-		
+
 		const SJGsql3 = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
 
 		mdb.mu.Lock()
@@ -261,7 +261,7 @@ func (mdb *MusicDB) SignerJoinGroup(dbsigner *Signer, g string) (error, string) 
 			log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
 				z.Name, SignerJoinGroupProcess, dbsigner.Name)
 			err, msg := mdb.ZoneAttachFsm(z, SignerJoinGroupProcess, // we know that z exist
-			     	    			 dbsigner.Name, true)    // true=preempt
+				dbsigner.Name, true) // true=preempt
 			if err != nil {
 				log.Printf("SJG: Error from ZAF: %v", err)
 			} else {
@@ -378,8 +378,17 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
 		mdb.ZoneAttachFsm(z, SignerLeaveGroupProcess, // we know that z exist
-				     dbsigner.Name, true)     // true=preempt
+			dbsigner.Name, true) // true=preempt
 	}
+
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	log.Printf("remove %v from SignerMap %v: for %v", dbsigner.Name, sg.SignerMap, sg.Name)
+	log.Printf("signerops: signer group %+v\n", sg)
+	delete(sg.SignerMap, dbsigner.Name)
+	if _, member := sg.SignerMap[dbsigner.Name]; member {
+		return fmt.Errorf("Signer %s is still a member of group %s", dbsigner.Name, sg.Name), ""
+	}
+
 	return nil, fmt.Sprintf(
 		"Signer %s is in pending removal from signer group %s and therefore %d zones entered the '%s' process.",
 		dbsigner.Name, g, len(zones), SignerLeaveGroupProcess)

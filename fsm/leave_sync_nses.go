@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmLeaveSyncNses = music.FSMTransition{
@@ -15,9 +15,9 @@ var FsmLeaveSyncNses = music.FSMTransition{
 	MermaidActionDesc:   "Remove NS records that only belong to the leaving signer",
 	MermaidPostCondDesc: "Verify that NS records have been removed from zone",
 
-	PreCondition:    LeaveSyncNsesPreCondition,
-	Action:      	 LeaveSyncNsesAction,
-	PostCondition:    func (z *music.Zone) bool { return true },
+	PreCondition:  LeaveSyncNsesPreCondition,
+	Action:        LeaveSyncNsesAction,
+	PostCondition: func(z *music.Zone) bool { return true },
 }
 
 func LeaveSyncNsesPreCondition(z *music.Zone) bool {
@@ -26,25 +26,36 @@ func LeaveSyncNsesPreCondition(z *music.Zone) bool {
 
 func LeaveSyncNsesAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-	   log.Printf("LeaveSyncNsesAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("LeaveSyncNsesAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	sg := z.SignerGroup()
+	log.Printf("leave_sync_nses: zone signer group %+v\n", sg)
 	if sg == nil {
-	   log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", z.Name, z.FSM)
 	}
-	
+
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
 	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
+	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
+	}
+
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_sync_nses: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
 	}
 
 	log.Printf("%s: Removing NSes originating from leaving signer %s", z.Name, leavingSigner.Name)
@@ -76,6 +87,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 		nsrem = append(nsrem, rr)
 	}
 
+	log.Printf("leave_sync_nses: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
@@ -94,4 +106,3 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 
 	return true
 }
-

@@ -80,7 +80,7 @@ func SendSignerGroupCmd(group string, data music.SignerGroupPost) music.SignerGr
 
 	status, buf, err := api.Post("/signergroup", bytebuf.Bytes())
 	if err != nil {
-		log.Fatalf("SendSignerGroupCmd: Error from APIpost:", err)
+		log.Fatalf("SendSignerGroupCmd: Error from APIpost: %v\n", err)
 	}
 	if cliconf.Debug {
 		fmt.Printf("Status: %d\n", status)

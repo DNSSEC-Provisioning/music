@@ -30,6 +30,20 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 		return true
 	}
 
+	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
+	if leavingSignerName == "" {
+		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
+	}
+
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_add_cds: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, z.SGroup.SignerMap, z.SGroup.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
+	}
+
 	for _, s := range z.SGroup.SignerMap {
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeCDS)
@@ -54,7 +68,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason set in GetParentAddressOrStop()
+		return false // stop-reason set in GetParentAddressOrStop()
 	}
 
 	m := new(dns.Msg)
@@ -73,7 +87,7 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 
 		if _, ok := cdsmap[fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)]; !ok {
 			z.SetStopReason(fmt.Sprintf("Parent DS found that is not in any signer: %d %d %d %s",
-							    ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
+				ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest))
 			return false
 		}
 	}

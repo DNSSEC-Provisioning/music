@@ -45,6 +45,15 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		return false
 	}
 
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_add_csync: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
+	}
+
 	nses := make(map[string]bool)
 
 	stmt, err := z.MusicDB.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
@@ -111,7 +120,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 
 		if _, ok := nses[ns.Ns]; ok {
 			z.SetStopReason(fmt.Sprintf("NS %s still exists in signer %s",
-							ns.Ns, leavingSigner.Name))
+				ns.Ns, leavingSigner.Name))
 			return false
 		}
 	}
@@ -149,6 +158,15 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		return false
 	}
 
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_add_csync: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
+	}
+
 	// TODO: configurable TTL for created CSYNC records
 	ttl := 300
 
@@ -180,7 +198,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
 				z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
-								    signer.Name, err))
+					signer.Name, err))
 				return false
 			}
 			log.Printf("%s: Update %s successfully with CSYNC record sets", z.Name, signer.Name)
