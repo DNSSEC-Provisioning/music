@@ -41,21 +41,21 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
+	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
+
+	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
+	if err != nil {
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		return false
+	}
 
 	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
-	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
 	// this may not be obvious to the casual observer
 	log.Printf("leave_sync_dnskeys: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
 	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
 	delete(z.SGroup.SignerMap, leavingSignerName)
 	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
 		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
-	}
-
-	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
-	if err != nil {
-		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
-		return false
 	}
 
 	log.Printf("%s: Removing DNSKEYs originating from leaving signer %s", z.Name, leavingSigner.Name)
