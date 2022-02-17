@@ -37,10 +37,20 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	}
 
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
+	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
 	leavingSigner, err := z.MusicDB.GetSignerByName(leavingSignerName, false) // not apisafe
 	if err != nil {
 		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
+	}
+
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_add_cds: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, sg.SignerMap, sg.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
 	}
 
 	log.Printf("%s: Verifying that leaving signer %s DNSKEYs has been removed from all signers",
@@ -71,13 +81,6 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	}
 
 	for _, s := range z.SGroup.SignerMap {
-		// the leaving signer is still in the SignerMap even though the logic in this file seems to think it should not be.
-		// https://github.com/DNSSEC-Provisioning/music/issues/130
-		// common/signerops.go seems to think that it should be. We need to decided what we really want here. /rog
-		if s.Name == leavingSignerName {
-			log.Printf("the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
-			continue
-		}
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 		c := new(dns.Client)
@@ -115,17 +118,22 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	cdses := []dns.RR{}
 	cdnskeys := []dns.RR{}
 
-	// https://github.com/DNSSEC-Provisioning/music/issues/130 / rog
 	leavingSignerName := z.FSMSigner // Issue #34: Static leaving signer until metadata is in place
 	if leavingSignerName == "" {
 		log.Fatalf("Leaving signer name for zone %s unset.", z.Name)
 	}
 
+	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
+	// this may not be obvious to the casual observer
+	log.Printf("leave_add_cds: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
+	log.Printf("remove %v from SignerMap %v: for %v", leavingSignerName, z.SGroup.SignerMap, z.SGroup.Name)
+	delete(z.SGroup.SignerMap, leavingSignerName)
+	if _, member := z.SGroup.SignerMap[leavingSignerName]; member {
+		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
+	}
+
 	for _, s := range z.SGroup.SignerMap {
-		if s.Name == leavingSignerName {
-			log.Printf("issue 130: the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
-			continue
-		}
+		log.Printf("#### leave add cds signer to check: %+v\n ", s)
 		m := new(dns.Msg)
 		m.SetQuestion(z.Name, dns.TypeDNSKEY)
 
@@ -138,6 +146,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		}
 
 		for _, a := range r.Answer {
+			log.Printf("#### leave add cds dnskey response %+v\n ", a)
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
 				continue
@@ -151,11 +160,8 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	}
 
 	// Create CDS/CDNSKEY records sets
+	log.Printf("leave_add_cds: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
 	for _, signer := range z.SGroup.SignerMap {
-		if signer.Name == leavingSignerName {
-			log.Printf("issue 130: the leaving signer is still in the SignerMap, not sure which way the bug is but this is a work around for now.")
-			continue
-		}
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {

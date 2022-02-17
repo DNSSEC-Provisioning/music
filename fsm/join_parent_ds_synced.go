@@ -39,7 +39,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 
 		if err != nil {
 			z.SetStopReason(fmt.Sprintf("Unable to fetch CDSes from %s: %s",
-							    s.Name, err))
+				s.Name, err))
 			return false
 		}
 
@@ -107,20 +107,22 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	}
 
 	if !parent_up_to_date {
-		return false  // stop-reason defined above
+		return false // stop-reason defined above
 	}
 
 	log.Printf("%s: DS records in parent are up-to-date", z.Name)
 	return true
 }
 
+/*
 func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("JoinParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
 	return true
 }
-
+*/
 // The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
-/*
+// unpaused the code, I think we might have to have a prereq that Music is the only controller over CDS/CDSNSKEY RRSET
+///*
 func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
@@ -148,14 +150,17 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 
 	return true
 }
-*/
+
+/*
 
 func VerifyCdsRemoved(z *music.Zone) bool {
 	return true
 }
+*/
 
 // The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
-/*
+// unpaused the code, I think we might have to have a prereq that Music is the only controller over CDS/CDSNSKEY RRSET
+///*
 func VerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
 
@@ -184,11 +189,12 @@ func VerifyCdsRemoved(z *music.Zone) bool {
 
 		if len(cdnskeyrrs) > 0 {
 			z.SetStopReason(fmt.Sprintf("CDNSKEY RRset still published by %s\n",
-							     signer.Name))
+				signer.Name))
 			return false
 		}
 	}
 
 	return true
 }
-*/
+
+//*/

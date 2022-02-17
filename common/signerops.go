@@ -382,7 +382,8 @@ func (mdb *MusicDB) SignerLeaveGroup(dbsigner *Signer, g string) (error, string)
 	}
 
 	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
-	log.Printf("remove %v from SignerMap for %v", dbsigner.Name, sg.Name)
+	log.Printf("remove %v from SignerMap %v: for %v", dbsigner.Name, sg.SignerMap, sg.Name)
+	log.Printf("signerops: signer group %+v\n", sg)
 	delete(sg.SignerMap, dbsigner.Name)
 	if _, member := sg.SignerMap[dbsigner.Name]; member {
 		return fmt.Errorf("Signer %s is still a member of group %s", dbsigner.Name, sg.Name), ""
