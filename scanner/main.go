@@ -3,13 +3,52 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"github.com/miekg/dns"
+	"github.com/spf13/viper"
 )
 
 func main() {
+	viper.SetConfigFile(DefaultCfgFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("viper: Could not load config (%s)", err)
+	}
+
 	// zones is the list of zones the scanner will be monitoring
-	zones := ReadConf()
+	zones := ReadConf(viper.GetString("scanner.zones"))
+	
+	interval := viper.GetInt("scanner.interval")
+	if interval < 10 || interval > 900 {
+	   interval = 60
+	}
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+
+	RunScanner(zones)
+
+	for {
+	    select {
+	    	   case <- ticker.C:
+		   	RunScanner(zones)
+		   default:
+			// no default case
+	    }
+	}
+}
+
+func RunScanner(zones map[string]*Parent) {
+     zs := ""
+     if len(zones) == 0 {
+     	log.Printf("RunScanner: no zones to scan.")
+	os.Exit(1)
+     }
+
+     for k, _ := range zones {
+	zs += ", " + k    
+     }
+     log.Printf("RunScanner: scanning %d zones: %s", len(zones), zs[2:])
 	var child_nses []string
 
 	for zone, parent := range zones {

@@ -4,6 +4,7 @@ all:
 	@if [ ! -e ${CERTDIR}/RootCA.crt ] ; then make certs; fi
 	$(MAKE) -C musicd
 	$(MAKE) -C music-cli
+	$(MAKE) -C scanner
 
 fmt:
 	gofmt -w `find common musicd music-cli -type f -name '*.go'`
