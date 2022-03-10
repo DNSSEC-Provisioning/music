@@ -2,5 +2,27 @@ scanner:
    zones:	zones2scan.txt
    interval:	30		# seconds
 
+zones:
+   parents:
+      music.axfr.net.:
+         name:		music.axfr.net
+         tsig:		foo.bar.
+	 children:	[ child1.music.axfr.net, child2.music.axfr.net, child3.music.axfr.net, zone1.music.axfr.net, zone2.music.axfr.net ]
+      catch22.se:
+         name:		catch22.se
+	 tsig:		bar.foo.
+	 children:	[ msat1.catch22.se ]
+
+keys:
+   foo.bar.:
+      algorithm:	hmach-sha256
+      secret:		4ytnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+   bar.foo:
+      algorithm:	hmach-sha256
+      secret:		5xtnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+   foo.foo:
+      algorithm:	hmach-sha256
+      secret:		3ztnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+
 log:
    level:	verbose

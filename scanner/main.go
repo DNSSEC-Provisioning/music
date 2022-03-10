@@ -24,6 +24,7 @@ func main() {
 	if interval < 10 || interval > 900 {
 	   interval = 60
 	}
+	log.Printf("Scanner: will run once every %d seconds\n", interval)
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 
 	RunScanner(zones)
