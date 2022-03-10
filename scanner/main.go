@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+     	var conf Config
 	viper.SetConfigFile(DefaultCfgFile)
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -19,7 +20,10 @@ func main() {
 
 	// zones is the list of zones the scanner will be monitoring
 	zones := ReadConf(viper.GetString("scanner.zones"))
-	
+
+	zonesNG := ReadConfNG(&conf)
+	fmt.Printf("Zones NG: %v\n", zonesNG)
+
 	interval := viper.GetInt("scanner.interval")
 	if interval < 10 || interval > 900 {
 	   interval = 60
@@ -53,7 +57,7 @@ func RunScanner(zones map[string]*Parent) {
 	var child_nses []string
 
 	for zone, parent := range zones {
-		parent.child_ns = make(map[string]*Child)
+	    	parent.child_ns = make(map[string]*Child)
 		log.Printf("Working with zone: %s ", zone)
 
 		// Get DS records for zone from Parent
