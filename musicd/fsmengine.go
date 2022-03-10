@@ -207,7 +207,7 @@ func PushZone(conf *Config, z string) error {
 	if success {
 		dbzone, _ := mdb.GetZone(z)
 		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
-			z, oldstate, dbzone.State)
+			z.Name, oldstate, dbzone.State)
 	} else {
 		log.Printf("PushZone: failed to transition zone '%s' from state '%s'",
 			z, oldstate)
