@@ -8,14 +8,15 @@ import (
 	"github.com/miekg/dns"
 )
 
-func GetIP(hostname string, server string, port string) string {
-	log.Printf("Getting %s IP from %s\n", hostname, server)
+func GetIP(hostname string, serverport string) string {
+	log.Printf("Getting %s IP from %s\n", hostname, serverport)
 	m := new(dns.Msg)
 	m.SetQuestion(hostname, dns.TypeA)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, server+":"+port)
+	// r, _, err := c.Exchange(m, server+":"+port)
+	r, _, err := c.Exchange(m, serverport)
 	if err != nil {
-		log.Printf("%s: Unable to fetch ip from %s: %s", hostname, server, err)
+		log.Printf("%s: Unable to fetch ip from %s: %s", hostname, serverport, err)
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
@@ -31,14 +32,15 @@ func GetIP(hostname string, server string, port string) string {
 	}
 }
 
-func GetNS(zone string, hostname, server string, port string) []string {
-	log.Printf("Getting %s NSes from %s %s\n", zone, hostname, server)
+func GetNS(zone string, hostname, serverport string) []string {
+	log.Printf("Getting %s NS RRset from parent zone %s @ %s\n", zone, hostname, serverport)
 	m := new(dns.Msg)
 	m.SetQuestion(zone, dns.TypeNS)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, server+":"+port)
+	// r, _, err := c.Exchange(m, server+":"+port)
+	r, _, err := c.Exchange(m, serverport)
 	if err != nil {
-		log.Printf("%s: Unable to fetch NSes from %s: %s", zone, server, err)
+		log.Printf("%s: Unable to fetch NSes from %s: %s", zone, serverport, err)
 	}
 
 	var nses []string
@@ -64,20 +66,14 @@ func GetNS(zone string, hostname, server string, port string) []string {
 }
 
 //func GetDS(zone string, hostname string, server string, port string) []string {
-func GetDS(zone string, hostname string, server string, port string) []*dns.DS {
-     	var serverport string
-     	if strings.Contains(server, ":") {
-	   serverport = server
-	} else {
-	   serverport = server + ":" + port
-	}
-	log.Printf("Getting %s DSes from %s %s\n", zone, hostname, server)
+func GetDS(zone string, hostname string, serverport string) []*dns.DS {
+	log.Printf("Getting %s DS RRset from parent zone %s @ %s\n", zone, hostname, serverport)
 	m := new(dns.Msg)
 	m.SetQuestion(zone, dns.TypeDS)
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, serverport)
 	if err != nil {
-		log.Printf("%s: Unable to fetch DSes from %s: %s", zone, server, err)
+		log.Printf("%s: Unable to fetch DSes from %s: %s", zone, serverport, err)
 	}
 
 	//var dses []string

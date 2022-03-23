@@ -15,7 +15,7 @@ type Parent struct {
 	ds       []*dns.DS
 }
 
-// Authoritave Nameserver
+// Authoritative Nameserver
 type Child struct {
 	hostname string
 	ip       string
@@ -28,6 +28,6 @@ type Child struct {
 
 type ZoneNG struct {
      PName		string
-     DelegationNS	int
+     DelegationNS	map[string]*Child
      CurrentDS		[]*dns.DS
 }

@@ -138,7 +138,6 @@ func ReadConfNG(conf *Config) error {
 
 func ValidateConfig(v *viper.Viper, cfgfile string) error {
 	var config Config
-	var msg string
 
 	if v == nil {
 		if err := viper.Unmarshal(&config); err != nil {
