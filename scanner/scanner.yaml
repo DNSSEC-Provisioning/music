@@ -5,18 +5,23 @@ scanner:
 
 parents:
    - name:		music.axfr.net
+     address:		1.2.3.4:53
      tsigname:		foo.bar.
      children:	[ child1.music.axfr.net, child2.music.axfr.net, child3.music.axfr.net, zone1.music.axfr.net, zone2.music.axfr.net ]
    - name:		catch22.se
+     address:		1.2.3.4:53
      tsigname:		bar.foo.
      children:	[ msat1.catch22.se ]
    - name:		catch23.se
+     address:		1.2.3.4:53
      tsigname:		bar.foo.
      children:	[ msat1.catch23.se ]
    - name:		catch24.se
+     address:		1.2.3.4:53
      tsigname:		bar.foo.
      children:	[ msat1.catch24.se ]
    - name:		catch25.se
+     address:		1.2.3.4:53
      tsigname:		bar.foo
      children:	[ msat1.catch25.se, foo.bar.baz.catch25.se ]
 

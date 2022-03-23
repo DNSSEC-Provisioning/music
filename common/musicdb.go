@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/spf13/viper"
+	// "github.com/spf13/viper"
 )
 
 var DefaultTables = map[string]string{
@@ -119,8 +119,8 @@ func dbSetupTables(db *sql.DB) bool {
 	return false
 }
 
-func NewDB(force bool) *MusicDB {
-	dbfile := viper.GetString("common.db")
+func NewDB(dbfile string, force bool) *MusicDB {
+	// dbfile := viper.GetString("common.db")
 	log.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
 
 	_, err := os.Stat(dbfile)

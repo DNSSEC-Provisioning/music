@@ -25,3 +25,9 @@ type Child struct {
 	//cdnskey  []string //not implemented
 	csync string
 }
+
+type ZoneNG struct {
+     PName		string
+     DelegationNS	int
+     CurrentDS		[]*dns.DS
+}

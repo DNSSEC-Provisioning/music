@@ -65,11 +65,17 @@ func GetNS(zone string, hostname, server string, port string) []string {
 
 //func GetDS(zone string, hostname string, server string, port string) []string {
 func GetDS(zone string, hostname string, server string, port string) []*dns.DS {
+     	var serverport string
+     	if strings.Contains(server, ":") {
+	   serverport = server
+	} else {
+	   serverport = server + ":" + port
+	}
 	log.Printf("Getting %s DSes from %s %s\n", zone, hostname, server)
 	m := new(dns.Msg)
 	m.SetQuestion(zone, dns.TypeDS)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, server+":"+port)
+	r, _, err := c.Exchange(m, serverport)
 	if err != nil {
 		log.Printf("%s: Unable to fetch DSes from %s: %s", zone, server, err)
 	}
