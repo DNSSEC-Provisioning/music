@@ -68,8 +68,8 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 			removes_len += len(remove)
 		}
 	}
-	log.Printf("DDNS Updater: signer: %s, fqdn: %s inserts: %d removes: %d\n",
-		signer.Name, fqdn, inserts_len, removes_len)
+	log.Printf("DDNS Updater: signer: %s, zone: %s, fqdn: %s inserts: %d removes: %d\n",
+		signer.Name, zone, fqdn, inserts_len, removes_len)
 	if inserts_len == 0 && removes_len == 0 {
 		return fmt.Errorf("Inserts and removes empty, nothing to do")
 	}

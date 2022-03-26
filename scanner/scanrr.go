@@ -93,14 +93,14 @@ func GetDS(zone string, hostname string, serverport string) []*dns.DS {
 }
 
 //func GetCDS(zone string, hostname string, server string, port string) []string {
-func GetCDS(zone string, hostname string, server string, port string) []*dns.CDS {
-	log.Printf("Getting %s CDSes from %s %s\n", zone, hostname, server)
+func GetCDS(zone string, nsname string, serverport string) []*dns.CDS {
+	log.Printf("Getting %s CDSes from %s @ %s\n", zone, nsname, serverport)
 	m := new(dns.Msg)
 	m.SetQuestion(zone, dns.TypeCDS)
 	c := new(dns.Client)
-	r, _, err := c.Exchange(m, server+":"+port)
+	r, _, err := c.Exchange(m, serverport)
 	if err != nil {
-		log.Printf("%s: Unable to fetch CDSes from %s: %s", zone, server, err)
+		log.Printf("Error: Unable to fetch %s CDS from %s: %s", zone, serverport, err)
 	}
 
 	//var cdses []string
@@ -127,6 +127,33 @@ func GetCsync(zone string, hostname string, server string, port string) string {
 	r, _, err := c.Exchange(m, server+":"+port)
 	if err != nil {
 		log.Printf("%s: Unable to fetch CSYNC from %s: %s", zone, server, err)
+	}
+
+	if r.Rcode != dns.RcodeSuccess {
+		log.Printf("No CSYNC Received: %v\n", dns.RcodeToString[r.Rcode])
+		csync := ""
+		return csync
+	} else if len(r.Answer) == 0 {
+		log.Printf("No CSYNC RR\n")
+		csync := ""
+		return csync
+	} else {
+		// Only grabbing the first RR
+		answer := r.Answer[0].String()
+		csync := answer[strings.LastIndex(answer, "\t")+1:]
+		// debug	fmt.Println(ip)
+		return csync
+	}
+}
+
+func GetCsyncNG(zone, nsname, serverport string) string {
+	log.Printf("Getting %s CSYNC from %s @ %s\n", zone, nsname, serverport)
+	m := new(dns.Msg)
+	m.SetQuestion(zone, dns.TypeCSYNC)
+	c := new(dns.Client)
+	r, _, err := c.Exchange(m, serverport)
+	if err != nil {
+		log.Printf("Error: Unable to fetch %s CSYNC from %s: %s", zone, serverport, err)
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
@@ -202,6 +229,63 @@ func CreateNsUpdate(zone string, parent *Parent) ([]dns.RR, []dns.RR, error) {
 	return nsAdd, nsRemove, nil
 }
 
+func CreateNsUpdateNG(zone string, zng ZoneNG) ([]dns.RR, []dns.RR, error) {
+	// This logic needs discussion, I am shooting from the hip here
+	cNsesmap := make(map[string]string)
+	pNsesmap := make(map[string]string)
+	//var nsAdd []string
+	var nsAdd []dns.RR
+	//var nsRemove []string
+	var nsRemove []dns.RR
+
+	// Get a full map of "all" nses the children know about for comparison
+	for nsname, zns := range zng.DelegationNS {
+		pNsesmap[nsname] = nsname
+		for ckey, cvalue := range zns.NSes {
+			cNsesmap[ckey] = cvalue
+		}
+	}
+
+	// Compare NS for all children
+	// If not match at children report
+	for _, zns := range zng.DelegationNS {
+		for ckey, _ := range cNsesmap {
+			if _, ok := zns.NSes[ckey]; !ok {
+			        // WTF? children?
+				// return nil, nil, fmt.Errorf("children are not in sync send error, ns:%s is not in child:%s", ckey, child.hostname)
+				return nil, nil, fmt.Errorf("Zone %s: nameservers are not in sync send error, ns:%s is not in NS:%s", ckey, zns.NSName)
+			}
+		}
+	}
+
+	// Diff from parent
+	// If in child.nses not in parent.child_nses = add to parent
+	for key, _ := range cNsesmap {
+		if _, ok := pNsesmap[key]; !ok {
+			addme, err := dns.NewRR(fmt.Sprintf("%s 30 IN NS %s", zone, key))
+			if err != nil {
+				log.Printf("error: %v\n", err)
+			}
+			nsAdd = append(nsAdd, addme)
+		}
+	}
+
+	// If in parent.child_nses not in child = remove from parent
+	for key, _ := range pNsesmap {
+		if _, ok := cNsesmap[key]; !ok {
+			addme, err := dns.NewRR(fmt.Sprintf("%s 30 IN NS %s", zone, key))
+			if err != nil {
+				log.Printf("error: %v\n", err)
+			}
+			nsRemove = append(nsRemove, addme)
+		}
+	}
+
+	log.Printf("%T adds  -> %v", nsAdd, nsAdd)
+	log.Printf("%T removes  -> %v", nsRemove, nsRemove)
+	return nsAdd, nsRemove, nil
+}
+
 func CreateDsUpdate(zone string, parent *Parent) ([]*dns.CDS, []*dns.DS) {
 	dsmap := make(map[string]*dns.DS)
 	cdsmap := make(map[string]*dns.CDS)
@@ -223,6 +307,51 @@ func CreateDsUpdate(zone string, parent *Parent) ([]*dns.CDS, []*dns.DS) {
 				cds.DigestType, cds.Digest)] = cds
 		}
 		log.Printf("%s -> CDS = %v", child.hostname, cdsmap)
+	}
+
+	// if in CDSmap but not in DSmap = add to DS-SET
+	for key, _ := range cdsmap {
+		if _, ok := dsmap[key]; !ok {
+			dsadd = append(dsadd, cdsmap[key])
+		}
+	}
+
+	// if in DSmap but not in CDSmap = Remove from DS-SET
+	for key, _ := range dsmap {
+		if _, ok := cdsmap[key]; !ok {
+			dsremove = append(dsremove, dsmap[key])
+		}
+	}
+
+	log.Printf("Add to DS set %v", dsadd)
+	log.Printf("Remove from DS set %v", dsremove)
+	return dsadd, dsremove
+}
+
+func CreateDsUpdateNG(z ZoneNG) ([]*dns.CDS, []*dns.DS) {
+	dsmap := make(map[uint16]*dns.DS)
+	cdsmap := make(map[uint16]*dns.CDS)
+	var dsremove []*dns.DS
+	var dsadd []*dns.CDS // Gets converte to DS in main.go
+	log.Printf("Zone %s: Creating DS Update", z.Name)
+
+	// DSes
+	for _, ds := range z.CurrentDS {
+		// dsmap[fmt.Sprintf("%d %d %d %s", ds.KeyTag, ds.Algorithm,
+		// 	ds.DigestType, ds.Digest)] = ds
+		dsmap[ds.KeyTag] = ds
+	}
+	log.Printf("%s -> DS = %v", z.PName, dsmap)
+
+	// CDSes TODO: Possible bug that the childrens CDS records are not compared to each other.
+	for _, zns := range z.DelegationNS {
+		for _, cds := range zns.CDS {
+			// cdsmap[fmt.Sprintf("%d %d %d %s", cds.KeyTag,
+			// 			  cds.Algorithm,
+			//	cds.DigestType, cds.Digest)] = cds
+			cdsmap[cds.KeyTag] = cds
+		}
+		log.Printf("%s -> CDS = %v", zns.NSName, cdsmap)
 	}
 
 	// if in CDSmap but not in DSmap = add to DS-SET

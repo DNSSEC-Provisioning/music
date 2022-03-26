@@ -16,8 +16,10 @@ import (
 
 type Config struct {
 	Scanner   ScannerConf
-	Parents   []ParentConf
-	ParentMap map[string]ParentConf
+	Signers	  []music.Signer
+	SignerMap map[string]music.Signer
+	Parents   []ParentNG
+	ParentMap map[string]ParentNG
 	ZoneMap   map[string]ZoneNG
 	Keys      []TsigKey
 	KeyMap    map[string]TsigKey
@@ -30,7 +32,7 @@ type ScannerConf struct {
 	Interval int
 }
 
-type ParentConf struct {
+type xxxParentConf struct {
 	Name     string `validate:"required"`
 	Address  string `validate:"required", "host_port"`
 	TsigName string `validate:"required"`
@@ -38,7 +40,7 @@ type ParentConf struct {
 	Children []string
 }
 
-type TsigKey struct {
+type xxxTsigKey struct {
 	Name      string
 	Algorithm string
 	Secret    string
@@ -97,12 +99,19 @@ func ReadConf(filename string) map[string]*Parent {
 func ReadConfNG(conf *Config) error {
 	zones := make(map[string]ZoneNG, 5)
 	km := map[string]TsigKey{}
-	pm := map[string]ParentConf{}
+	pm := map[string]ParentNG{}
+	sm := map[string]music.Signer{}
 
 	err := viper.Unmarshal(&conf)
 	if err != nil {
 		log.Fatalf("viper: Unable to decode into struct: %v", err)
 	}
+
+	fmt.Printf("Signers (%d): %v\n", len(conf.Signers), conf.Signers)
+	for _, s := range conf.Signers {
+		sm[s.Name] = s
+	}
+	conf.SignerMap = sm
 
 	fmt.Printf("Keys (%d): %v\n", len(conf.Keys), conf.Keys)
 	for _, k := range conf.Keys {
@@ -127,6 +136,7 @@ func ReadConfNG(conf *Config) error {
 				log.Fatalf("Error: %s is not a child of %s", c, p.Name)
 			}
 			zones[c] = ZoneNG{
+				Name:  c,
 				PName: p.Name,
 			}
 		}
