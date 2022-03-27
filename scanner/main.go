@@ -51,15 +51,11 @@ func main() {
 		        runcount++
 			log.Printf("***** Starting run %d ****", runcount)
 			RunScanner(zones)
-			log.Printf("***** Run %d: first scanner done ****", runcount)
 			RunScannerNG(&conf, conf.ZoneMap)
 			log.Printf("***** Run %d complete ****", runcount)
 		
-//		default:
-//			log.Printf("*** Default ***")
-			// no default case
+		// no default case
 		}
-		log.Printf("*** Outside select ***")
 	}
 }
 

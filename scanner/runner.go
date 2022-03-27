@@ -52,7 +52,7 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 
 		// get zone NSes from parent and create ZoneNS struct
 		// zone_nses = GetNS(zone, z.PName, parent.Address)
-		updater_old := GetUpdaterNG("parent")
+//		updater_old := GetUpdaterNG("parent")
 		updater := music.GetUpdater(signer.Method)
 		err, ns_rrs := updater.FetchRRset(&signer, z.PName, zone, dns.TypeNS)
 		if err != nil {
@@ -157,7 +157,8 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 			err = updater.Update(&signer, z.PName, zone, &[][]dns.RR{adds},
 				&[][]dns.RR{removes})
 			if err != nil {
-				log.Printf("Error: updater.Update(%s, DS): %v", zone, err)
+				log.Printf("Error: updater.Update(zone: %s, rr: %s DS): %v",
+						   z.PName, zone, err)
 			}
 			fmt.Println(output)
 		} else {
@@ -188,18 +189,19 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 			if err != nil {
 				fmt.Printf("CSYNC Update got err %v\n", err)
 			}
-			parent := conf.ParentMap[z.PName]
-			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds},
-				&[][]dns.RR{removes}, &output)
-			if err != nil {
-				fmt.Printf("bob Got an err %v\n", err)
-			}
-			fmt.Println(output)
+//			parent := conf.ParentMap[z.PName]
+//			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds},
+//				&[][]dns.RR{removes}, &output)
+//			if err != nil {
+//				fmt.Printf("bob Got an err %v\n", err)
+//			}
+//			fmt.Println(output)
 
 			err = updater.Update(&signer, z.PName, zone, &[][]dns.RR{adds},
 				&[][]dns.RR{removes})
 			if err != nil {
-				log.Printf("Error: updater.Update(%s, NS): %v", zone, err)
+				log.Printf("Error: updater.Update(zone %s, RR: %s NS): %v",
+						   z.PName, zone, err)
 			}
 
 		} else {
