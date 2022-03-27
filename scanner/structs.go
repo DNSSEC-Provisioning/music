@@ -20,8 +20,8 @@ type Parent struct {
 type ParentNG struct {
 	Name     string `validate:"required"`
 	Signer	 string `validate:"required"`
-	Address  string `validate:"required", "host_port"`
-	TsigName string `validate:"required"`
+	Address  string // `validate:"required", "host_port"`
+	TsigName string // `validate:"required"`
 	TsigKey  TsigKey
 	Children []string
 }

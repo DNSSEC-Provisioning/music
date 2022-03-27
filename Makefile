@@ -16,5 +16,11 @@ certs:
 	openssl req -new -nodes -newkey rsa:2048 -keyout "${CERTDIR}/localhost.key" -out "${CERTDIR}/localhost.csr" -subj "/C=SE/ST=Confusion/L=Lost/O=Music-Certificates/CN=localhost.local"
 	openssl x509 -req -sha256 -days 1024 -in "${CERTDIR}/localhost.csr" -CA "${CERTDIR}/RootCA.pem" -CAkey "${CERTDIR}/RootCA.key" -CAcreateserial -extfile domains.ext -out "${CERTDIR}/localhost.crt"
 
+tar:
+	cp musicd/musicd.yaml.sample etc/
+	cp music-cli/music-cli.yaml.sample etc/
+	cp scanner/scanner.yaml.sample etc/
+	tar zcvf music-`uname -s`.tar.gz sbin etc/*.yaml.sample
+
 tags:	*/*.go */*/*.go 
 	/Applications/Aquamacs.app/Contents/MacOS/bin/etags */*.go */*/*.go > TAGS
