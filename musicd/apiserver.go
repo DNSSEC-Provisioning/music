@@ -533,16 +533,18 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			fmt.Printf("apiserver: AddSignerGroup\n")
-			err := mdb.AddSignerGroup(sgp.Name)
+			err, msg := mdb.AddSignerGroup(sgp.Name)
 			if err != nil {
 				log.Printf("Error from AddSignerGroup: %v", err)
 			}
+			resp.Message = msg
 
 		case "delete":
-			err := mdb.DeleteSignerGroup(sgp.Name)
+			err, msg := mdb.DeleteSignerGroup(sgp.Name)
 			if err != nil {
 				log.Printf("Error from DeleteSignerGroup: %v", err)
 			}
+			resp.Message = msg
 		default:
 
 		}

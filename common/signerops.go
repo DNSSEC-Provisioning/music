@@ -136,7 +136,6 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 	dbsigner.UseTcp = us.UseTcp
 	dbsigner.UseTSIG = us.UseTSIG
 
-	//	mdb.mu.Lock()
 	tx, err := mdb.Begin()
 	if err != nil {
 		log.Printf("UpdateSigner: Error from mdb.Begin(): %v", err)
@@ -144,7 +143,6 @@ func (mdb *MusicDB) UpdateSigner(dbsigner *Signer, us Signer) (error, string) {
 
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
 		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
-	//	mdb.mu.Unlock()
 	tx.Commit()
 
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
