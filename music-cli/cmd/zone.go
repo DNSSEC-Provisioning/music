@@ -168,8 +168,6 @@ var zoneMetaCmd = &cobra.Command{
 	Use:   "meta",
 	Short: "Add or update metadata for zone",
 	Run: func(cmd *cobra.Command, args []string) {
-		//		failure, _ := ZoneMeta(dns.Fqdn(zonename), metakey, metavalue)
-
 		zone := dns.Fqdn(zonename)
 		if zone == "" {
 			log.Fatalf("ZoneMeta: zone not specified. Terminating.\n")
@@ -423,7 +421,7 @@ func SendZoneCommand(zonename string, data music.ZonePost) music.ZoneResponse {
 	json.NewEncoder(bytebuf).Encode(data)
 	status, buf, err := api.Post("/zone", bytebuf.Bytes())
 	if err != nil {
-		log.Fatalf("SendZoneCommand: Error from api.Post:", err)
+		log.Fatalf("SendZoneCommand: Error from api.Post: %v", err)
 
 	}
 	if cliconf.Debug {
@@ -434,7 +432,7 @@ func SendZoneCommand(zonename string, data music.ZonePost) music.ZoneResponse {
 	var zr music.ZoneResponse
 	err = json.Unmarshal(buf, &zr)
 	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
+		log.Fatalf("Error from unmarshal: %v", err)
 	}
 	return zr
 }
