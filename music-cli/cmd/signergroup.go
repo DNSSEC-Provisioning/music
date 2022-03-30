@@ -128,4 +128,3 @@ func PrintSignerGroups(sgr music.SignerGroupResponse) {
 		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}
 }
-±
