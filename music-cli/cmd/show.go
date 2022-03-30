@@ -4,65 +4,67 @@
 package cmd
 
 import (
+        "bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 
 	"github.com/spf13/cobra"
-
 	music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var showCmd = &cobra.Command{
 	Use:   "show",
 	Short: "A brief description of your command",
-	//    Run: func(cmd *cobra.Command, args []string) {
-	//        fmt.Println("show called")
-	//    },
+}
+
+var showUpdatersCmd = &cobra.Command{
+	Use:   "updaters",
+	Short: "List the updaters known to musicd",
+	Run: func(cmd *cobra.Command, args []string) {
+		sr := SendShowCommand(music.ShowPost{ Command: "updaters"})
+		for u, v := range sr.Updaters {
+		    if v {
+		       fmt.Printf("%s\n", u)
+		    }
+		}
+	},
 }
 
 var showApiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		ShowMusicdApi()
+		sr := SendShowCommand(music.ShowPost{ Command: "api"})
+		for _, l := range sr.ApiData {
+		    fmt.Printf("%s\n", l)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(showCmd)
-	showCmd.AddCommand(showApiCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// showCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// showCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	showCmd.AddCommand(showApiCmd, showUpdatersCmd)
 }
 
-func ShowMusicdApi() {
+func SendShowCommand(data music.ShowPost) music.ShowResponse {
 
-	status, buf, err := api.Get("/show/api")
+	bytebuf := new(bytes.Buffer)
+	json.NewEncoder(bytebuf).Encode(data)
+	status, buf, err := api.Post("/show", bytebuf.Bytes())
 	if err != nil {
-		log.Println("Error from Api Get:", err)
-		return
+		log.Fatalf("SendShowCommand: Error from api.Post: %v", err)
+
 	}
-	if cliconf.Verbose {
-		fmt.Printf("Status: %d\n", status)
+	if cliconf.Debug {
+		fmt.Println()
+		fmt.Printf("SendShowCommand Status: %d\n", status)
 	}
 
-	var sar music.ShowAPIresponse
-	err = json.Unmarshal(buf, &sar)
+	var sr music.ShowResponse
+	err = json.Unmarshal(buf, &sr)
 	if err != nil {
-		log.Fatalf("Error from unmarshal: %v\n", err)
+		log.Fatalf("Error from unmarshal: %v", err)
 	}
-
-	for _, l := range sar.Data {
-		fmt.Printf("%s\n", l)
-	}
-	return
+	return sr
 }
