@@ -32,20 +32,6 @@ type ScannerConf struct {
 	Interval int
 }
 
-type xxxParentConf struct {
-	Name     string `validate:"required"`
-	Address  string `validate:"required", "host_port"`
-	TsigName string `validate:"required"`
-	TsigKey  TsigKey
-	Children []string
-}
-
-type xxxTsigKey struct {
-	Name      string
-	Algorithm string
-	Secret    string
-}
-
 type LogConf struct {
 	Level string `validate:"required"`
 }
@@ -120,14 +106,14 @@ func ReadConfNG(conf *Config) error {
 	}
 	conf.KeyMap = km
 
-	var ok bool
+	// var ok bool
 	fmt.Printf("There are %d parent zones:\n", len(conf.Parents))
 	for _, p := range conf.Parents {
 		p.Name = dns.Fqdn(p.Name)
-		p.TsigName = dns.Fqdn(p.TsigName)
-		if p.TsigKey, ok = km[p.TsigName]; !ok {
-			log.Fatalf("TSIG key '%s' is unknown.", p.TsigName)
-		}
+		// p.TsigName = dns.Fqdn(p.TsigName)
+		// if p.TsigKey, ok = km[p.TsigName]; !ok {
+		// 	log.Fatalf("TSIG key '%s' is unknown.", p.TsigName)
+		// }
 		pm[p.Name] = p
 		fmt.Printf("%s (%d children): %v\n", dns.Fqdn(p.Name), len(p.Children), p.Children)
 		for _, c := range p.Children {

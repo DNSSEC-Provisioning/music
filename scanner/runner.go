@@ -39,12 +39,13 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 		log.Printf("Working with zone %s (fetching DS + all NSes from parent)", zone)
 		parent := conf.ParentMap[z.PName]
 		if signer, known = conf.SignerMap[parent.Signer]; !known {
-			log.Fatalf("Zone %s with parent %s depends on unknown signer %s",
+			log.Fatalf("Zone %s with parent %s depends on unknown signer '%s'",
 				zone, z.PName, parent.Signer)
 		}
 
 		// Get DS records for zone from Parent
-		z.CurrentDS = GetDS(zone, z.PName, parent.Address)
+
+		z.CurrentDS = GetDS(zone, z.PName, signer.Address+":"+signer.Port)
 		for _, ds := range z.CurrentDS {
 			log.Printf("%s", ds)
 		}
