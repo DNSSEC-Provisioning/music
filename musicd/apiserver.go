@@ -549,6 +549,8 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		}
 
+// https://dnsbelgium.github.io/mercator-workshop
+
 		ss, err := mdb.ListSignerGroups()
 		if err != nil {
 			log.Printf("Error from ListSignerGroups: %v", err)
