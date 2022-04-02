@@ -64,7 +64,7 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		tls := ""
 		if r.TLS != nil {
-		   tls = "TLS "
+			tls = "TLS "
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -175,8 +175,8 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
-	enginecheck := conf.Internal.EngineCheck	// need to be able to send this to Zone{Add,...}
-	
+	enginecheck := conf.Internal.EngineCheck // need to be able to send this to Zone{Add,...}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
@@ -377,7 +377,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			return
 
 		case "meta":
-		        dbzone.ZoneType = zp.Zone.ZoneType 
+			dbzone.ZoneType = zp.Zone.ZoneType
 			err, resp.Msg = mdb.ZoneSetMeta(dbzone, zp.Metakey, zp.Metavalue)
 			if err != nil {
 				// log.Printf("Error from ZoneSetMeta: %v", err)
@@ -533,16 +533,18 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			fmt.Printf("apiserver: AddSignerGroup\n")
-			err := mdb.AddSignerGroup(sgp.Name)
+			err, msg := mdb.AddSignerGroup(sgp.Name)
 			if err != nil {
 				log.Printf("Error from AddSignerGroup: %v", err)
 			}
+			resp.Message = msg
 
 		case "delete":
-			err := mdb.DeleteSignerGroup(sgp.Name)
+			err, msg := mdb.DeleteSignerGroup(sgp.Name)
 			if err != nil {
 				log.Printf("Error from DeleteSignerGroup: %v", err)
 			}
+			resp.Message = msg
 		default:
 
 		}
@@ -618,38 +620,53 @@ func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func APIshowAPI(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *http.Request) {
+func APIshow(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *http.Request) {
 	address := viper.GetString("services.apiserver.api")
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		log.Printf("APIshowAPI: received /show/api request from %s.\n", r.RemoteAddr)
-		message := "All ok, here's the stuff"
+		decoder := json.NewDecoder(r.Body)
+		var sp music.ShowPost
+		err := decoder.Decode(&sp)
+		if err != nil {
+			log.Println("APIshow: error decoding show post:", err)
+		}
 
-		resp := []string{fmt.Sprintf("API provided by STATUSD listening on: %s",
-			address)}
+		log.Printf("APIshow: received /show request (command: %s) from %s.\n",
+			sp.Command, r.RemoteAddr)
 
-		walker := func(route *mux.Route, router *mux.Router,
-			ancestors []*mux.Route) error {
-			path, _ := route.GetPathTemplate()
-			methods, _ := route.GetMethods()
-			for m := range methods {
-				// resp += fmt.Sprintf("%-6s %s\n", methods[m], path)
-				resp = append(resp, fmt.Sprintf("%-6s %s",
-					methods[m], path))
+		var resp = music.ShowResponse{
+			Status: 101,
+		}
+
+		switch sp.Command {
+		case "api":
+			message := "All ok, here are all defined API endpoints"
+
+			data := []string{fmt.Sprintf("API provided by MUSICD listening on: %s",
+				address)}
+
+			walker := func(route *mux.Route, router *mux.Router,
+				ancestors []*mux.Route) error {
+				path, _ := route.GetPathTemplate()
+				methods, _ := route.GetMethods()
+				for m := range methods {
+					data = append(data, fmt.Sprintf("%-6s %s", methods[m], path))
+				}
+				return nil
 			}
-			return nil
-		}
-		if err := router.Walk(walker); err != nil {
-			log.Panicf("Logging err: %s\n", err.Error())
-		}
-		response := music.ShowAPIresponse{
-			Status:  101,
-			Message: message,
-			Data:    resp,
+			if err := router.Walk(walker); err != nil {
+				log.Panicf("Logging err: %s\n", err.Error())
+			}
+			resp.Message = message
+			resp.ApiData = data
+
+		case "updaters":
+			resp.Message = "Defined updaters"
+			resp.Updaters = music.ListUpdaters()
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(response)
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
 			log.Printf("Error from Encoder: %v\n", err)
 		}
@@ -668,7 +685,7 @@ func SetupRouter(conf *Config) *mux.Router {
 	sr.HandleFunc("/signergroup", APIsignergroup(conf)).Methods("POST")
 	sr.HandleFunc("/test", APItest(conf)).Methods("POST")
 	sr.HandleFunc("/process", APIprocess(conf)).Methods("POST")
-	sr.HandleFunc("/show/api", APIshowAPI(conf, r)).Methods("POST", "GET")
+	sr.HandleFunc("/show", APIshow(conf, r)).Methods("POST")
 
 	return r
 }

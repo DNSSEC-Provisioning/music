@@ -1,3 +1,4 @@
+# parent : child : child_ns : child_ns_ip : tsigalg:tsigname:tsigkey
 catch22.se.:msat1.catch22.se.:ns1.catch22.se.:13.48.238.90:53:hmac-sha256:musiclab.parent:4ytnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
 music.axfr.net.:child2.music.axfr.net.:master.johani.org.:212.247.165.231:53:hmac-sha256:musiclab.parent:4ytnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
 music.axfr.net.:child1.music.axfr.net.:master.johani.org.:212.247.165.231:53:hmac-sha256:musiclab.parent:4ytnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=

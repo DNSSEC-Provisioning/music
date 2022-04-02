@@ -139,7 +139,7 @@ func main() {
 	apistopper := make(chan struct{})
 	conf.Internal.EngineCheck = make(chan music.EngineCheck, 100)
 
-	conf.Internal.MusicDB = music.NewDB(false) // Don't drop status tables if they exist
+	conf.Internal.MusicDB = music.NewDB(viper.GetString("common.db"), false) // Don't drop status tables if they exist
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 	fsml := fsm.NewFSMlist()

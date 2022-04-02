@@ -13,8 +13,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func (mdb *MusicDB) AddSignerGroup(group string) error {
-	fmt.Printf("AddSignerGroup(%s)\n", group)
+func (mdb *MusicDB) AddSignerGroup(sg string) (error, string) {
+	fmt.Printf("AddSignerGroup(%s)\n", sg)
+
+	if sg == "" {
+		return errors.New("Signer group without name cannot be created"), ""
+	}
+	
+	_, err := mdb.GetSignerGroup(sg, false)
+	if err == nil {
+	    return err, fmt.Sprintf("Signergroup %s already exists.", sg)
+	}
+
 	addcmd := "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
 	addstmt, err := mdb.Prepare(addcmd)
 	if err != nil {
@@ -22,13 +32,13 @@ func (mdb *MusicDB) AddSignerGroup(group string) error {
 	}
 
 	mdb.mu.Lock()
-	_, err = addstmt.Exec(group)
+	_, err = addstmt.Exec(sg)
 	mdb.mu.Unlock()
 
 	if CheckSQLError("AddSignerGroup", addcmd, err, false) {
-		return err
+		return err, fmt.Sprintf("Signergroup %s not created. Reason: %v", sg, err)
 	}
-	return nil
+	return nil, fmt.Sprintf("Signergroup %s created.", sg)
 }
 
 const (
@@ -90,8 +100,10 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 	return &SignerGroup{}, err
 }
 
-// DeleteSignerGroup: it is always possible to delete a signer group. If there are signers
-// that are part of the signer group then they are thrown out. Obviously, deleting a signer
+// DeleteSignerGroup: it is always possible to delete a signer group.
+// * If there are signers that are part of the signer group then they are thrown out.
+// * If there are zones that are part of the signer group, then they are thrown out.
+// Obviously, deleting a signer
 // group is a major change that should not be undertaken lightly, but at the same time it is
 // more or less the only tool we have to force a cleanup if or when stuff has gotten seriously
 // out of whack.
@@ -100,31 +112,55 @@ const (
 	DSGsql1 = "DELETE FROM signergroups WHERE name=?"
 	DSGsql2 = "UPDATE signers SET sgroup=? WHERE sgroup=?"
 	DSGsql3 = "DELETE FROM group_signers WHERE name=?"
+	DSGsql4 = "UPDATE zones SET sgroup='' WHERE sgroup=?"
 )
 
-func (mdb *MusicDB) DeleteSignerGroup(group string) error {
-	mdb.mu.Lock()
+func (mdb *MusicDB) DeleteSignerGroup(group string) (error, string) {
+	_, err := mdb.GetSignerGroup(group, false)
+	if err != nil {
+	    return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	}
+
+        tx, err := mdb.Begin()
+	if err != nil {
+	   log.Printf("DeleteSignerGroup: Error from mdb.Begin(): %v", err)
+	}
+	defer tx.Commit()
+	
+	// mdb.mu.Lock()
 	stmt, err := mdb.Prepare(DSGsql1)
 	if err != nil {
 		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql1, err)
 	}
 	_, err = stmt.Exec(group)
 	if CheckSQLError("DeleteSignerGroup", DSGsql1, err, false) {
-		mdb.mu.Unlock()
-		return err
+		// mdb.mu.Unlock()
+		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
 
 	stmt, err = mdb.Prepare(DSGsql3)
 	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from db.Prepare: %v\n", err)
+		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql3, err)
 	}
-	_, err = stmt.Exec(group)
-	mdb.mu.Unlock()
+		_, err = stmt.Exec(group)
+	// mdb.mu.Unlock()
 
 	if CheckSQLError("DeleteSignerGroup", DSGsql3, err, false) {
-		return err
+		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
-	return nil
+
+	stmt, err = mdb.Prepare(DSGsql4)
+	if err != nil {
+		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql4, err)
+	}
+	_, err = stmt.Exec(group)
+	// mdb.mu.Unlock()
+
+	if CheckSQLError("DeleteSignerGroup", DSGsql3, err, false) {
+		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	}
+
+	return nil, fmt.Sprintf("Signergroup %s deleted. Any zones or signers in signergroup were detached.", group)
 }
 
 const (

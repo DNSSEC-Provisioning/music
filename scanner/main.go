@@ -8,47 +8,73 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/spf13/viper"
+
+	"github.com/DNSSEC-Provisioning/music/common"
 )
 
 func main() {
+	var conf Config
 	viper.SetConfigFile(DefaultCfgFile)
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("viper: Could not load config (%s)", err)
 	}
 
+	ValidateConfig(nil, DefaultCfgFile) // will terminate on error
+
+	conf.MusicDB = music.NewDB(viper.GetString("scanner.db"), false)
+
 	// zones is the list of zones the scanner will be monitoring
 	zones := ReadConf(viper.GetString("scanner.zones"))
-	
+
+	err = ReadConfNG(&conf)
+	if err != nil {
+		log.Fatalf("This cannot happen (ReadConfNG returning an error)")
+	}
+	fmt.Printf("Zones NG: %v\n", conf.ZoneMap)
+
 	interval := viper.GetInt("scanner.interval")
 	if interval < 10 || interval > 900 {
-	   interval = 60
+		interval = 60
 	}
+	log.Printf("Scanner: will run once every %d seconds\n", interval)
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 
+	runcount := 1
 	RunScanner(zones)
-
+	RunScannerNG(&conf, conf.ZoneMap)
+	log.Printf("***** Run %d complete *****", runcount)
+	
 	for {
-	    select {
-	    	   case <- ticker.C:
-		   	RunScanner(zones)
-		   default:
-			// no default case
-	    }
+		select {
+		case <-ticker.C:
+		        runcount++
+			log.Printf("***** Starting run %d ****", runcount)
+			RunScanner(zones)
+			RunScannerNG(&conf, conf.ZoneMap)
+			log.Printf("***** Run %d complete ****", runcount)
+		
+		// no default case
+		}
 	}
 }
 
 func RunScanner(zones map[string]*Parent) {
-     zs := ""
-     if len(zones) == 0 {
-     	log.Printf("RunScanner: no zones to scan.")
-	os.Exit(1)
-     }
+	zs := ""
+	if len(zones) == 0 {
+		log.Printf("RunScanner: no zones to scan.")
+		os.Exit(1)
+	}
 
-     for k, _ := range zones {
-	zs += ", " + k    
-     }
-     log.Printf("RunScanner: scanning %d zones: %s", len(zones), zs[2:])
+	if !viper.GetBool("scanner.run-old") {
+		fmt.Printf("Not using the old scanner\n")
+		return
+	}
+
+	for k, _ := range zones {
+		zs += ", " + k
+	}
+	log.Printf("RunScanner: scanning %d zones: %s", len(zones), zs[2:])
 	var child_nses []string
 
 	for zone, parent := range zones {
@@ -56,16 +82,16 @@ func RunScanner(zones map[string]*Parent) {
 		log.Printf("Working with zone: %s ", zone)
 
 		// Get DS records for zone from Parent
-		parent.ds = GetDS(zone, parent.hostname, parent.ip, parent.port)
+		parent.ds = GetDS(zone, parent.hostname, parent.ip+":"+parent.port)
 		for _, ds := range parent.ds {
 			log.Printf("%s", ds)
 		}
 
 		// get child NSes from Parent and create Child struct
-		child_nses = GetNS(zone, parent.hostname, parent.ip, parent.port)
+		child_nses = GetNS(zone, parent.hostname, parent.ip+":"+parent.port)
 		for _, ns := range child_nses {
 			log.Printf("Got NS: %s", ns)
-			ip := GetIP(ns, parent.ip, parent.port)
+			ip := GetIP(ns, parent.ip+":"+parent.port)
 			child := &Child{
 				hostname: ns,
 				ip:       ip,
@@ -85,7 +111,7 @@ func RunScanner(zones map[string]*Parent) {
 			child.nses = make(map[string]string)
 
 			// Get CDS From Child
-			child.cds = GetCDS(zone, child.hostname, child.ip, child.port)
+			child.cds = GetCDS(zone, child.hostname, child.ip+":"+child.port)
 			for _, cds := range child.cds {
 				log.Printf("%s", cds)
 			}
@@ -94,9 +120,9 @@ func RunScanner(zones map[string]*Parent) {
 			log.Printf("CSYNC from child: %s", child.csync)
 
 			// Get NSes from Child
-			nses := GetNS(zone, child.hostname, child.ip, child.port)
+			nses := GetNS(zone, child.hostname, child.ip+":"+child.port)
 			for _, ns := range nses {
-				ip := GetIP(ns, child.ip, child.port)
+				ip := GetIP(ns, child.ip+":"+child.port)
 				log.Printf("IP from child: %s", ip)
 				child.nses[ns] = ""
 			}

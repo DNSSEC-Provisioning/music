@@ -1,0 +1,44 @@
+scanner:
+   zones:	zones2scan.txt
+   interval:	30		# seconds
+   resolver:	8.8.8.8:53
+   db:		/var/tmp/scanner.db
+   run-old:	false
+   run-new:	true
+
+parents:
+   - name:		music.axfr.net
+     address:		212.247.165.231:53
+     tsigname:		foo.bar.
+#     children:	[ child1.music.axfr.net, child2.music.axfr.net, child3.music.axfr.net, zone1.music.axfr.net, zone2.music.axfr.net ]
+     children:	[ child1.music.axfr.net, child2.music.axfr.net ]
+#   - name:		catch22.se
+#     address:		1.2.3.4:53
+#     tsigname:		bar.foo.
+#     children:	[ msat1.catch22.se ]
+#   - name:		catch23.se
+#     address:		1.2.3.4:53
+#     tsigname:		bar.foo.
+#     children:	[ msat1.catch23.se ]
+#   - name:		catch24.se
+#     address:		1.2.3.4:53
+#     tsigname:		bar.foo.
+#     children:	[ msat1.catch24.se ]
+#   - name:		catch25.se
+#     address:		1.2.3.4:53
+#     tsigname:		bar.foo
+#     children:	[ msat1.catch25.se, foo.bar.baz.catch25.se ]
+
+keys:
+   - name:	foo.bar.
+     algorithm:	hmac-sha256
+     secret:	4ytnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+   - name:	bar.foo
+     algorithm:	hmac-sha256
+     secret:	5xtnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+   - name:	foo.foo
+     algorithm:	hmach-sha256
+     secret:	3ztnbnbTtA+w19eZjK6bjw/VB9SH8q/5eQKvf9BlAf8=
+
+log:
+   level:	verbose

@@ -1,6 +1,0 @@
-scanner:
-   zones:	zones2scan.txt
-   interval:	30		# seconds
-
-log:
-   level:	verbose

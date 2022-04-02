@@ -22,10 +22,27 @@ type APIresponse struct {
 	Data    string
 }
 
+type ShowPost struct {
+	Command	string
+}
+
+type ShowResponse struct {
+	Status  	int
+	Message		string
+	ApiData		[]string
+	Updaters	map[string]bool
+}
+
 type ShowAPIresponse struct {
 	Status  int
 	Message string
 	Data    []string
+}
+
+type ShowUpdatersResponse struct {
+	Status  int
+	Message string
+	Data    map[string]bool
 }
 
 type PingPost struct {

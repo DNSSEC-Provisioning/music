@@ -112,7 +112,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 				zones, err = mdb.PushZones(map[string]bool{z: true}, false)
 			} else {
 				log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
-				zones, err = mdb.PushZones(map[string]bool{}, false)
+				zones, err = mdb.PushZones(emptymap, false)
 			}
 			if err != nil {
 				log.Printf("FSMEngine: Error from PushZones: %v", err)
