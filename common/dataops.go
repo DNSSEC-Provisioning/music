@@ -120,9 +120,9 @@ func (s *Signer) UpdateRRset(zone, owner string, rrtype uint16, rrs []dns.RR) er
 			"Signer %s has method=ddns, which is not yet implemented.",
 			s.Name)
 	case "desec-api":
-// XXX: old code that should be ripped out
-//		err, _ := DesecUpdateRRset(s, StripDot(zone), StripDot(owner), rrtype, rrs)
-//		return err
+		// XXX: old code that should be ripped out
+		//		err, _ := DesecUpdateRRset(s, StripDot(zone), StripDot(owner), rrtype, rrs)
+		//		return err
 	default:
 		return fmt.Errorf("Unknown RRset retrieval method: %s", s.Method)
 	}
@@ -134,15 +134,15 @@ func (s *Signer) UpdateRRset(zone, owner string, rrtype uint16, rrs []dns.RR) er
 // 	address := s.Address
 // 	log.Printf("DNSRetrieveRRset: looking up '%s IN %s' from %s\n", owner,
 // 		dns.TypeToString[rrtype], s.Address)
-// 
-	//    authservers := LookupZoneServers(zonename, imr, verbose)
-	//    if len(authservers) == 0 {
-	//       if verbose {
-	//        log.Printf("Unable to locate authoritative nameservers for zone '%s'. Giving up.",
-	//            zonename)
-	//       }
-	//       return errors.New("No auth nameservers")
-	//    }
+//
+//    authservers := LookupZoneServers(zonename, imr, verbose)
+//    if len(authservers) == 0 {
+//       if verbose {
+//        log.Printf("Unable to locate authoritative nameservers for zone '%s'. Giving up.",
+//            zonename)
+//       }
+//       return errors.New("No auth nameservers")
+//    }
 
 // 	r := AuthoritativeDNSQuery(owner, address, rrtype, false)
 // 	if r != nil {
@@ -179,6 +179,7 @@ func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 
 func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	rrtype uint16, rrs []dns.RR) error {
+	fmt.Printf("dataops WriteRRs:\n -signer: %v\n -fqdn: %s\n -zone: %s\n -rrtype: %d\n -rrs: %s\n", signer, owner, zone, rrtype, rrs)
 
 	delsql := "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
 	delstmt, err := mdb.Prepare(delsql)

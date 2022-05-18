@@ -22,44 +22,44 @@ type DBUpdate struct {
 }
 
 type EngineCheck struct {
-     		 Zone	string
+	Zone string
 }
 
 type Zone struct {
 	Name       string
-	Exists     bool // true if zone is present in system
-	State      string  // state = state in currently ongoing process
+	Exists     bool   // true if zone is present in system
+	State      string // state = state in currently ongoing process
 	Statestamp time.Time
 	NextState  map[string]bool
 	StopReason string // possible reason for a state transition not to be possible
-	FSMMode	   string // "auto" | "manual"
-	FSMStatus  string  // fsmstatus = "blocked" if next state transition is not possible
+	FSMMode    string // "auto" | "manual"
+	FSMStatus  string // fsmstatus = "blocked" if next state transition is not possible
 	FSM        string
 	FSMSigner  string
 	SGroup     *SignerGroup
 	SGname     string
 	MusicDB    *MusicDB
 	ZskState   string
-	ZoneType   string	// "normal", "debug"
+	ZoneType   string // "normal", "debug"
 }
 
-// A process object encapsulates the change that 
+// A process object encapsulates the change that
 type ZoneProcess struct {
-     Type    string // "add-signer" | "remove-signer"
-     Signer  string // name of signer
+	Type   string // "add-signer" | "remove-signer"
+	Signer string // name of signer
 }
 
 type SignerGroup struct {
-	Name      	string
-	Locked		bool
-	SignerMap	map[string]*Signer
-	CurrentProcess	string
-	PendingRemoval	string	// name of leaving signer
-	PendingAddition	string	// name of joining signer
-	NumZones	int
-	NumProcessZones	int
-	State     	string
-	DB        	*MusicDB
+	Name            string
+	Locked          bool
+	SignerMap       map[string]*Signer
+	CurrentProcess  string
+	PendingRemoval  string // name of leaving signer
+	PendingAddition string // name of joining signer
+	NumZones        int
+	NumProcessZones int
+	State           string
+	DB              *MusicDB
 }
 
 func (sg *SignerGroup) Signers() map[string]*Signer {
@@ -72,11 +72,11 @@ type Signer struct {
 	Name         string
 	Exists       bool
 	Method       string // "ddns" | "desec" | ...
-	UseTcp	     bool   // debugging tools, easier to check UDP
-	UseTSIG	     bool   // debugging tool, not for production
+	UseTcp       bool   // debugging tools, easier to check UDP
+	UseTSIG      bool   // debugging tool, not for production
 	Address      string
 	Port         string
-	AuthStr         string   // AuthDataTmp // TODO: Issue #28
+	AuthStr      string // AuthDataTmp // TODO: Issue #28
 	Auth         AuthData
 	SignerGroup  string   // single signer group for join/leave
 	SignerGroups []string // all signer groups signer is member of

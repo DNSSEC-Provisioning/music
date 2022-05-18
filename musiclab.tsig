@@ -1,0 +1,4 @@
+key "musiclab" {
+	algorithm hmac-sha256;
+	secret "ZZkwxLJ06pCbmN0GvhdX4NKXPUST2gLSvxPa1A4sI9c=";
+};

@@ -612,6 +612,7 @@ func (api *Api) Get(endpoint string) (int, []byte, error) {
 	if api.Debug {
 		fmt.Printf("api.Get: GET URL '%s'\n", api.BaseUrl+endpoint)
 	}
+
 	req, err := http.NewRequest(http.MethodGet, api.BaseUrl+endpoint, nil)
 	if err != nil {
 		log.Fatalf("Error from http.NewRequest: Error: %v", err)
