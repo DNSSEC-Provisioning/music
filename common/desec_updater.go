@@ -128,7 +128,7 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 			rrs = append(rrs, rr)
 		}
 
-		fmt.Printf(" -signer: %v\n -fqdn: %s\n -zone: %s\n -rrtype: %d\n -rrs: %s\n", s, dns.Fqdn(owner), zone, rrtype, rrs)
+		//fmt.Printf(" -signer: %v\n -fqdn: %s\n -zone: %s\n -rrtype: %d\n -rrs: %s\n", s, dns.Fqdn(owner), zone, rrtype, rrs) // debug code
 		mdb.WriteRRs(s, dns.Fqdn(owner), zone, rrtype, rrs)
 		return nil, DNSFilterRRsetOnType(rrs, rrtype)
 
@@ -206,6 +206,7 @@ func DesecBuildRData(rrs []dns.RR) (error, []string) {
 }
 
 // XXX: not used anymore, should die
+/*
 func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR) (error, string) {
 	verbose := viper.GetBool("common.verbose")
 
@@ -219,11 +220,22 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 		fmt.Printf("Error from DesecBuildRData: %v\n", err)
 	}
 
-	data := DesecRRset{
-		Subname: DesecSubname(zone, owner, false),
-		RRtype:  dns.TypeToString[rrtype],
-		TTL:     3600,
-		RData:   rdata,
+	rrType := dns.TypeToString[rrtype]
+	data := DesecRRset{}
+
+	if rrType == "DNSKEY" || rrType == "CDS" || rrType == "CDNSKEY" || rrType == "CSYNC" {
+		data = DesecRRset{
+			RRtype: dns.TypeToString[rrtype],
+			TTL:    3600,
+			RData:  rdata,
+		}
+	} else {
+		data = DesecRRset{
+			Subname: DesecSubname(zone, owner, false),
+			RRtype:  dns.TypeToString[rrtype],
+			TTL:     3600,
+			RData:   rdata,
+		}
 	}
 
 	bytebuf := new(bytes.Buffer)
@@ -251,6 +263,7 @@ func DesecUpdateRRset(s *Signer, zone, owner string, rrtype uint16, rrs []dns.RR
 	fmt.Printf("DesecUpdateRRset: buf: %v\n", string(buf))
 	return nil, ""
 }
+*/
 
 func (u *DesecUpdater) Update(signer *Signer, zone, owner string,
 	inserts, removes *[][]dns.RR) error {
@@ -312,10 +325,10 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string,
 	}
 
 	if verbose {
-		fmt.Printf("DesecUpdateRRset: status: %d\n", status)
+		fmt.Printf("DesecUpdater.update: status: %d\n", status)
 	}
 
-	fmt.Printf("DesecUpdateRRset: buf: %v\n", string(buf))
+	fmt.Printf("DesecUpdate.update: buf: %v\n", string(buf))
 	return nil
 }
 
@@ -350,11 +363,22 @@ func CreateDesecRRset(zone, owner string,
 	log.Printf("CreateDesecRRset: creating update of RRset '%s IN %s\n",
 		owner, dns.TypeToString[rrtype])
 
-	data := DesecRRset{
-		Subname: subname,
-		RRtype:  dns.TypeToString[rrtype],
-		TTL:     3600,
-		RData:   rdata,
+	rrType := dns.TypeToString[rrtype]
+	data := DesecRRset{}
+
+	if rrType == "DNSKEY" || rrType == "CDS" || rrType == "CDNSKEY" || rrType == "CSYNC" {
+		data = DesecRRset{
+			RRtype: dns.TypeToString[rrtype],
+			TTL:    3600,
+			RData:  rdata,
+		}
+	} else {
+		data = DesecRRset{
+			Subname: subname,
+			RRtype:  dns.TypeToString[rrtype],
+			TTL:     3600,
+			RData:   rdata,
+		}
 	}
 
 	fmt.Printf("CreateDesecRRset: data: %v\n", data)

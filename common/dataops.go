@@ -179,7 +179,6 @@ func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 
 func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	rrtype uint16, rrs []dns.RR) error {
-	fmt.Printf("dataops WriteRRs:\n -signer: %v\n -fqdn: %s\n -zone: %s\n -rrtype: %d\n -rrs: %s\n", signer, owner, zone, rrtype, rrs)
 
 	delsql := "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
 	delstmt, err := mdb.Prepare(delsql)
@@ -203,7 +202,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	for _, r := range rrs {
 		rr := r.String()
 		if r.Header().Rrtype == rrtype {
-			_, err = addstmt.Exec(owner, signer.Name, int(rrtype), rr)
+			_, err = addstmt.Exec(zone, owner, signer.Name, int(rrtype), rr)
 			CheckSQLError("WriteRRs", addsql, err, false)
 		} else {
 			// if verbose {
