@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmJoinAddCDS = music.FSMTransition{
 	// XXX: what is the *criteria* for making this transition?
-	Description:         "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
+	Description: "Once all DNSKEYs are present in all signers (criteria), build CDS/CDNSKEYs RRset and push to all signers (action)",
 
 	MermaidPreCondDesc:  "Wait for all DNSKEY RRsets to be consistent",
 	MermaidActionDesc:   "Compute and publish CDS/CDNSKEY RRsets on all signers",
 	MermaidPostCondDesc: "Verify that all CDS/CDNSKEY RRs are published",
 
-	PreCondition:        JoinAddCdsPreCondition,
-	Action:              JoinAddCdsAction,
-	PostCondition:       VerifyCdsPublished,
+	PreCondition:  JoinAddCdsPreCondition,
+	Action:        JoinAddCdsAction,
+	PostCondition: VerifyCdsPublished,
 }
 
 func JoinAddCdsPreCondition(z *music.Zone) bool {
@@ -28,8 +28,8 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.SGroup.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -51,7 +51,7 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 		}
 
 		if len(dnskeys[s.Name]) > 0 {
-		   	keys := ""
+			keys := ""
 			for _, k := range dnskeys[s.Name] {
 				if f := k.Flags & 0x101; f == 256 {
 					keys += fmt.Sprintf("%d (ZSK) ", int(k.KeyTag()))
@@ -60,7 +60,7 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 				}
 			}
 			log.Printf("Fetched %s DNSKEYs from %s: %s", z.Name,
-					    s.Name, keys)
+				s.Name, keys)
 		} else {
 			log.Printf("JoinAddCdsPreCondition: %s: No DNSKEYs found in %s", z.Name, s.Name)
 		}
@@ -111,24 +111,25 @@ func JoinAddCdsAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinAddCdsAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinAddCdsAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
-	cdses := []dns.RR{}
-	cdnskeys := []dns.RR{}
+	//cdses := []dns.RR{}
+	//cdnskeys := []dns.RR{}
+
+	cdsMap := make(map[uint16]dns.RR)
+	cdnskeyMap := make(map[uint16]dns.RR)
 
 	for _, s := range z.SGroup.SignerMap {
 
 		updater := music.GetUpdater(s.Method)
-		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
+		log.Printf("JoinAddCdsAction: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
 		}
 
-		//        for _, a := range r.Answer {
-		// Create CDS/CDNSKEY RRsets
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
@@ -136,10 +137,20 @@ func JoinAddCdsAction(z *music.Zone) bool {
 			}
 
 			if f := dnskey.Flags & 0x101; f == 257 {
-				cdses = append(cdses, dnskey.ToDS(dns.SHA256).ToCDS())
-				cdnskeys = append(cdnskeys, dnskey.ToCDNSKEY())
+				cdsMap[dnskey.KeyTag()] = dnskey.ToDS(dns.SHA256).ToCDS()
+				cdnskeyMap[dnskey.KeyTag()] = dnskey.ToCDNSKEY()
 			}
 		}
+	}
+
+	var cdses []dns.RR
+	var cdnskeys []dns.RR
+
+	for _, cds := range cdsMap {
+		cdses = append(cdses, cds)
+	}
+	for _, cdnskey := range cdnskeyMap {
+		cdnskeys = append(cdnskeys, cdnskey)
 	}
 
 	// Publish CDS/CDNSKEY RRsets
@@ -162,14 +173,14 @@ func VerifyCdsPublished(z *music.Zone) bool {
 	log.Printf("Verifying Publication of CDS/CDNSKEY record sets for %s", z.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("VerifyCdsPublished: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("VerifyCdsPublished: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	// cdses := []dns.RR{}
 	// cdnskeys := []dns.RR{}
-	cdsmap := map[uint16]*dns.CDS{}    // cdsmap: map of CDS RRs created from all KSKs from all signers
-	cdsmap2 := map[uint16]*dns.CDS{}   // cdsmap2: map of all CDS RRs found by querying all signers
+	cdsmap := map[uint16]*dns.CDS{}  // cdsmap: map of CDS RRs created from all KSKs from all signers
+	cdsmap2 := map[uint16]*dns.CDS{} // cdsmap2: map of all CDS RRs found by querying all signers
 
 	cdnskeymap := map[uint16]*dns.CDNSKEY{}
 	cdnskeymap2 := map[uint16]*dns.CDNSKEY{}
@@ -197,7 +208,7 @@ func VerifyCdsPublished(z *music.Zone) bool {
 	}
 	keyids := []uint16{}
 	for k, _ := range cdsmap {
-	    keyids = append(keyids, k)
+		keyids = append(keyids, k)
 	}
 	log.Printf("Verify Publication of CDS: there are KSKs at the signers with the following keytags: %v\n", keyids)
 
@@ -217,12 +228,12 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			return false
 		}
 
-		for _, cdsrr := range cdsrrs {		// check all CDS RRs from this signer
+		for _, cdsrr := range cdsrrs { // check all CDS RRs from this signer
 			cds, ok := cdsrr.(*dns.CDS)
 			if !ok {
 				continue
 			}
-			cdsmap2[cds.KeyTag] = cds	// put the CDS into cdsmap2
+			cdsmap2[cds.KeyTag] = cds // put the CDS into cdsmap2
 			if _, exist := cdsmap[cds.KeyTag]; !exist {
 				err, _ = z.SetStopReason(fmt.Sprintf("CDS RR with keyid=%d published by signer %s should not exist", cds.KeyTag, signer.Name))
 				return false
@@ -244,7 +255,7 @@ func VerifyCdsPublished(z *music.Zone) bool {
 			cdnskeymap2[cdnskey.KeyTag()] = cdnskey
 			if _, exist := cdnskeymap[cdnskey.KeyTag()]; !exist {
 				err, _ = z.SetStopReason(fmt.Sprintf("CDNSKEY RR with keyid=%d published by %s should not exist",
-				     cdnskey.KeyTag, signer.Name))
+					cdnskey.KeyTag, signer.Name))
 				return false
 			}
 		}

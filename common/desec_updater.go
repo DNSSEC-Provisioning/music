@@ -281,6 +281,7 @@ func (u *DesecUpdater) Update(signer *Signer, zone, owner string,
 
 	if inserts != nil {
 		for _, rrset := range *inserts {
+			fmt.Printf("instert this stuff")
 			if len(rrset) == 0 {
 				continue
 			}
@@ -372,6 +373,7 @@ func CreateDesecRRset(zone, owner string,
 			TTL:    3600,
 			RData:  rdata,
 		}
+		fmt.Printf("###### dis is our data %v\n", data)
 	} else {
 		data = DesecRRset{
 			Subname: subname,
