@@ -116,8 +116,6 @@ func JoinAddCdsAction(z *music.Zone) bool {
 		return true
 	}
 
-	//cdsMap := make(map[uint16]dns.RR)
-	//cdnskeyMap := make(map[uint16]dns.RR)
 	dnskeyMap := make(map[uint16]*dns.DNSKEY)
 
 	for _, s := range z.SGroup.SignerMap {
@@ -135,8 +133,6 @@ func JoinAddCdsAction(z *music.Zone) bool {
 			}
 
 			if f := dnskey.Flags & 0x101; f == 257 {
-				//			cdsMap[dnskey.KeyTag()] = dnskey.ToDS(dns.SHA256).ToCDS()
-				//		cdnskeyMap[dnskey.KeyTag()] = dnskey.ToCDNSKEY()
 				dnskeyMap[dnskey.KeyTag()] = dnskey
 			}
 		}
@@ -149,14 +145,6 @@ func JoinAddCdsAction(z *music.Zone) bool {
 		cdses = append(cdses, dnskey.ToDS(dns.SHA384).ToCDS())
 		cdnskeys = append(cdnskeys, dnskey.ToCDNSKEY())
 	}
-	/*
-		for _, cds := range cdsMap {
-			cdses = append(cdses, cds)
-		}
-		for _, cdnskey := range cdnskeyMap {
-			cdnskeys = append(cdnskeys, cdnskey)
-		}
-	*/
 
 	// Publish CDS/CDNSKEY RRsets
 	for _, signer := range z.SGroup.SignerMap {

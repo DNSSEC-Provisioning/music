@@ -27,6 +27,7 @@ var FsmJoinWaitDs = music.FSMTransition{
 	PostCondition: func(z *music.Zone) bool {
 		// verify that the NS RRset is in sync for all signers
 		return true
+		//return false
 	},
 }
 
@@ -39,7 +40,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
 			z.SetStopReason(fmt.Sprintf("Waiting until %s (%s)", until.String(),
-							     time.Until(until).String()))
+				time.Until(until).String()))
 			return false
 		}
 		log.Printf("%s: Waited enough for DS, pre-condition fullfilled", z.Name)
@@ -73,7 +74,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason defined in GetParenAddressOrStop()
+		return false // stop-reason defined in GetParenAddressOrStop()
 	}
 
 	m := new(dns.Msg)
@@ -123,7 +124,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
 			z.SetStopReason(err.Error())
-			return false 
+			return false
 		}
 
 		nses[signer.Name] = []*dns.NS{}
@@ -166,6 +167,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	// Create RRset for insert
 	nsset := []dns.RR{}
 	for _, rr := range nsmap {
+		log.Printf("[JoinWaitDsAction] adding %v to nsset\n", rr)
 		nsset = append(nsset, rr)
 	}
 

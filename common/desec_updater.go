@@ -367,7 +367,7 @@ func CreateDesecRRset(zone, owner string,
 	rrType := dns.TypeToString[rrtype]
 	data := DesecRRset{}
 
-	if rrType == "DNSKEY" || rrType == "CDS" || rrType == "CDNSKEY" || rrType == "CSYNC" {
+	if rrType == "DNSKEY" || rrType == "CDS" || rrType == "CDNSKEY" || rrType == "CSYNC" || rrType == "NS" {
 		data = DesecRRset{
 			RRtype: dns.TypeToString[rrtype],
 			TTL:    3600,
