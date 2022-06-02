@@ -108,6 +108,7 @@ func JoinAddCdsPreCondition(z *music.Zone) bool {
 }
 
 func JoinAddCdsAction(z *music.Zone) bool {
+	log.Printf("[JoinAddCDSAction] zone struct: \n %v \n", z)
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
 	if z.ZoneType == "debug" {
@@ -115,16 +116,13 @@ func JoinAddCdsAction(z *music.Zone) bool {
 		return true
 	}
 
-	//cdses := []dns.RR{}
-	//cdnskeys := []dns.RR{}
-
-	cdsMap := make(map[uint16]dns.RR)
-	cdnskeyMap := make(map[uint16]dns.RR)
+	//cdsMap := make(map[uint16]dns.RR)
+	//cdnskeyMap := make(map[uint16]dns.RR)
+	dnskeyMap := make(map[uint16]*dns.DNSKEY)
 
 	for _, s := range z.SGroup.SignerMap {
-
 		updater := music.GetUpdater(s.Method)
-		log.Printf("JoinAddCdsAction: Using FetchRRset interface:\n")
+		log.Printf("[JoinAddCdsAction]\t Using FetchRRset interface[DNSKEY]\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
@@ -137,21 +135,28 @@ func JoinAddCdsAction(z *music.Zone) bool {
 			}
 
 			if f := dnskey.Flags & 0x101; f == 257 {
-				cdsMap[dnskey.KeyTag()] = dnskey.ToDS(dns.SHA256).ToCDS()
-				cdnskeyMap[dnskey.KeyTag()] = dnskey.ToCDNSKEY()
+				//			cdsMap[dnskey.KeyTag()] = dnskey.ToDS(dns.SHA256).ToCDS()
+				//		cdnskeyMap[dnskey.KeyTag()] = dnskey.ToCDNSKEY()
+				dnskeyMap[dnskey.KeyTag()] = dnskey
 			}
 		}
 	}
 
 	var cdses []dns.RR
 	var cdnskeys []dns.RR
-
-	for _, cds := range cdsMap {
-		cdses = append(cdses, cds)
+	for _, dnskey := range dnskeyMap {
+		cdses = append(cdses, dnskey.ToDS(dns.SHA256).ToCDS())
+		cdses = append(cdses, dnskey.ToDS(dns.SHA384).ToCDS())
+		cdnskeys = append(cdnskeys, dnskey.ToCDNSKEY())
 	}
-	for _, cdnskey := range cdnskeyMap {
-		cdnskeys = append(cdnskeys, cdnskey)
-	}
+	/*
+		for _, cds := range cdsMap {
+			cdses = append(cdses, cds)
+		}
+		for _, cdnskey := range cdnskeyMap {
+			cdnskeys = append(cdnskeys, cdnskey)
+		}
+	*/
 
 	// Publish CDS/CDNSKEY RRsets
 	for _, signer := range z.SGroup.SignerMap {
