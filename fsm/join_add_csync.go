@@ -1,11 +1,11 @@
 package fsm
 
 import (
-        "fmt"
+	"fmt"
 	"log"
 
+	music "github.com/DNSSEC-Provisioning/music/common"
 	"github.com/miekg/dns"
-        music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var FsmJoinAddCsync = music.FSMTransition{
@@ -17,7 +17,7 @@ var FsmJoinAddCsync = music.FSMTransition{
 
 	PreCondition:  JoinAddCsyncPreCondition,
 	Action:        JoinAddCsyncAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: VerifyCsyncPublished,
 }
 
 func JoinAddCsyncPreCondition(z *music.Zone) bool {
@@ -26,8 +26,8 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
 
 	for _, s := range z.SGroup.SignerMap {
@@ -80,7 +80,7 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 	}
 
 	if !group_nses_synced {
-		return false  // stop-reason defined above
+		return false // stop-reason defined above
 	}
 
 	log.Printf("%s: All NSes synced between all signers", z.Name)
@@ -91,16 +91,37 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 	// TODO: configurable TTL for created CSYNC records
 	ttl := 300
 
-	log.Printf("%s: Creating CSYNC record sets", z.Name)
+	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 
 	if z.ZoneType == "debug" {
-	   log.Printf("JoinAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
-	   return true
+		log.Printf("JoinAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
 	}
+
+	csync := new(dns.CSYNC)
+	csync.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: 0}
 
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
-		log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
+
+		// check if there is any CSYNC records if there are remove them before adding a csync record
+		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
+		if err != nil {
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			return false
+		}
+		if len(csyncrrs) != 0 {
+
+			if err := updater.RemoveRRset(signer, z.Name, z.Name,
+				[][]dns.RR{[]dns.RR{csync}}); err != nil {
+				z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+					signer.Name, err))
+				return false
+			}
+			log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
+		}
+
+		log.Printf("%s: Creating CSYNC record sets", z.Name)
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeSOA)
 		if err != nil {
 			log.Printf("Error from updater.FetchRRset: %v\n", err)
@@ -135,5 +156,42 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 		}
 	}
 
+	return true
+}
+
+func VerifyCsyncPublished(z *music.Zone) bool {
+	log.Printf("Verifying Publication of CSYNC record sets for %s", z.Name)
+	// get all csync records from all the signers
+	csynclist := []*dns.CSYNC{}
+	for _, signer := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
+		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
+		if err != nil {
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			return false
+		}
+		switch len(csyncrrs) {
+		case 0:
+			log.Printf("csyncrrs is %d long", len(csyncrrs))
+			z.SetStopReason(fmt.Sprintf("No CSYNC RRset returned from %s", signer.Name))
+			return false
+		case 1:
+			log.Printf("csyncrrs is %d long", len(csyncrrs))
+			csynclist = append(csynclist, csyncrrs[0].(*dns.CSYNC))
+		default:
+			log.Printf("csyncrrs is %d long", len(csyncrrs))
+			z.SetStopReason(fmt.Sprintf("Multiple CSYNC RRset returned from %s", signer.Name))
+			return false
+		}
+	}
+
+	// compare that the csync records are the same
+	for _, csyncrr := range csynclist {
+		if csyncrr.String() != csynclist[0].String() {
+			z.SetStopReason(fmt.Sprintf("CSYNC records are not identical"))
+			return false
+		}
+	}
+	// should we double check that they are correct as well?
 	return true
 }
