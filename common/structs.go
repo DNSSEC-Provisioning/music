@@ -41,6 +41,7 @@ type Zone struct {
 	MusicDB    *MusicDB
 	ZskState   string
 	ZoneType   string // "normal", "debug"
+	CSYNC      *dns.CSYNC
 }
 
 // A process object encapsulates the change that
