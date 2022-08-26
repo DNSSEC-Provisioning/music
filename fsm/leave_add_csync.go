@@ -171,7 +171,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	ttl := 300
 
 	z.CSYNC = new(dns.CSYNC)
-	z.CSYNC.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: uint32(ttl)}
+	z.CSYNC.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: uint32(ttl), Rdlength: uint16(12)}
 	z.CSYNC.Serial = 1
 	z.CSYNC.Flags = 1
 	z.CSYNC.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
@@ -279,9 +279,7 @@ func LeaveVerifyCsyncPublished(z *music.Zone) bool {
 	// compare that the csync records are the same
 	for _, csyncrr := range csynclist {
 		//if csyncrr.String() != z.CSYNC.String() {
-		if dns.IsDuplicate(csyncrr, z.CSYNC) {
-			log.Printf("orignal csync %v", z.CSYNC)
-			log.Printf("scanned csync %v", csyncrr)
+		if !dns.IsDuplicate(csyncrr, z.CSYNC) {
 			z.SetStopReason(fmt.Sprintf("CSYNC records are not identical"))
 			return false
 		}
