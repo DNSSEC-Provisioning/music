@@ -167,9 +167,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		log.Fatalf("Signer %s is still a member of group %s", leavingSignerName, z.SGroup.SignerMap)
 	}
 
-	// TODO: configurable TTL for created CSYNC records
 	ttl := 300
-
 	z.CSYNC = new(dns.CSYNC)
 	z.CSYNC.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: uint32(ttl), Rdlength: uint16(12)}
 	z.CSYNC.Serial = 1
@@ -185,7 +183,6 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 			return false
 		}
 		if len(csyncrrs) != 0 {
-
 			if err := updater.RemoveRRset(signer, z.Name, z.Name,
 				[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
 				z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
@@ -207,6 +204,21 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	}
 
 	updater := music.GetUpdater(leavingSigner.Method)
+	err, csyncrrs := updater.FetchRRset(leavingSigner, z.Name, z.Name, dns.TypeCSYNC)
+	if err != nil {
+		err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
+		return false
+	}
+	if len(csyncrrs) != 0 {
+		if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name,
+			[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+				leavingSigner.Name, err))
+			return false
+		}
+		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)
+	}
+
 	if err := updater.Update(leavingSigner, z.Name, z.Name,
 		&[][]dns.RR{[]dns.RR{z.CSYNC}}, nil); err != nil {
 		z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
@@ -276,9 +288,8 @@ func LeaveVerifyCsyncPublished(z *music.Zone) bool {
 		return false
 	}
 
-	// compare that the csync records are the same
+	// compare that the CSYNC records are the same as the created CSYNC
 	for _, csyncrr := range csynclist {
-		//if csyncrr.String() != z.CSYNC.String() {
 		if !dns.IsDuplicate(csyncrr, z.CSYNC) {
 			z.SetStopReason(fmt.Sprintf("CSYNC records are not identical"))
 			return false
