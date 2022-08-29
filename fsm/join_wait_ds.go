@@ -39,7 +39,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 
 	if until, ok := zoneWaitDs[z.Name]; ok {
 		if time.Now().Before(until) {
-			z.SetStopReason(fmt.Sprintf("Waiting until %s (%s)", until.String(),
+			z.SetStopReason(nil, fmt.Sprintf("Waiting until %s (%s)", until.String(),
 				time.Until(until).String()))
 			return false
 		}
@@ -82,7 +82,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(fmt.Sprintf("Unable to fetch DSes from parent: %s", err))
+		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch DSes from parent: %s", err))
 		return false
 	}
 
@@ -103,7 +103,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 
 	zoneWaitDs[z.Name] = until
 	// XXX: this rather needs a z.SetDelayReasonAndTime(...)
-	z.SetStopReason(fmt.Sprintf("Largest TTL found was %d, waiting until %s (%s)", ttl,
+	z.SetStopReason(nil, fmt.Sprintf("Largest TTL found was %d, waiting until %s (%s)", ttl,
 		until.String(), time.Until(until).String()))
 	return false
 }
@@ -123,7 +123,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 		log.Printf("JoinWaitDsAction: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
-			z.SetStopReason(err.Error())
+			z.SetStopReason(nil, err.Error())
 			return false
 		}
 
@@ -189,7 +189,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, &[][]dns.RR{nsset}, nil); err != nil {
-			z.SetStopReason(fmt.Sprintf("Unable to update %s with NS record sets: %s", signer.Name, err))
+			z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with NS record sets: %s", signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Update %s successfully with NS record sets", z.Name, signer.Name)
