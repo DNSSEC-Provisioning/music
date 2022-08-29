@@ -102,9 +102,8 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 	csync.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: 0}
 
 	for _, signer := range z.SGroup.SignerMap {
-		updater := music.GetUpdater(signer.Method)
-
 		// check if there is any CSYNC records if there are remove them before adding a csync record
+		updater := music.GetUpdater(signer.Method)
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
 			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
