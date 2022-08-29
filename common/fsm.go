@@ -45,7 +45,7 @@ func FsmTransitionStopFactory(from string) FSMTransition {
 		Criteria:     func(z *Zone) bool { return true },
 		PreCondition: func(z *Zone) bool { return true },
 		Action: func(z *Zone) bool {
-			z.StateTransition(from, FsmStateStop)
+			z.StateTransition(nil, from, FsmStateStop)
 			return true
 		},
 		PostCondition: func(z *Zone) bool { return true },

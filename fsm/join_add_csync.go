@@ -73,7 +73,7 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 				}
 			}
 			if !found {
-				z.SetStopReason(fmt.Sprintf("NS %s is missing in signer %s", ns.Ns, signer))
+				z.SetStopReason(nil, fmt.Sprintf("NS %s is missing in signer %s", ns.Ns, signer))
 				group_nses_synced = false
 			}
 		}
@@ -107,14 +107,14 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 		// check if there is any CSYNC records if there are remove them before adding a csync record
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
-			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
 			return false
 		}
 		if len(csyncrrs) != 0 {
 
 			if err := updater.RemoveRRset(signer, z.Name, z.Name,
 				[][]dns.RR{[]dns.RR{csync}}); err != nil {
-				z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+				z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 					signer.Name, err))
 				return false
 			}
@@ -147,7 +147,7 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 			updater := music.GetUpdater(signer.Method)
 			if err := updater.Update(signer, z.Name, z.Name,
 				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-				z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+				z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
 					signer.Name, err))
 				return false
 			}
@@ -167,20 +167,20 @@ func VerifyCsyncPublished(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
-			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
 			return false
 		}
 		switch len(csyncrrs) {
 		case 0:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
-			z.SetStopReason(fmt.Sprintf("No CSYNC RRset returned from %s", signer.Name))
+			z.SetStopReason(nil, fmt.Sprintf("No CSYNC RRset returned from %s", signer.Name))
 			return false
 		case 1:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
 			csynclist = append(csynclist, csyncrrs[0].(*dns.CSYNC))
 		default:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
-			z.SetStopReason(fmt.Sprintf("Multiple CSYNC RRset returned from %s", signer.Name))
+			z.SetStopReason(nil, fmt.Sprintf("Multiple CSYNC RRset returned from %s", signer.Name))
 			return false
 		}
 	}
@@ -188,7 +188,7 @@ func VerifyCsyncPublished(z *music.Zone) bool {
 	// compare that the csync records are the same
 	for _, csyncrr := range csynclist {
 		if csyncrr.String() != csynclist[0].String() {
-			z.SetStopReason(fmt.Sprintf("CSYNC records are not identical"))
+			z.SetStopReason(nil, fmt.Sprintf("CSYNC records are not identical"))
 			return false
 		}
 	}

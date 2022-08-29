@@ -13,14 +13,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func (mdb *MusicDB) AddSignerGroup(sg string) (error, string) {
+func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (error, string) {
 	fmt.Printf("AddSignerGroup(%s)\n", sg)
 
 	if sg == "" {
 		return errors.New("Signer group without name cannot be created"), ""
 	}
 	
-	_, err := mdb.GetSignerGroup(sg, false)
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	_, err = mdb.GetSignerGroup(tx, sg, false)
 	if err == nil {
 	    return err, fmt.Sprintf("Signergroup %s already exists.", sg)
 	}
@@ -31,9 +38,9 @@ func (mdb *MusicDB) AddSignerGroup(sg string) (error, string) {
 		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
 	}
 
-	mdb.mu.Lock()
+	// mdb.mu.Lock()
 	_, err = addstmt.Exec(sg)
-	mdb.mu.Unlock()
+	// mdb.mu.Unlock()
 
 	if CheckSQLError("AddSignerGroup", addcmd, err, false) {
 		return err, fmt.Sprintf("Signergroup %s not created. Reason: %v", sg, err)
@@ -48,10 +55,17 @@ SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS 
 FROM signergroups WHERE name=?`
 )
 
-func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error) {
+func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
 		return &SignerGroup{}, errors.New("Empty signer group does not exist")
 	}
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return nil, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
 
 	stmt, err := mdb.Prepare(GSGsql1)
 	if err != nil {
@@ -67,7 +81,7 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
 	case nil:
-		_, sm := mdb.GetGroupSigners(name, apisafe)
+		_, sm := mdb.GetGroupSigners(tx, name, apisafe)
 		dbref := mdb
 		if apisafe {
 			dbref = nil
@@ -83,7 +97,7 @@ func (mdb *MusicDB) GetSignerGroup(sg string, apisafe bool) (*SignerGroup, error
 			DB:              dbref,
 		}
 
-		zones, _ := mdb.GetSignerGroupZones(&sg)
+		zones, _ := mdb.GetSignerGroupZones(tx, &sg)
 		pzones := 0
 		for _, z := range zones {
 			if z.FSM != "" {
@@ -115,17 +129,25 @@ const (
 	DSGsql4 = "UPDATE zones SET sgroup='' WHERE sgroup=?"
 )
 
-func (mdb *MusicDB) DeleteSignerGroup(group string) (error, string) {
-	_, err := mdb.GetSignerGroup(group, false)
+func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (error, string) {
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+        _, err = mdb.GetSignerGroup(tx, group, false)
 	if err != nil {
 	    return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
 
-        tx, err := mdb.Begin()
-	if err != nil {
-	   log.Printf("DeleteSignerGroup: Error from mdb.Begin(): %v", err)
-	}
-	defer tx.Commit()
+//        tx, err := mdb.Begin()
+//	if err != nil {
+//	   log.Printf("DeleteSignerGroup: Error from mdb.Begin(): %v", err)
+//	}
+//	defer tx.Commit()
 	
 	// mdb.mu.Lock()
 	stmt, err := mdb.Prepare(DSGsql1)
@@ -172,8 +194,15 @@ FROM signergroups`
 	LSGsql3 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
 )
 
-func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
+func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error) {
 	var sgl = make(map[string]SignerGroup, 2)
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return sgl, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
 
 	rows, err := mdb.db.Query(LSGsql)
 
@@ -221,14 +250,14 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 				if signer == "" { // There may be rows with signer=="" (if group created w/o signers)
 					continue
 				}
-				s, err := mdb.GetSignerByName(signer, true) // apisafe
+				s, err := mdb.GetSignerByName(tx, signer, true) // apisafe
 				if err != nil {
 					log.Fatalf("ListSignerGroups: Error from GetSigner: %v", err)
 				} else {
 					signers[signer] = s
 				}
 			}
-			zones, _ = mdb.GetSignerGroupZones(&sg)
+			zones, _ = mdb.GetSignerGroupZones(tx, &sg)
 
 			pzones := 0
 			for _, z := range zones {
@@ -248,8 +277,17 @@ func (mdb *MusicDB) ListSignerGroups() (map[string]SignerGroup, error) {
 	return sgl, nil
 }
 
-func (sg *SignerGroup) PopulateSigners() error {
-	mdb := sg.DB
+func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
+
+     mdb := sg.DB
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	sqlcmd := "SELECT name FROM signers WHERE sgroup=?"
 	stmt, err := mdb.Prepare(sqlcmd)
 	if err != nil {
@@ -271,7 +309,7 @@ func (sg *SignerGroup) PopulateSigners() error {
 					err)
 			} else {
 				// fmt.Printf("PS: got signer name: %s\n", name)
-				s, err := mdb.GetSignerByName(name, false) // not apisafe
+				s, err := mdb.GetSignerByName(tx, name, false) // not apisafe
 				if err != nil {
 					log.Fatalf("PopulateSigners: Error from GetSigner: %v", err)
 				} else {
@@ -291,7 +329,14 @@ const (
 	GGSsql2 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
 )
 
-func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[string]*Signer) {
+func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (error, map[string]*Signer) {
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, nil
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
 
 	stmt, err := mdb.Prepare(GGSsql2)
 	if err != nil {
@@ -316,7 +361,7 @@ func (mdb *MusicDB) GetGroupSigners(name string, apisafe bool) (error, map[strin
 				continue // This does happen, not a problem
 			}
 			// fmt.Printf("GGS: got signer name: %s\n", signer)
-			s, err := mdb.GetSignerByName(signer, apisafe)
+			s, err := mdb.GetSignerByName(tx, signer, apisafe)
 			if err != nil {
 				log.Fatalf("GGS: Error from GetSigner: %v", err)
 			} else {
@@ -332,7 +377,15 @@ const (
 	GGSNGsql = "SELECT signer FROM group_signers WHERE name=?"
 )
 
-func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[string]*Signer) {
+func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (error, map[string]*Signer) {
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, nil
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	stmt, err := mdb.Prepare(GGSNGsql)
 	if err != nil {
 		fmt.Printf("GetGroupSigners: Error from db.Prepare '%s': %v\n", GGSNGsql, err)
@@ -354,7 +407,7 @@ func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[str
 					err)
 			} else {
 				// fmt.Printf("GGSNG: got signer name: %s\n", signername)
-				s, err := mdb.GetSignerByName(name, apisafe)
+				s, err := mdb.GetSignerByName(tx, name, apisafe)
 				if err != nil {
 					log.Fatalf("GGS: Error from GetSigner: %v", err)
 				} else {
@@ -370,9 +423,17 @@ func (mdb *MusicDB) GetGroupSignersNG(name string, apisafe bool) (error, map[str
 // XXX: Todo: in the wrap up of a REMOVE-SIGNER the signer in PendingRemoval should be physically
 //      removed from the signer group.
 //
-func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
+func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, string) {
 	var msg string
-	zones, _ := mdb.GetSignerGroupZones(sg)
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return false, err.Error()
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	zones, _ := mdb.GetSignerGroupZones(tx, sg)
 	pzones := 0
 	for _, z := range zones {
 		if z.FSM != "" {
@@ -381,6 +442,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
 	}
 
 	if len(zones) == 0 || pzones == 0 {
+
 		msg = fmt.Sprintf("Signer group %s: process '%s' is now complete. Unlocking group.",
 			sg.Name, sg.CurrentProcess)
 		log.Printf(msg)
@@ -398,7 +460,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
 			log.Fatalf("CheckIfProcessIsComplete: Unknown process: %s. Terminating.", cp)
 		}
 
-		mdb.mu.Lock()
+		// mdb.mu.Lock()
 		stmt, err := mdb.Prepare(sqlq)
 		if err != nil {
 			log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
@@ -422,7 +484,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(sg *SignerGroup) (bool, string) {
 			}
 		}
 
-		mdb.mu.Unlock()
+		// mdb.mu.Unlock()
 		return true, msg
 	}
 	return false, ""
