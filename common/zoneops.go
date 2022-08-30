@@ -87,12 +87,6 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-// tx, err := mdb.Begin()
-//	if err != nil {
-//		log.Printf("UpdateZone: Error from mdb.Begin(): %v", err)
-//	}
-//	defer tx.Commit()
-
 	stmt, err := mdb.Prepare(UZsql)
 	if err != nil {
 		fmt.Printf("Error in SQL prepare(%s): %v", UZsql, err)
@@ -573,6 +567,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 			"Zone %s has joined signer group %s and started the process '%s'.",
 			dbzone.Name, g, SignerJoinGroupProcess), nil
 	}
+	// mdb.CommitTransaction(localtx, tx, err)
         enginecheck <- EngineCheck{ Zone: dbzone.Name }
 	return fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'

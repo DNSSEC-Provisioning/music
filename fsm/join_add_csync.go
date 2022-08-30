@@ -88,32 +88,30 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 }
 
 func JoinAddCsyncAction(z *music.Zone) bool {
-	// TODO: configurable TTL for created CSYNC records
-	ttl := 300
-
 	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
-
 	if z.ZoneType == "debug" {
 		log.Printf("JoinAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
 		return true
 	}
 
-	csync := new(dns.CSYNC)
-	csync.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: 0}
+	ttl := 300
+	z.CSYNC = new(dns.CSYNC)
+	z.CSYNC.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeCSYNC, Class: dns.ClassINET, Ttl: uint32(ttl), Rdlength: uint16(12)}
+	z.CSYNC.Serial = 1
+	z.CSYNC.Flags = 1
+	z.CSYNC.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
 
 	for _, signer := range z.SGroup.SignerMap {
-		updater := music.GetUpdater(signer.Method)
-
 		// check if there is any CSYNC records if there are remove them before adding a csync record
+		updater := music.GetUpdater(signer.Method)
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
 			err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
 			return false
 		}
 		if len(csyncrrs) != 0 {
-
 			if err := updater.RemoveRRset(signer, z.Name, z.Name,
-				[][]dns.RR{[]dns.RR{csync}}); err != nil {
+				[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
 				z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 					signer.Name, err))
 				return false
@@ -122,40 +120,15 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 		}
 
 		log.Printf("%s: Creating CSYNC record sets", z.Name)
-		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeSOA)
-		if err != nil {
-			log.Printf("Error from updater.FetchRRset: %v\n", err)
+
+		if err := updater.Update(signer, z.Name, z.Name,
+			&[][]dns.RR{[]dns.RR{z.CSYNC}}, nil); err != nil {
+			z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+				signer.Name, err))
+			return false
 		}
-
-		for _, a := range rrs {
-			soa, ok := a.(*dns.SOA)
-			if !ok {
-				continue
-			}
-
-			csync := new(dns.CSYNC)
-			csync.Hdr = dns.RR_Header{
-				Name:   z.Name,
-				Rrtype: dns.TypeCSYNC,
-				Class:  dns.ClassINET,
-				Ttl:    uint32(ttl),
-			}
-			csync.Serial = soa.Serial
-			csync.Flags = 3
-			csync.TypeBitMap = []uint16{dns.TypeA, dns.TypeNS, dns.TypeAAAA}
-
-			updater := music.GetUpdater(signer.Method)
-			if err := updater.Update(signer, z.Name, z.Name,
-				&[][]dns.RR{[]dns.RR{csync}}, nil); err != nil {
-				z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
-					signer.Name, err))
-				return false
-			}
-			log.Printf("%s: Updated signer %s successfully with CSYNC record sets",
-				z.Name, signer.Name)
-		}
+		log.Printf("%s: Updated signer %s successfully with CSYNC record sets", z.Name, signer.Name)
 	}
-
 	return true
 }
 
@@ -185,13 +158,12 @@ func VerifyCsyncPublished(z *music.Zone) bool {
 		}
 	}
 
-	// compare that the csync records are the same
+	// compare that the CSYNC records are the same as the created CSYNC
 	for _, csyncrr := range csynclist {
-		if csyncrr.String() != csynclist[0].String() {
+		if !dns.IsDuplicate(csyncrr, z.CSYNC) {
 			z.SetStopReason(nil, fmt.Sprintf("CSYNC records are not identical"))
 			return false
 		}
 	}
-	// should we double check that they are correct as well?
 	return true
 }
