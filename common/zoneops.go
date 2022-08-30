@@ -63,7 +63,7 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 	if group != "" {
 		fmt.Printf("AddGroup: the zone %s has the signergroup %s specified so we set that too\n", z.Name, group)
 		dbzone, _ := mdb.GetZone(tx, z.Name)
-		err, _ := mdb.ZoneJoinGroup(tx, dbzone, group, enginecheck) // we know that the zone exist
+		_, err := mdb.ZoneJoinGroup(tx, dbzone, group, enginecheck) // we know that the zone exist
 		if err != nil {
 			return err, fmt.Sprintf(
 				"Zone %s was added, but failed to attach to signer group %s.", fqdn, group)
@@ -518,16 +518,16 @@ func (mdb *MusicDB) GetSignerGroupZones(tx *sql.Tx, sg *SignerGroup) ([]*Zone, e
 // group enters a proceess (and unlock when all zones are done)
 
 func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
-     	  	    		     enginecheck chan EngineCheck) (error, string) {
+     	  	    		     enginecheck chan EngineCheck) (string, error) {
 	var group *SignerGroup
 	var err error
 
 	if !dbzone.Exists {
-		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
+		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
 
 	if group, err = mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
-		return err, ""
+		return "", err
 	}
 
 	sg := dbzone.SignerGroup()
@@ -535,8 +535,8 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 
 	// must test for existence of sg, as after AddZone() it is still nil
 	if sg != nil && sg.Name != "" {
-		return errors.New(fmt.Sprintf("Zone %s already assigned to signer group %s\n",
-			dbzone.Name, sg.Name)), ""
+		return "", fmt.Errorf("Zone %s already assigned to signer group %s\n",
+			dbzone.Name, sg.Name)
 	}
 
 	// Is the signer group locked (because of being in a process
