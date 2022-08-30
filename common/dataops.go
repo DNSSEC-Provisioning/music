@@ -33,17 +33,24 @@ func (mdb *MusicDB) ZoneGetRRsets(dbzone *Zone, owner,
 	return err, "", rrsets
 }
 
-func (mdb *MusicDB) ZoneCopyRRset(dbzone *Zone, owner,
+func (mdb *MusicDB) ZoneCopyRRset(tx *sql.Tx, dbzone *Zone, owner,
 	rrtype, fromsigner, tosigner string) (error, string) {
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
 
-	fs, err := mdb.GetSignerByName(fromsigner, false) // not apisafe
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	fs, err := mdb.GetSignerByName(tx, fromsigner, false) // not apisafe
 	if err != nil {
 		return fmt.Errorf("Signer %s (copying from) is unknown.", fromsigner), ""
 	}
-	ts, err := mdb.GetSignerByName(tosigner, false) // not apisafe
+	ts, err := mdb.GetSignerByName(tx, tosigner, false) // not apisafe
 	if err != nil {
 		return fmt.Errorf("Signer %s (copying to) is unknown.", tosigner), ""
 	}
@@ -274,7 +281,15 @@ func RecursiveDNSQuery(qname, nameserver string, rrtype uint16, verbose bool) (*
 	return r, validated
 }
 
-func (mdb *MusicDB) GetMeta(z *Zone, key string) (string, bool) {
+func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool) {
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return "", false
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	stmt, err := mdb.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
 	if err != nil {
 		fmt.Printf("GetMeta: Error from db.Prepare: %v\n", err)

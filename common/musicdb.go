@@ -159,6 +159,51 @@ func (mdb *MusicDB) Begin() (*sql.Tx, error) {
 	return mdb.db.Begin()
 }
 
+func (mdb *MusicDB) StartTransaction(tx *sql.Tx) (bool, *sql.Tx, error) {
+     	 if tx != nil {
+	    return false, tx, nil
+	 }
+	 tx, err := mdb.Begin()
+	 if err != nil {
+	    log.Printf("mdb.StartTransaction: Error from mdb.Begin(): %v", err)
+	 }
+	 return true, tx, err
+}
+
+func (mdb *MusicDB) Rollback(localtx bool, tx *sql.Tx) {
+     if localtx {
+     	err := tx.Rollback()
+	if err != nil {
+		log.Printf("Error from tx.Rollback(): %v", err)
+	}
+	return 
+     }
+}
+
+func (mdb *MusicDB) CloseTransaction(localtx bool, tx *sql.Tx, err error) {
+     if localtx {
+          if err != nil {
+     	     // Rollback path
+     	     err := tx.Rollback()
+	     if err != nil {
+		    log.Printf("Error from tx.Rollback(): %v", err)
+	     }
+     	  } else {
+     	    // Commit path
+     	     err := tx.Commit()
+	     if err != nil {
+		    log.Printf("Error from tx.Commit(): %v", err)
+	     }
+	  }
+     } else {
+       // not a localtx, so we mustn't txRollback(), nor tx.Commit()
+       // But how to signal back what we *would* have done, had it been a localtx?
+       // Perhaps not our problem? err != nil and it's the callers problem?
+       // return err
+     }
+     return
+}
+
 const (
 	GSGsql  = "SELECT name FROM signergroups WHERE signer=?"
 	GSGsql2 = "SELECT name FROM group_signers WHERE signer=?"
@@ -188,8 +233,8 @@ func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
 	return sgs, nil
 }
 
-func (mdb *MusicDB) GetSignerByName(signername string, apisafe bool) (*Signer, error) {
-	return mdb.GetSigner(&Signer{Name: signername}, apisafe)
+func (mdb *MusicDB) GetSignerByName(tx *sql.Tx, signername string, apisafe bool) (*Signer, error) {
+	return mdb.GetSigner(tx, &Signer{Name: signername}, apisafe)
 }
 
 const (
@@ -199,7 +244,14 @@ SELECT name, method, auth,
 FROM signers WHERE name=?`
 )
 
-func (mdb *MusicDB) GetSigner(s *Signer, apisafe bool) (*Signer, error) {
+func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, error) {
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return nil, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	stmt, err := mdb.Prepare(GSsql)
 	if err != nil {
 		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)

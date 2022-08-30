@@ -5,6 +5,7 @@
 package music
 
 import (
+        "database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	// "github.com/DNSSEC-Provisioning/music/common"
 )
 
-func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string,
+func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner string,
 	preempt bool) (error, string) {
 	var msg string
 	log.Printf("ZAF: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
@@ -46,7 +47,14 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string,
 
 	initialstate := process.InitialState
 
-	mdb.mu.Lock()
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	// mdb.mu.Lock()
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
@@ -56,15 +64,15 @@ func (mdb *MusicDB) ZoneAttachFsm(dbzone *Zone, fsm, fsmsigner string,
 	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
 	_, err = stmt.Exec(fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
-		mdb.mu.Unlock()
+		// mdb.mu.Unlock()
 		return err, msg
 	}
-	mdb.mu.Unlock()
+	// mdb.mu.Unlock()
 	return nil, msg + fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
 		dbzone.Name, fsm, initialstate)
 }
 
-func (mdb *MusicDB) ZoneDetachFsm(dbzone *Zone, fsm, fsmsigner string) (error, string) {
+func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner string) (error, string) {
 
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -94,7 +102,14 @@ func (mdb *MusicDB) ZoneDetachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 			dbzone.Name, fsm, dbzone.FSM), ""
 	}
 
-	mdb.mu.Lock()
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	// mdb.mu.Lock()
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
@@ -103,10 +118,10 @@ func (mdb *MusicDB) ZoneDetachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 
 	_, err = stmt.Exec("", "", "", dbzone.Name)
 	if CheckSQLError("DetachFsm", sqlq, err, false) {
-		mdb.mu.Unlock()
+		// mdb.mu.Unlock()
 		return err, ""
 	}
-	mdb.mu.Unlock()
+	// mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s has now left process '%s'.",
 		dbzone.Name, fsm)
 }
@@ -114,7 +129,7 @@ func (mdb *MusicDB) ZoneDetachFsm(dbzone *Zone, fsm, fsmsigner string) (error, s
 // XXX: Returning a map[string]Zone just to get rid of an extra call
 // to ListZones() was a mistake. Let's simplify.
 
-func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, string) {
+func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (bool, error, string) {
 
 	if !dbzone.Exists {
 		return false, fmt.Errorf("Zone %s unknown", dbzone.Name), ""
@@ -131,16 +146,23 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 
 	state := dbzone.State
 
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return false, err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	if state == FsmStateStop {
 		// 1. Zone leaves process
 		// 2. Count of #zones in process in signergroup is decremented
-		err, msg := mdb.ZoneDetachFsm(dbzone, fsmname, "")
+		err, msg := mdb.ZoneDetachFsm(tx, dbzone, fsmname, "")
 		if err != nil {
 			log.Printf("ZoneStepFsm: Error from ZoneDetachFsm(%s, %s): %v",
 				dbzone.Name, fsmname, err)
 		}
 
-		res, msg2 := mdb.CheckIfProcessComplete(dbzone.SignerGroup())
+		res, msg2 := mdb.CheckIfProcessComplete(tx, dbzone.SignerGroup())
 		if res {
 			return true, nil, fmt.Sprintf("%s\n%s", msg, msg2) // "process complete" is the more important message
 		}
@@ -168,7 +190,7 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 	if len(CurrentState.Next) == 1 {
 		nextname := transitions[0]
 		t := CurrentState.Next[nextname]
-		success, err, msg := dbzone.AttemptStateTransition(nextname, t)
+		success, err, msg := dbzone.AttemptStateTransition(tx, nextname, t)
 		// return dbzone.AttemptStateTransition(nextname, t)
 		log.Printf("ZoneStepFsm debug: result from AttemptStateTransition: success: %v, err: %v, msg: '%s'\n", success, err, msg)
 		return success, err, msg
@@ -185,8 +207,8 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 		if nextstate != "" {
 			if _, exist := CurrentState.Next[nextstate]; exist {
 				t := CurrentState.Next[nextstate]
-				// success, err, msg := dbzone.AttemptStateTransition(nextstate, t)
-				return dbzone.AttemptStateTransition(nextstate, t)
+				// success, err, msg := dbzone.AttemptStateTransition(tx, nextstate, t)
+				return dbzone.AttemptStateTransition(tx, nextstate, t)
 			} else {
 				return false, fmt.Errorf(
 					"State '%s' is not a possible next state from '%s'",
@@ -235,11 +257,22 @@ func (mdb *MusicDB) ZoneStepFsm(dbzone *Zone, nextstate string) (bool, error, st
 // pre-cond true + no post-cond ==> return false, error, "msg": no transit, error
 // pre-cond true + post-cond false ==> return false, nil, "msg"
 // pre-cond true + post-cond true ==> return true, nil, "msg": all ok
-func (z *Zone) AttemptStateTransition(nextstate string,
+func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	t FSMTransition) (bool, error, string) {
+
+
+	mdb := z.MusicDB  
 	currentstate := z.State
 
 	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		// XXX: What is the correct thing to return here?
+		return false, err, "fail"
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
 
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.
@@ -250,12 +283,12 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 		if t.PostCondition != nil {
 			postcond := t.PostCondition(z)
 			if postcond {
-				z.StateTransition(currentstate, nextstate) // success
+				z.StateTransition(tx, currentstate, nextstate) // success
 				return true, nil,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate)
 			} else {
-				stopreason, exist := z.MusicDB.GetMeta(z, "stop-reason")
+				stopreason, exist := z.MusicDB.GetMeta(tx, z, "stop-reason")
 				if exist {
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 				}
@@ -272,7 +305,7 @@ func (z *Zone) AttemptStateTransition(nextstate string,
 		}
 	}
 	// pre-condition returns false
-	stopreason, exist := z.MusicDB.GetMeta(z, "stop-reason")
+	stopreason, exist := z.MusicDB.GetMeta(tx, z, "stop-reason")
 	if exist {
 		stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 	}
@@ -294,8 +327,9 @@ func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
 func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var parentAddress string
 	var exist bool
-	if parentAddress, exist = z.MusicDB.GetMeta(z, "parentaddr"); !exist {
-		z.SetStopReason("No parent-agent address registered")
+
+	if parentAddress, exist = z.MusicDB.GetMeta(nil, z, "parentaddr"); !exist {
+		z.SetStopReason(nil, "No parent-agent address registered")
 		return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
 	}
 	return parentAddress, nil
