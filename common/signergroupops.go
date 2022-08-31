@@ -479,5 +479,5 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 
 		return true, msg, nil
 	}
-	return false, "", nil	// not a error
+	return false, "", nil	// not an error
 }

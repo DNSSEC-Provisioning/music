@@ -107,10 +107,10 @@ func (mdb *MusicDB) PushZone(tx *sql.Tx, z Zone) error {
 		   return err
 		}
 		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
-			z, oldstate, dbzone.State)
+			z.Name, oldstate, dbzone.State)
 	} else {
 		log.Printf("PushZone: failed to transition zone '%s' from state '%s'",
-			z, oldstate)
+			z.Name, oldstate)
 	}
 	return nil
 }

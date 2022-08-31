@@ -5,7 +5,6 @@ package music
 
 import (
 	"database/sql"
-	// "sync"	OBE
 	"time"
 
 	"github.com/miekg/dns"
@@ -98,7 +97,6 @@ type AuthData struct {
 }
 
 type MusicDB struct {
-	// mu      sync.Mutex	// OBE
 	db      *sql.DB
 	UpdateC	chan DBUpdate
 	FSMlist map[string]FSM
