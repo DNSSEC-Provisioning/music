@@ -66,17 +66,8 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	//	mdb.mu.Lock()
-//	tx, err := mdb.Begin()
-//	if err != nil {
-//		log.Printf("AddSigner: Error from db.Begin(): %v", err)
-//	}
-	//	defer tx.Commit()
-
 	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
 		dbsigner.AuthStr, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-	//	mdb.mu.Unlock()
-	// tx.Commit()
 
 	if err != nil {
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
@@ -223,25 +214,14 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	// mdb.mu.Lock()
-//	tx, err := mdb.Begin()
-//	if err != nil {
-//		log.Printf("SignerJoinGroup: Error from mdb.Begin(): %v\n", err)
-//		return err, ""
-//	}
-	
 	stmt, err := mdb.Prepare(SJGsql2)
 	if err != nil {
 		log.Printf("SignerJoinGroup: Error from mdb.Prepare(%s): %v\n", SJGsql2, err)
 	}
 	_, err = stmt.Exec(g, dbsigner.Name)
 	if CheckSQLError("SignerJoinGroup", SJGsql2, err, false) {
-		// mdb.mu.Unlock()
-		// tx.Rollback()
 		return err, ""
 	}
-	// mdb.mu.Unlock()
-	// tx.Commit()
 	
 	fmt.Printf("SignerJoinGroup: signers in group %s: %v\n", sg.Name, sg.SignerMap)
 	if sg, err = mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
@@ -268,17 +248,14 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (err
 
 		const SJGsql3 = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
 
-		// mdb.mu.Lock()
 		stmt, err := mdb.Prepare(SJGsql3)
 		if err != nil {
 			log.Printf("Error from db.Prepare(%s): %v\n", SJGsql3, err)
 		}
 		_, err = stmt.Exec(SignerJoinGroupProcess, dbsigner.Name, sg.Name)
 		if CheckSQLError("SignerJoinGroup", SJGsql3, err, false) {
-			// mdb.mu.Unlock()
 			return err, ""
 		}
-		// mdb.mu.Unlock()
 
 		// sg.CurrentProcess = SignerJoinGroupProcess
 		// sg.PendingAddition = dbsigner.Name
@@ -368,7 +345,6 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 	// If the signer group has no zones attached to it, then it is ok to remove
 	// a signer immediately
 	if len(zones) == 0 {
-		// mdb.mu.Lock()
 		stmt, err := mdb.Prepare(SLGsql2)
 		if err != nil {
 			fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql2, err)
@@ -376,10 +352,8 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 
 		_, err = stmt.Exec(sg.Name, dbsigner.Name)
 		if CheckSQLError("SignerLeaveGroup", SLGsql2, err, false) {
-			// mdb.mu.Unlock()
 			return err, ""
 		}
-		// mdb.mu.Unlock()
 		return nil, fmt.Sprintf(
 			"Signer %s was removed from signer group %s immediately (because the signer group has no zones).",
 			dbsigner.Name, g)
@@ -395,7 +369,6 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 
 	const SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
 
-	// mdb.mu.Lock()
 	stmt, err := mdb.Prepare(SLGsql3)
 	if err != nil {
 		fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql3, err)
@@ -403,10 +376,8 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 
 	_, err = stmt.Exec(SignerLeaveGroupProcess, dbsigner.Name, sg.Name)
 	if CheckSQLError("SignerLeaveGroup", SLGsql3, err, false) {
-		// mdb.mu.Unlock()
 		return err, ""
 	}
-	// mdb.mu.Unlock()
 
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
@@ -459,9 +430,7 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql, err)
 	}
-	//  mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Name)
-	// mdb.mu.Unlock()
 
 	if CheckSQLError("DeleteSigner", DSsql, err, false) {
 		return err, ""
@@ -473,9 +442,7 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
 	if err != nil {
 		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
 	}
-	// mdb.mu.Lock()
 	_, err = stmt.Exec(dbsigner.Name)
-	// mdb.mu.Unlock()
 
 	if CheckSQLError("DeleteSigner", DSsql2, err, false) {
 		return err, ""

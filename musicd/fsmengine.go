@@ -202,11 +202,11 @@ func xxxPushZones(conf *Config) error {
 
 func xxxPushZone(conf *Config, z string) error {
 	mdb := conf.Internal.MusicDB
-	dbzone, _ := mdb.GetZone(nil, z)
+	dbzone, _, _ := mdb.GetZone(nil, z)
 	success, _, _ := mdb.ZoneStepFsm(nil, dbzone, "")
 	oldstate := dbzone.State
 	if success {
-		dbzone, _ := mdb.GetZone(nil, z)
+		dbzone, _, _ := mdb.GetZone(nil, z)
 		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
 			z, oldstate, dbzone.State)
 	} else {

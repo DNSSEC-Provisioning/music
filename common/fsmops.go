@@ -49,12 +49,11 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("ZoneAttachFsm: Error from mdb.StartTransaction(): %v\n", err)
 		return err, "fail"
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	// mdb.mu.Lock()
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
@@ -64,10 +63,8 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
 	_, err = stmt.Exec(fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
-		// mdb.mu.Unlock()
 		return err, msg
 	}
-	// mdb.mu.Unlock()
 	return nil, msg + fmt.Sprintf("Zone %s has now started process '%s' in state '%s'.",
 		dbzone.Name, fsm, initialstate)
 }
@@ -104,12 +101,11 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("ZoneDetachFsm: Error from mdb.StartTransaction(): %v\n", err)
 		return err, "fail"
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	// mdb.mu.Lock()
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 	stmt, err := mdb.db.Prepare(sqlq)
 	if err != nil {
@@ -118,10 +114,8 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	_, err = stmt.Exec("", "", "", dbzone.Name)
 	if CheckSQLError("DetachFsm", sqlq, err, false) {
-		// mdb.mu.Unlock()
 		return err, ""
 	}
-	// mdb.mu.Unlock()
 	return nil, fmt.Sprintf("Zone %s has now left process '%s'.",
 		dbzone.Name, fsm)
 }
@@ -148,7 +142,7 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
 		return false, err, "fail"
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
@@ -162,7 +156,10 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 				dbzone.Name, fsmname, err)
 		}
 
-		res, msg2 := mdb.CheckIfProcessComplete(tx, dbzone.SignerGroup())
+		res, msg2, err := mdb.CheckIfProcessComplete(tx, dbzone.SignerGroup())
+		if err != nil {
+			return false, err, fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err) // "process complete" is the more important message
+		}
 		if res {
 			return true, nil, fmt.Sprintf("%s\n%s", msg, msg2) // "process complete" is the more important message
 		}
@@ -268,7 +265,7 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("AttemptStateTransition: Error from mdb.StartTransaction(): %v\n", err)
 		// XXX: What is the correct thing to return here?
 		return false, err, "fail"
 	}

@@ -170,7 +170,7 @@ func main() {
 
 	var done = make(chan struct{}, 1)
 
-	// initialMigration()
+	go dbUpdater(&conf)
 	go APIdispatcher(&conf)
 	go deSECmgr(&conf, done)
 	go ddnsmgr(&conf, done)

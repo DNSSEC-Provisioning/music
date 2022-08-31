@@ -206,13 +206,13 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	updater := music.GetUpdater(leavingSigner.Method)
 	err, csyncrrs := updater.FetchRRset(leavingSigner, z.Name, z.Name, dns.TypeCSYNC)
 	if err != nil {
-		err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
+		err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
 		return false
 	}
 	if len(csyncrrs) != 0 {
 		if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
-			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 				leavingSigner.Name, err))
 			return false
 		}

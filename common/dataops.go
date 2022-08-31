@@ -187,7 +187,15 @@ func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	rrtype uint16, rrs []dns.RR) error {
 
-	delsql := "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
+	var tx *sql.Tx
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("WriteRRs: Error from mdb.StartTransaction(): %v\n", err)
+		return err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	const delsql = "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
 	delstmt, err := mdb.Prepare(delsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)
@@ -199,10 +207,8 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", addsql, err)
 	}
 
-	mdb.mu.Lock()
 	_, err = delstmt.Exec(zone, owner, signer.Name, int(rrtype))
 	if CheckSQLError("WriteRRs", delsql, err, false) {
-		mdb.mu.Unlock()
 		return err
 	}
 
@@ -217,7 +223,6 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 			//  }
 		}
 	}
-	mdb.mu.Unlock()
 
 	return nil
 }
@@ -227,13 +232,12 @@ func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (e
 	var rrs []string
 	RRtype := dns.StringToType[rrtype]
 
-	sql := "SELECT rdata FROM records WHERE owner=? AND signer=? AND rrtype=?"
+	const sql = "SELECT rdata FROM records WHERE owner=? AND signer=? AND rrtype=?"
 	stmt, err := mdb.Prepare(sql)
 	if err != nil {
 		fmt.Printf("ListRRset: Error from db.Prepare: %v\n", err)
 	}
 
-	// mdb.mu.Lock()
 	rows, err := stmt.Query(ownername, signer, RRtype)
 	defer rows.Close()
 
@@ -251,7 +255,6 @@ func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (e
 			}
 		}
 	}
-	// mdb.mu.Unlock()
 	return nil, "", rrs
 }
 

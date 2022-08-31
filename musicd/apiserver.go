@@ -193,199 +193,207 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
-
-		dbzone, _ := mdb.GetZone(nil, zp.Zone.Name) // Get a more complete Zone structure
 		w.Header().Set("Content-Type", "application/json")
 
-		switch zp.Command {
-		case "list":
-			zs, err := mdb.ListZones()
-			if err != nil {
-				log.Printf("Error from ListZones: %v", err)
-			}
-			resp.Zones = zs
-		// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
-		case "status":
-			var zl = make(map[string]music.Zone, 1)
-			if dbzone.Exists {
-				sg, _ := mdb.GetSignerGroup(nil, dbzone.SGname, true)
-
-				zl[dbzone.Name] = music.Zone{
-					Name:       dbzone.Name,
-					State:      dbzone.State,
-					Statestamp: dbzone.Statestamp,
-					NextState:  dbzone.NextState,
-					FSM:        dbzone.FSM,
-					SGroup:     sg,
-					SGname:     sg.Name,
+		dbzone, _, err := mdb.GetZone(nil, zp.Zone.Name) // Get a more complete Zone structure
+		if err != nil {
+			resp.Error = true
+			resp.ErrorMsg = err.Error()
+		} else {
+			switch zp.Command {
+			case "list":
+				zs, err := mdb.ListZones()
+				if err != nil {
+					log.Printf("Error from ListZones: %v", err)
 				}
-				resp.Zones = zl
+				resp.Zones = zs
+			// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
+			case "status":
+				var zl = make(map[string]music.Zone, 1)
+				if dbzone.Exists {
+					sg, _ := mdb.GetSignerGroup(nil, dbzone.SGname, true)
 
-			} else {
-				message := fmt.Sprintf("Zone %s: not in DB", zp.Zone.Name)
-				log.Println(message)
-				resp.Msg = message
-			}
-
-		case "add":
-			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup)
-			err, resp.Msg = mdb.AddZone(&zp.Zone, zp.SignerGroup, enginecheck)
-			if err != nil {
-				// log.Printf("Error from AddZone: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		case "update":
-			// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup, enginecheck)
-			err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
-			if err != nil {
-				// log.Printf("Error from UpdateZone: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		case "delete":
-			err, resp.Msg = mdb.DeleteZone(dbzone)
-			if err != nil {
-				// log.Printf("Error from DeleteZone: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		case "join":
-			err, resp.Msg = mdb.ZoneJoinGroup(nil, dbzone, zp.SignerGroup, enginecheck)
-			if err != nil {
-				// log.Printf("Error from ZoneJoinGroup: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		case "leave":
-			err, resp.Msg = mdb.ZoneLeaveGroup(dbzone, zp.SignerGroup)
-			if err != nil {
-				// log.Printf("Error from ZoneLeaveGroup: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		// XXX: A single zone cannot "choose" to join an FSM, it's the Group that does that.
-		//      This endpoint is only here for development and debugging reasons.
-		case "fsm":
-			err, resp.Msg = mdb.ZoneAttachFsm(nil, dbzone, zp.FSM, zp.FSMSigner, false)
-			if err != nil {
-				// log.Printf("Error from ZoneAttachFsm: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
-
-		case "step-fsm":
-			// var zones map[string]music.Zone
-			// var success bool
-			// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
-			// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
-			var success bool
-			success, err, resp.Msg = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
-			if err != nil {
-				log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-				// resp.Zones = zones
-				// resp.Zones = map[string]Zone{ dbzone.Name: *dbzone }
-				// w.Header().Set("Content-Type", "application/json")
-			}
-			log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
-			dbzone, _ = mdb.ApiGetZone(dbzone.Name) // apisafe
-			if !success {
-				_, dbzone.StopReason = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
-			}
-			resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
-			err = json.NewEncoder(w).Encode(resp)
-			if err != nil {
-				log.Printf("Error from Encoder: %v\n", err)
-			}
-			return
-
-		case "get-rrsets":
-			// var rrsets map[string][]dns.RR
-			err, msg, _ := mdb.ZoneGetRRsets(dbzone, zp.Owner, zp.RRtype)
-			resp.Msg = msg
-			if err != nil {
-				// log.Printf("Error from ZoneGetRRset: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			} else {
-				// dbzone, _ := mdb.GetZone(nil, zp.Zone.Name)
-				sg := dbzone.SignerGroup()
-				// fmt.Printf("APIzone: get-rrsets: zone: %v sg: %v\n", zp.Zone, sg)
-
-				var result = map[string][]string{}
-				var rrset []string
-				for k, _ := range sg.Signers() {
-					err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner,
-						zp.RRtype)
-					if err != nil {
-						log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
-					} else {
-						result[k] = rrset
+					zl[dbzone.Name] = music.Zone{
+						Name:       dbzone.Name,
+						State:      dbzone.State,
+						Statestamp: dbzone.Statestamp,
+						NextState:  dbzone.NextState,
+						FSM:        dbzone.FSM,
+						SGroup:     sg,
+						SGname:     sg.Name,
 					}
+					resp.Zones = zl
+
+				} else {
+					message := fmt.Sprintf("Zone %s: not in DB", zp.Zone.Name)
+					log.Println(message)
+					resp.Msg = message
 				}
-				resp.RRsets = result
-				// fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
-			}
-			err = json.NewEncoder(w).Encode(resp)
-			if err != nil {
-				log.Printf("Error from Encoder: %v\n", err)
-			}
-			return
 
-		case "copy-rrset":
-			fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name,
-				zp.Owner, zp.RRtype)
-			// var rrset []dns.RR
-			err, resp.Msg = mdb.ZoneCopyRRset(nil, dbzone, zp.Owner, zp.RRtype,
-				zp.FromSigner, zp.ToSigner)
-			if err != nil {
-				log.Printf("Error from ZoneCopyRRset: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			} else {
-				// resp.RRset = rrset
-				// fmt.Printf("copy:rrset: len: %d\n", len(rrset))
-			}
-			err = json.NewEncoder(w).Encode(resp)
-			if err != nil {
-				log.Printf("Error from Encoder: %v\n", err)
-			}
-			return
+			case "add":
+				resp.Msg, err = mdb.AddZone(&zp.Zone, zp.SignerGroup, enginecheck)
+				if err != nil {
+					// log.Printf("Error from AddZone: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
 
-		case "list-rrset":
-			var rrset []string
-			err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer,
-				zp.Owner, zp.RRtype)
-			if err != nil {
-				log.Printf("Error from ListRRset: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			} else {
-				resp.RRset = rrset
-			}
-			err = json.NewEncoder(w).Encode(resp)
-			if err != nil {
-				log.Printf("Error from Encoder: %v\n", err)
-			}
-			return
+			case "update":
+				// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup, enginecheck)
+				err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
+				if err != nil {
+					// log.Printf("Error from UpdateZone: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
 
-		case "meta":
-			dbzone.ZoneType = zp.Zone.ZoneType
-			err, resp.Msg = mdb.ZoneSetMeta(nil, dbzone, zp.Metakey, zp.Metavalue)
-			if err != nil {
-				// log.Printf("Error from ZoneSetMeta: %v", err)
-				resp.Error = true
-				resp.ErrorMsg = err.Error()
-			}
+			case "delete":
+				err, resp.Msg = mdb.DeleteZone(dbzone)
+				if err != nil {
+					// log.Printf("Error from DeleteZone: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
 
-		default:
+			case "join":
+				resp.Msg, err = mdb.ZoneJoinGroup(nil, dbzone, zp.SignerGroup, enginecheck)
+				if err != nil {
+					// log.Printf("Error from ZoneJoinGroup: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
+
+			case "leave":
+				err, resp.Msg = mdb.ZoneLeaveGroup(dbzone, zp.SignerGroup)
+				if err != nil {
+					// log.Printf("Error from ZoneLeaveGroup: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
+
+			// XXX: A single zone cannot "choose" to join an FSM, it's the Group that does that.
+			//      This endpoint is only here for development and debugging reasons.
+			case "fsm":
+				err, resp.Msg = mdb.ZoneAttachFsm(nil, dbzone, zp.FSM, zp.FSMSigner, false)
+				if err != nil {
+					// log.Printf("Error from ZoneAttachFsm: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
+
+			case "step-fsm":
+				// var zones map[string]music.Zone
+				// var success bool
+				// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
+				// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
+				var success bool
+				success, err, resp.Msg = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
+				if err != nil {
+					log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+					// resp.Zones = zones
+					// resp.Zones = map[string]Zone{ dbzone.Name: *dbzone }
+					// w.Header().Set("Content-Type", "application/json")
+				}
+				log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
+				dbzone, _, err = mdb.ApiGetZone(dbzone.Name) // apisafe
+				if err != nil {
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				} else {
+					if !success {
+						_, dbzone.StopReason = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
+					}
+					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
+				}
+				err = json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Printf("Error from Encoder: %v\n", err)
+				}
+				return
+
+			case "get-rrsets":
+				// var rrsets map[string][]dns.RR
+				err, msg, _ := mdb.ZoneGetRRsets(dbzone, zp.Owner, zp.RRtype)
+				resp.Msg = msg
+				if err != nil {
+					// log.Printf("Error from ZoneGetRRset: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				} else {
+					// dbzone, _ := mdb.GetZone(nil, zp.Zone.Name)
+					sg := dbzone.SignerGroup()
+					// fmt.Printf("APIzone: get-rrsets: zone: %v sg: %v\n", zp.Zone, sg)
+
+					var result = map[string][]string{}
+					var rrset []string
+					for k, _ := range sg.Signers() {
+						err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner,
+							zp.RRtype)
+						if err != nil {
+							log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
+						} else {
+							result[k] = rrset
+						}
+					}
+					resp.RRsets = result
+					// fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
+				}
+				err = json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Printf("Error from Encoder: %v\n", err)
+				}
+				return
+
+			case "copy-rrset":
+				fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name,
+					zp.Owner, zp.RRtype)
+				// var rrset []dns.RR
+				err, resp.Msg = mdb.ZoneCopyRRset(nil, dbzone, zp.Owner, zp.RRtype,
+					zp.FromSigner, zp.ToSigner)
+				if err != nil {
+					log.Printf("Error from ZoneCopyRRset: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				} else {
+					// resp.RRset = rrset
+					// fmt.Printf("copy:rrset: len: %d\n", len(rrset))
+				}
+				err = json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Printf("Error from Encoder: %v\n", err)
+				}
+				return
+
+			case "list-rrset":
+				var rrset []string
+				err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer,
+					zp.Owner, zp.RRtype)
+				if err != nil {
+					log.Printf("Error from ListRRset: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				} else {
+					resp.RRset = rrset
+				}
+				err = json.NewEncoder(w).Encode(resp)
+				if err != nil {
+					log.Printf("Error from Encoder: %v\n", err)
+				}
+				return
+
+			case "meta":
+				dbzone.ZoneType = zp.Zone.ZoneType
+				err, resp.Msg = mdb.ZoneSetMeta(nil, dbzone, zp.Metakey, zp.Metavalue)
+				if err != nil {
+					// log.Printf("Error from ZoneSetMeta: %v", err)
+					resp.Error = true
+					resp.ErrorMsg = err.Error()
+				}
+
+			default:
+			}
 		}
 		/*
 			zs, err := mdb.ListZones()
