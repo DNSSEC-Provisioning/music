@@ -14,19 +14,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-// func (s *Signer) Address() string {
-//     return s.address
-// }
-
-// func (s *Signer) Method() string {
-//     return s.method
-// }
-
 func (s *Signer) MusicDB() *MusicDB {
 	return s.DB
 }
 
 func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error, string) {
+
+     	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
+
 	var err error
 	if dbsigner.Exists {
 		return fmt.Errorf("Signer %s already present in system.",
@@ -35,7 +30,6 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 
 	fmt.Printf("AddSigner: err: %v\n", err)
 
-	// dbsigner.Method = strings.ToLower(dbsigner.Method)
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
 
@@ -61,8 +55,8 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
+		return err, msg
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
@@ -73,12 +67,16 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.AuthStr,
 			dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-		return err, ""
+		return err, msg
 	}
 
 	if group != "" {
 		log.Printf("AddSigner: signer %s has the signergroup %s specified so we set that too\n", dbsigner.Name, group)
-		dbsigner, _ := mdb.GetSigner(tx, dbsigner, false) // no need for apisafe
+		dbsigner, err := mdb.GetSigner(tx, dbsigner, false) // no need for apisafe
+		if err != nil {
+		   return err, msg
+		}
+
 		mdb.SignerJoinGroup(tx, dbsigner, group)          // we know that the signer exist
 		return nil, fmt.Sprintf(
 			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
@@ -141,17 +139,11 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (error
 	dbsigner.UseTcp = us.UseTcp
 	dbsigner.UseTSIG = us.UseTSIG
 
-//	tx, err := mdb.Begin()
-//	if err != nil {
-//		log.Printf("UpdateSigner: Error from mdb.Begin(): %v", err)
-//	}
-
 	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
 		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
-//	tx.Commit()
 
 	if CheckSQLError("UpdateSigner", USsql, err, false) {
-		return err, ""
+		return err, fmt.Sprintf("Failed to update signer %s", dbsigner.Name)
 	}
 
 	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
@@ -268,6 +260,7 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (err
 				dbsigner.Name, true) // true=preempt
 			if err != nil {
 				log.Printf("SJG: Error from ZAF: %v", err)
+				return err, ""
 			} else {
 				log.Printf("SJG: Message from ZAF: %s", msg)
 			}
@@ -382,8 +375,12 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
-		mdb.ZoneAttachFsm(tx, z, SignerLeaveGroupProcess, // we know that z exist
+		err, _ := mdb.ZoneAttachFsm(tx, z, SignerLeaveGroupProcess, // we know that z exist
 			dbsigner.Name, true) // true=preempt
+		if err != nil {
+		   return err, fmt.Sprintf("Failed to attach zone %s to the REMOVE-SIGNER process as signer %s is leaving.",
+		   	       			   z.Name, dbsigner.Name)
+		}
 	}
 
 	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
@@ -417,10 +414,6 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
 
 	sgs := dbsigner.SignerGroups
 	if len(sgs) != 0 {
-		// err, _ := mdb.SignerLeaveGroup(dbsigner, sg)
-		// if err != nil {
-		//    return err, ""
-		// }
 		return fmt.Errorf(
 			"Signer %s can not be deleted as it is part of the signer groups %v.",
 			dbsigner.Name, sgs), ""
@@ -516,6 +509,7 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 }
 
 // XXX: not used anymore, should die
+// XXX: how is login to API-based signers done w/o this?
 func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
 	tokvip *viper.Viper) (error, string) {
 	var err error
@@ -549,6 +543,8 @@ func (mdb *MusicDB) SignerLogin(dbsigner *Signer, cliconf *CliConfig,
 	return nil, msg
 }
 
+// XXX: not used anymore, should die
+// XXX: how is login to API-based signers done w/o this?
 func (mdb *MusicDB) SignerLogout(dbsigner *Signer, cliconf *CliConfig,
 	tokvip *viper.Viper) (error, string) {
 	var err error

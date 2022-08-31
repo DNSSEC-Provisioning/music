@@ -404,7 +404,11 @@ func (mdb *MusicDB) GetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {
 			return nil, false, err
 		}
 
-		sg, _ := mdb.GetSignerGroup(tx, signergroup, false) // not apisafe
+		sg, err := mdb.GetSignerGroup(tx, signergroup, false) // not apisafe
+		if err != nil {
+		      return nil, false, err
+		}
+		
 		nexttransitions := mdb.FSMlist[fsm].States[state].Next
 		next := map[string]bool{}
 		for k, _ := range nexttransitions {
@@ -481,10 +485,7 @@ func (mdb *MusicDB) GetSignerGroupZones(tx *sql.Tx, sg *SignerGroup) ([]*Zone, e
 			})
 			rowcounter++
 		}
-		// log.Printf("GetSignerGroupZones: found %d zones attached to signer group %s\n",
-		// 	rowcounter, sg.Name)
 	}
-	// log.Printf("GetSignerGroupZones: there are %d zones:\n %v", len(zones), zones)
 	return zones, nil
 }
 
@@ -522,7 +523,6 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 	}
 
 	sg := dbzone.SignerGroup()
-	// fmt.Printf("ZoneJoinGroup: dbzone: %v sg: %v\n", dbzone, sg)
 
 	// must test for existence of sg, as after AddZone() it is still nil
 	if sg != nil && sg.Name != "" {
@@ -576,7 +576,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 			"Zone %s has joined signer group %s and started the process '%s'.",
 			dbzone.Name, g, SignerJoinGroupProcess), nil
 	}
-	// mdb.CommitTransaction(localtx, tx, err)
+
         enginecheck <- EngineCheck{ Zone: dbzone.Name }
 	return fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'
@@ -682,10 +682,11 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 				log.Fatal("ListZones: Error from time.Parse():", err)
 			}
 
-			sg, _ := mdb.GetSignerGroup(tx, signergroup, true) // apisafe
-			// for _, s := range sg.SignerMap {
-			//    s.DB = nil // can not be json encoded
-			// }
+			sg, err := mdb.GetSignerGroup(tx, signergroup, true) // apisafe
+			if err != nil {
+			   return zl, err
+			}
+
 			nexttransitions := mdb.FSMlist[fsm].States[state].Next
 			next := map[string]bool{}
 			for k, _ := range nexttransitions {

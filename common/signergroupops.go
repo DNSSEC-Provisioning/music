@@ -296,7 +296,6 @@ func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
 				log.Fatal("PopulateSigners: Error from rows.Next():",
 					err)
 			} else {
-				// fmt.Printf("PS: got signer name: %s\n", name)
 				s, err := mdb.GetSignerByName(tx, name, false) // not apisafe
 				if err != nil {
 					log.Fatalf("PopulateSigners: Error from GetSigner: %v", err)
@@ -348,13 +347,11 @@ func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (erro
 			if signer == "" {
 				continue // This does happen, not a problem
 			}
-			// fmt.Printf("GGS: got signer name: %s\n", signer)
 			s, err := mdb.GetSignerByName(tx, signer, apisafe)
 			if err != nil {
 				log.Fatalf("GGS: Error from GetSigner: %v", err)
 			} else {
 				signers[signer] = s
-				// fmt.Printf("LSG: found signer obj for %s: %v\n", signer, s)
 			}
 		}
 	}
@@ -394,13 +391,11 @@ func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (er
 				log.Fatal("GetGroupSigners: Error from rows.Next():",
 					err)
 			} else {
-				// fmt.Printf("GGSNG: got signer name: %s\n", signername)
 				s, err := mdb.GetSignerByName(tx, name, apisafe)
 				if err != nil {
 					log.Fatalf("GGS: Error from GetSigner: %v", err)
 				} else {
 					signers[signername] = s
-					// fmt.Printf("LSG: found signer obj for %s: %v\n", name, s)
 				}
 			}
 		}
