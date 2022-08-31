@@ -5,7 +5,7 @@ package music
 
 import (
 	"database/sql"
-	"sync"
+	// "sync"	OBE
 	"time"
 
 	"github.com/miekg/dns"
@@ -18,7 +18,10 @@ type CliConfig struct {
 }
 
 type DBUpdate struct {
-	Type string
+     Type     string
+     Zone     string
+     Key      string
+     Value    string
 }
 
 type EngineCheck struct {
@@ -95,8 +98,9 @@ type AuthData struct {
 }
 
 type MusicDB struct {
-	mu      sync.Mutex
+	// mu      sync.Mutex	// OBE
 	db      *sql.DB
+	UpdateC	chan DBUpdate
 	FSMlist map[string]FSM
 	Tokvip  *viper.Viper
 }

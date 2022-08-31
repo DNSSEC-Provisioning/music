@@ -63,7 +63,7 @@ type CommonConf struct {
 // Internal stuff that we want to be able to reach via the Config struct, but are not
 // represented in the yaml config file.
 type InternalConf struct {
-	DBUpdateCh chan music.DBUpdate
+	DBUpdateC  chan music.DBUpdate
 	APIStopCh  chan struct{}
 	EngineCheck	chan music.EngineCheck
 	DB         *sql.DB

@@ -168,30 +168,39 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
 func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
 	mdb := z.MusicDB
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("SetStopReason: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("SetStopReason: Error from mdb.StartTransaction(): %v\n", err)
+//		return err, "fail"
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
-	err, msg := mdb.ZoneSetMeta(tx, z, "stop-reason", value)
-	if err != nil {
-		return err, msg
-	}
+//	err, msg := mdb.ZoneSetMeta(tx, z, "stop-reason", value)
+//	if err != nil {
+//		return err, msg
+//	}
 
-	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
-	stmt, err1 := mdb.Prepare(DSsql)
-	if err1 != nil {
-		log.Fatalf("DocumentStop: Error from mdb.Prepare(%s): %v", DSsql, err)
-	}
+//	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
+//	stmt, err1 := mdb.Prepare(DSsql)
+//	if err1 != nil {
+//		log.Fatalf("DocumentStop: Error from mdb.Prepare(%s): %v", DSsql, err)
+//	}
+//
+//	_, err1 = stmt.Exec(z.Name)
+//	if err1 != nil {
+//		log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
+//	}
 
-	_, err1 = stmt.Exec(z.Name)
-	if err1 != nil {
-		log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
-	}
+	mdb.UpdateC <- DBUpdate{
+		        Type:	"STOPREASON",
+			Zone:	z.Name,
+			Key:	"stop-reason",
+			Value:	value,
+		       }
+
 	log.Printf("%s: %s\n", z.Name, value)
-	return err, msg
+//	return err, msg
+	return nil, fmt.Sprintf("Zone %s stop-reason documented as '%s'", z.Name, value)
 }
 
 // XXX: SetDelayReason is not yet in use, but is needed for the wait-for-parent-ds stuff
