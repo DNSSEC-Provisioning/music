@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -21,7 +20,6 @@ func dbUpdater(conf *Config) {
 	mdb := conf.Internal.MusicDB
 
 	dbupdateC := make(chan music.DBUpdate, 5)
-	conf.Internal.DBUpdateC = dbupdateC
 	mdb.UpdateC = dbupdateC
 
 	const ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
