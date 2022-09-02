@@ -196,13 +196,13 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const delsql = "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
-	delstmt, err := mdb.Prepare(delsql)
+	delstmt, err := tx.Prepare(delsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)
 	}
 
 	addsql := "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
-	addstmt, err := mdb.Prepare(addsql)
+	addstmt, err := tx.Prepare(addsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", addsql, err)
 	}
@@ -293,7 +293,7 @@ func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
+	stmt, err := tx.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
 	if err != nil {
 		fmt.Printf("GetMeta: Error from db.Prepare: %v\n", err)
 	}

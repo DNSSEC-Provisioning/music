@@ -7,7 +7,7 @@ package music
 import (
         "database/sql"
 	"fmt"
-	"log"
+ 	"log"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -55,9 +55,9 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := tx.Prepare(sqlq)
 	if err != nil {
-		log.Printf("ZoneAttachFsm: Error from db.Prepare: %v\n", err)
+		log.Printf("ZoneAttachFsm: Error from tx.Prepare: %v\n", err)
 	}
 
 	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
@@ -107,9 +107,9 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sqlq := "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
-	stmt, err := mdb.db.Prepare(sqlq)
+	stmt, err := tx.Prepare(sqlq)
 	if err != nil {
-		fmt.Printf("ZoneDetachFsm: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ZoneDetachFsm: Error from tx.Prepare: %v\n", err)
 	}
 
 	_, err = stmt.Exec("", "", "", dbzone.Name)

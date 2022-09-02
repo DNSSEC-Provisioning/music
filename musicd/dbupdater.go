@@ -26,7 +26,7 @@ func dbUpdater(conf *Config) {
 
 	mstmt, err := mdb.Prepare(ZSMsql)
 	if err != nil {
-		log.Fatalf("dbUpdater: Error from db.Prepare(%s) 1: %v\n", ZSMsql, err)
+		log.Fatalf("dbUpdater: Error from mdb.Prepare(%s) 1: %v\n", ZSMsql, err)
 	}
 
 	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
@@ -56,7 +56,7 @@ func dbUpdater(conf *Config) {
 
 			switch t {
 			case "STOPREASON":
-				_, err := mstmt.Exec(u.Zone, u.Key, u.Value)
+				_, err := tx.Stmt(mstmt).Exec(u.Zone, u.Key, u.Value)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
 						// database is locked by other connection
@@ -70,7 +70,7 @@ func dbUpdater(conf *Config) {
 						return
 					}
 				}
-				_, err = blockstmt.Exec(u.Zone)
+				_, err = tx.Stmt(blockstmt).Exec(u.Zone)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
 						// database is locked by other connection
