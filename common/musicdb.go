@@ -100,27 +100,34 @@ UNIQUE (zone, key)
 )`,
 }
 
-func dbSetupTables(db *sql.DB) bool {
+func dbSetupTables(mdb *MusicDB) (bool, error) {
 	fmt.Printf("Setting up missing tables\n")
 
+	var tx *sql.Tx
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("dbSetupTables: Error from mdb.StartTransaction(): %v\n", err)
+		return false, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	for t, s := range DefaultTables {
-		stmt, err := db.Prepare(s)
+		stmt, err := tx.Prepare(s)
 		if err != nil {
-			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v",
-				t, s, err)
+			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v", t, s, err)
+			return false, err
+			
 		}
 		_, err = stmt.Exec()
 		if err != nil {
-			log.Fatalf("Failed to set up db schema: %s. Error: %s",
-				s, err)
+			log.Fatalf("Failed to set up db schema: %s. Error: %s", s, err)
 		}
 	}
 
-	return false
+	return false, nil
 }
 
-func NewDB(dbfile string, force bool) *MusicDB {
-	// dbfile := viper.GetString("common.db")
+func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 	log.Printf("NewMusicDB: using sqlite db in file %s\n", dbfile)
 
 	_, err := os.Stat(dbfile)
@@ -132,7 +139,16 @@ func NewDB(dbfile string, force bool) *MusicDB {
 	db, err := sql.Open("sqlite3", dbfile)
 	if err != nil {
 		log.Printf("NewMusicDB: Error from sql.Open: %v", err)
+		return nil, err
 	}
+
+        if dbmode == "WAL" {
+                _, err := db.Exec("PRAGMA journal_mode=WAL;")
+                if err != nil {
+                        log.Fatalf("NewDB: Error entering DB WAL mode: %v", err)
+                }
+                log.Printf("NewDB: Running DB in WAL (write-ahead logging) mode.")
+        }
 
 	if force {
 		for table, _ := range DefaultTables {
@@ -140,15 +156,22 @@ func NewDB(dbfile string, force bool) *MusicDB {
 			_, err = db.Exec(sqlcmd)
 			if err != nil {
 				log.Printf("NewMusicDB: Error when dropping table %s: %v", table, err)
+				return nil, err
 			}
 		}
 	}
-	dbSetupTables(db)
+
 	var mdb = MusicDB{
 		db:      db,
 		FSMlist: map[string]FSM{},
 	}
-	return &mdb
+
+	_, err = dbSetupTables(&mdb)
+	if err != nil {
+	   return nil, err
+	}
+
+	return &mdb, nil
 }
 
 func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
@@ -214,6 +237,7 @@ func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
 	stmt, err := mdb.Prepare(GSGsql2)
 	if err != nil {
 		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql2, err)
+		return sgs, err
 	}
 
 	rows, err := stmt.Query(name)
@@ -237,13 +261,6 @@ func (mdb *MusicDB) GetSignerByName(tx *sql.Tx, signername string, apisafe bool)
 	return mdb.GetSigner(tx, &Signer{Name: signername}, apisafe)
 }
 
-const (
-	GSsql = `
-SELECT name, method, auth,
-  COALESCE (addr, '') AS address, port, usetcp, usetsig
-FROM signers WHERE name=?`
-)
-
 func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, error) {
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
@@ -252,9 +269,12 @@ func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
+	const GSsql = `SELECT name, method, auth, COALESCE (addr, '') AS address, port, usetcp, usetsig FROM signers WHERE name=?`
+
 	stmt, err := mdb.Prepare(GSsql)
 	if err != nil {
-		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
+		log.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
+		return nil, err
 	}
 
 	row := stmt.QueryRow(s.Name)
@@ -313,7 +333,7 @@ func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, err
 		}, nil
 
 	default:
-		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s, err)
+		log.Fatalf("GetSigner: error from row.Scan(): name=%s, err=%v", s.Name, err)
 	}
 	return &Signer{
 		Name:   s.Name,

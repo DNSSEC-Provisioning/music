@@ -33,9 +33,9 @@ func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (error, string) {
 	}
 
 	addcmd := "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
-	addstmt, err := mdb.Prepare(addcmd)
+	addstmt, err := tx.Prepare(addcmd)
 	if err != nil {
-		fmt.Printf("AddSignerGroup: Error from db.Prepare: %v\n", err)
+		fmt.Printf("AddSignerGroup: Error from tx.Prepare: %v\n", err)
 	}
 
 	_, err = addstmt.Exec(sg)
@@ -55,7 +55,8 @@ FROM signergroups WHERE name=?`
 
 func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
-		return &SignerGroup{}, errors.New("Empty signer group does not exist")
+//		return &SignerGroup{}, errors.New("Empty signer group does not exist")
+		return &SignerGroup{}, nil // A non-existent signergroup is not an error
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -65,9 +66,9 @@ func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*Signer
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare(GSGsql1)
+	stmt, err := tx.Prepare(GSGsql1)
 	if err != nil {
-		fmt.Printf("GetSignerGroup: Error from db.Prepare '%s': %v\n", GSGsql1, err)
+		fmt.Printf("GetSignerGroup: Error from tx.Prepare '%s': %v\n", GSGsql1, err)
 	}
 
 	row := stmt.QueryRow(sg)
@@ -141,18 +142,18 @@ func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (error, string) 
 	    return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
 
-	stmt, err := mdb.Prepare(DSGsql1)
+	stmt, err := tx.Prepare(DSGsql1)
 	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql1, err)
+		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql1, err)
 	}
 	_, err = stmt.Exec(group)
 	if CheckSQLError("DeleteSignerGroup", DSGsql1, err, false) {
 		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
 
-	stmt, err = mdb.Prepare(DSGsql3)
+	stmt, err = tx.Prepare(DSGsql3)
 	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql3, err)
+		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql3, err)
 	}
 		_, err = stmt.Exec(group)
 
@@ -160,9 +161,9 @@ func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (error, string) 
 		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
 	}
 
-	stmt, err = mdb.Prepare(DSGsql4)
+	stmt, err = tx.Prepare(DSGsql4)
 	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from db.Prepare '%s': %v\n", DSGsql4, err)
+		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql4, err)
 	}
 	_, err = stmt.Exec(group)
 
@@ -216,9 +217,9 @@ func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error)
 	rows.Close()
 
 	for sgname, sg := range sgl {
-		stmt, err := mdb.Prepare(LSGsql3)
+		stmt, err := tx.Prepare(LSGsql3)
 		if err != nil {
-			log.Printf("ListSignerGroup: Error from db.Prepare: %v\n", err)
+			log.Printf("ListSignerGroup: Error from tx.Prepare: %v\n", err)
 		}
 
 		rows, err := stmt.Query(sgname)
@@ -277,9 +278,9 @@ func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sqlcmd := "SELECT name FROM signers WHERE sgroup=?"
-	stmt, err := mdb.Prepare(sqlcmd)
+	stmt, err := tx.Prepare(sqlcmd)
 	if err != nil {
-		fmt.Printf("PopulateSigners: Error from db.Prepare: %v\n", err)
+		fmt.Printf("PopulateSigners: Error from tx.Prepare: %v\n", err)
 	}
 
 	rows, err := stmt.Query(sg.Name)
@@ -325,9 +326,9 @@ func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (erro
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare(GGSsql2)
+	stmt, err := tx.Prepare(GGSsql2)
 	if err != nil {
-		fmt.Printf("GetGroupSigners: Error from db.Prepare: %v\n", err)
+		fmt.Printf("GetGroupSigners: Error from tx.Prepare: %v\n", err)
 	}
 
 	rows, err := stmt.Query(name)
@@ -371,9 +372,9 @@ func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (er
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare(GGSNGsql)
+	stmt, err := tx.Prepare(GGSNGsql)
 	if err != nil {
-		fmt.Printf("GetGroupSigners: Error from db.Prepare '%s': %v\n", GGSNGsql, err)
+		fmt.Printf("GetGroupSigners: Error from tx.Prepare '%s': %v\n", GGSNGsql, err)
 	}
 
 	rows, err := stmt.Query(name)
@@ -443,10 +444,10 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 			log.Fatalf("CheckIfProcessIsComplete: Unknown process: %s. Terminating.", cp)
 		}
 
-		stmt, err := mdb.Prepare(sqlq)
+		stmt, err := tx.Prepare(sqlq)
 		if err != nil {
-			log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v", sqlq, err)
-			return false, fmt.Sprintf("Error from mdb.Prepare(%s): %v", sqlq, err), err
+			log.Printf("CheckIfProcessIsComplete: Error from tx.Prepare(%s): %v", sqlq, err)
+			return false, fmt.Sprintf("Error from tx.Prepare(%s): %v", sqlq, err), err
 		}
 		_, err = stmt.Exec(sg.Name)
 		if err != nil {
@@ -456,11 +457,11 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 
 		if cp == SignerLeaveGroupProcess {
 			sqlq = "DELETE FROM group_signers WHERE name=? AND signer=?"
-			stmt, err := mdb.Prepare(sqlq)
+			stmt, err := tx.Prepare(sqlq)
 			if err != nil {
-				log.Printf("CheckIfProcessIsComplete: Error from db.Prepare(%s): %v",
+				log.Printf("CheckIfProcessIsComplete: Error from tx.Prepare(%s): %v",
 								      sqlq, err)
-				return false, fmt.Sprintf("Error from mdb.Prepare(%s): %v", sqlq, err), err
+				return false, fmt.Sprintf("Error from tx.Prepare(%s): %v", sqlq, err), err
 								      
 			}
 			_, err = stmt.Exec(sg.Name, pr)

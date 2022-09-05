@@ -7,6 +7,7 @@ package music
 import (
         "database/sql"
 	"log"
+	"strings"
 )
 
 const (
@@ -38,18 +39,13 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if checkall {
-	   stmt, err = mdb.Prepare(AllAutoZones)
+	   stmt, err = tx.Prepare(AllAutoZones)
 	} else {
-	   stmt, err = mdb.Prepare(AutoZones)
+	   stmt, err = tx.Prepare(AutoZones)
 	}
 	if err != nil {
-		log.Fatalf("PushZones: Error from mdb.Prepare(%s): %v", AutoZones, err)
+		log.Fatalf("PushZones: Error from tx.Prepare(%s): %v", AutoZones, err)
 	}
-
-	// tx, err := mdb.Begin()
-//	if err != nil {
-//		log.Fatalf("PushZones: Error from mdb.Begin(): %v", err)
-//	}
 
 	rows, err := stmt.Query()
 	if err != nil {
@@ -78,14 +74,18 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 			}
 		}
 	}
-	// tx.Commit()
 
 	if len(zones) > 0 {
-		log.Printf("PushZones: will push on these zones: %v", zones)
+	   	      zonelist := []string{}
+		      for _, z := range zones {
+			    zonelist = append(zonelist, z.Name)
+		      }
+
+		log.Printf("PushZones: will push on these zones: %v", strings.Join(zonelist, " "))
 		for _, z := range zones {
 		        if z.FSMStatus == "delayed" {
 			   log.Printf("PushZones: zone %s is delayed until %v. Leaving for now.",
-			   			  z.Name, "Kokko")
+			   			  z.Name, "time-when zone-has-waited-long-enough")
 			} else {
 			  mdb.PushZone(tx, z)
 			}

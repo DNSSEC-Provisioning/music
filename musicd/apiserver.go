@@ -211,7 +211,11 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			case "status":
 				var zl = make(map[string]music.Zone, 1)
 				if dbzone.Exists {
-					sg, _ := mdb.GetSignerGroup(nil, dbzone.SGname, true)
+					sg, err := mdb.GetSignerGroup(nil, dbzone.SGname, true)
+					if err != nil {
+					   resp.Error = true
+					   resp.ErrorMsg = err.Error()
+					} else {
 
 					zl[dbzone.Name] = music.Zone{
 						Name:       dbzone.Name,
@@ -223,6 +227,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 						SGname:     sg.Name,
 					}
 					resp.Zones = zl
+					}
 
 				} else {
 					message := fmt.Sprintf("Zone %s: not in DB", zp.Zone.Name)
@@ -231,6 +236,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "add":
+				fmt.Printf("apiserver:/zone: zone: %v group: '%s'", zp.Zone, zp.SignerGroup)
 				resp.Msg, err = mdb.AddZone(&zp.Zone, zp.SignerGroup, enginecheck)
 				if err != nil {
 					// log.Printf("Error from AddZone: %v", err)

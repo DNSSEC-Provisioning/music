@@ -127,6 +127,8 @@ func LoadConfig(conf *Config, safemode bool) error {
 
 func main() {
 	var conf Config
+	var err error
+
 	flag.Usage = func() {
 		flag.PrintDefaults()
 	}
@@ -139,7 +141,11 @@ func main() {
 	apistopper := make(chan struct{})
 	conf.Internal.EngineCheck = make(chan music.EngineCheck, 100)
 
-	conf.Internal.MusicDB = music.NewDB(viper.GetString("common.db"), false) // Don't drop status tables if they exist
+	conf.Internal.MusicDB, err = music.NewDB(viper.GetString("db.file"), viper.GetString("db.mode"), false) // Don't drop status tables if they exist
+	if err != nil {
+	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
+	}
+	
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 	fsml := fsm.NewFSMlist()

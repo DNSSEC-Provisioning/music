@@ -47,10 +47,10 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 
 	const sqlq = "INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)"
 
-	addstmt, err := mdb.Prepare(sqlq)
+	addstmt, err := tx.Prepare(sqlq)
 
 	if err != nil {
-		fmt.Printf("AddSigner: Error from db.Prepare(%s): %v\n", sqlq, err)
+		fmt.Printf("AddSigner: Error from tx.Prepare(%s): %v\n", sqlq, err)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -113,9 +113,9 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (error
 			dbsigner.Method, updatermap), ""
 	}
 
-	stmt, err := mdb.Prepare(USsql)
+	stmt, err := tx.Prepare(USsql)
 	if err != nil {
-		log.Printf("UpdateSigner: Error from db.Prepare(%s): %v\n", USsql, err)
+		log.Printf("UpdateSigner: Error from tx.Prepare(%s): %v\n", USsql, err)
 	}
 
 	if us.Method != "" {
@@ -206,9 +206,9 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare(SJGsql2)
+	stmt, err := tx.Prepare(SJGsql2)
 	if err != nil {
-		log.Printf("SignerJoinGroup: Error from mdb.Prepare(%s): %v\n", SJGsql2, err)
+		log.Printf("SignerJoinGroup: Error from tx.Prepare(%s): %v\n", SJGsql2, err)
 	}
 	_, err = stmt.Exec(g, dbsigner.Name)
 	if CheckSQLError("SignerJoinGroup", SJGsql2, err, false) {
@@ -240,9 +240,9 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (err
 
 		const SJGsql3 = "UPDATE signergroups SET curprocess=?, pendadd=?, locked=1 WHERE name=?"
 
-		stmt, err := mdb.Prepare(SJGsql3)
+		stmt, err := tx.Prepare(SJGsql3)
 		if err != nil {
-			log.Printf("Error from db.Prepare(%s): %v\n", SJGsql3, err)
+			log.Printf("Error from tx.Prepare(%s): %v\n", SJGsql3, err)
 		}
 		_, err = stmt.Exec(SignerJoinGroupProcess, dbsigner.Name, sg.Name)
 		if CheckSQLError("SignerJoinGroup", SJGsql3, err, false) {
@@ -338,9 +338,9 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 	// If the signer group has no zones attached to it, then it is ok to remove
 	// a signer immediately
 	if len(zones) == 0 {
-		stmt, err := mdb.Prepare(SLGsql2)
+		stmt, err := tx.Prepare(SLGsql2)
 		if err != nil {
-			fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql2, err)
+			fmt.Printf("SignerLeaveGroup: Error from tx.Prepare '%s': %v\n", SLGsql2, err)
 		}
 
 		_, err = stmt.Exec(sg.Name, dbsigner.Name)
@@ -362,9 +362,9 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (er
 
 	const SLGsql3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
 
-	stmt, err := mdb.Prepare(SLGsql3)
+	stmt, err := tx.Prepare(SLGsql3)
 	if err != nil {
-		fmt.Printf("SignerLeaveGroup: Error from db.Prepare '%s': %v\n", SLGsql3, err)
+		fmt.Printf("SignerLeaveGroup: Error from tx.Prepare '%s': %v\n", SLGsql3, err)
 	}
 
 	_, err = stmt.Exec(SignerLeaveGroupProcess, dbsigner.Name, sg.Name)
@@ -419,9 +419,9 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
 			dbsigner.Name, sgs), ""
 	}
 
-	stmt, err := mdb.Prepare(DSsql)
+	stmt, err := tx.Prepare(DSsql)
 	if err != nil {
-		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql, err)
+		fmt.Printf("DeleteSigner: Error from tx.Prepare '%s': %v\n", DSsql, err)
 	}
 	_, err = stmt.Exec(dbsigner.Name)
 
@@ -431,9 +431,9 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
 
 	// This should be a no-op, as the signer must not be a member of any group.
 	// But we keep it as a GC mechanism in case something has gone wrong.
-	stmt, err = mdb.Prepare(DSsql2)
+	stmt, err = tx.Prepare(DSsql2)
 	if err != nil {
-		fmt.Printf("DeleteSigner: Error from db.Prepare '%s': %v\n", DSsql2, err)
+		fmt.Printf("DeleteSigner: Error from tx.Prepare '%s': %v\n", DSsql2, err)
 	}
 	_, err = stmt.Exec(dbsigner.Name)
 
@@ -459,9 +459,9 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := mdb.Prepare(LSIGsql)
+	stmt, err := tx.Prepare(LSIGsql)
 	if err != nil {
-		fmt.Printf("ListSigners: Error from db.Prepare: %v\n", err)
+		fmt.Printf("ListSigners: Error from tx.Prepare: %v\n", err)
 	}
 
 	rows, err := stmt.Query()

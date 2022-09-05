@@ -134,6 +134,12 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 
 func VerifyCsyncPublished(z *music.Zone) bool {
 	log.Printf("Verifying Publication of CSYNC record sets for %s", z.Name)
+
+	if z.ZoneType == "debug" {
+		log.Printf("VerifyCsyncPublished: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
+	}
+
 	// get all csync records from all the signers
 	csynclist := []*dns.CSYNC{}
 	for _, signer := range z.SGroup.SignerMap {
