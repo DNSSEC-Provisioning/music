@@ -113,57 +113,55 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 	return nil, fmt.Sprintf("Zone %s updated.", dbzone.Name)
 }
 
-func (mdb *MusicDB) DeleteZone(z *Zone) (error, string) {
+func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 	if !z.Exists {
-		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
+		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
 	var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sg := z.SignerGroup()
 	if sg != nil {
-		err, _ := mdb.ZoneLeaveGroup(z, sg.Name)
+		err, _ := mdb.ZoneLeaveGroup(tx, z, sg.Name)
 		if err != nil {
 			log.Printf("DeleteZone: Error from ZoneLeaveGroup(%s, %s): %v", z.Name, sg.Name, err)
+			return fmt.Sprintf("Failed to delete zone '%s'. Error leaving group: %v", z.Name, err), err
 		}
 	}
 
+	_, err = tx.Exec("DELETE FROM zones WHERE name=?", z.Name)
 	if err != nil {
-		log.Printf("DeleteZone: Error from mdb.Begin(): %v", err)
+		fmt.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
+		return fmt.Sprintf("Failed to delete zone '%s'", z.Name), err
 	}
 
-	stmt, err := tx.Prepare("DELETE FROM zones WHERE name=?")
+	_, err = tx.Exec("DELETE FROM records WHERE zone=?", z.Name)
 	if err != nil {
-		fmt.Printf("DeleteZone: Error from tx.Prepare: %v\n", err)
+		log.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
+		return fmt.Sprintf("Failed to delete zone '%s'", z.Name), err
 	}
-	_, err = stmt.Exec(z.Name)
+	
+	_, err = tx.Exec("DELETE FROM metadata WHERE zone=?", z.Name)
 	if err != nil {
-		fmt.Printf("DeleteZone: Error from stmt.Exec: %v\n", err)
-	}
-	stmt, err = tx.Prepare("DELETE FROM records WHERE zone=?")
-	_, err = stmt.Exec(z.Name)
-	stmt, err = tx.Prepare("DELETE FROM metadata WHERE zone=?")
-	_, err = stmt.Exec(z.Name)
-
-	if CheckSQLError("DeleteZone", "DELETE FROM ... WHERE zone=...", err, false) {
-		return err, ""
+		log.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
+		return fmt.Sprintf("Failed to delete zone '%s'", z.Name), err
 	}
 
 	deletemsg := fmt.Sprintf("Zone %s deleted.", z.Name)
 	processcomplete, msg, err := mdb.CheckIfProcessComplete(tx, sg)
 	if err != nil {
-	   return err, fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err)
+	   return fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err
 	}
 	if processcomplete {
-		return nil, deletemsg + "\n" + msg
+		return deletemsg + "\n" + msg, nil
 	}
-	return nil, deletemsg
+	return deletemsg, nil
 }
 
 func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
@@ -591,12 +589,11 @@ as the zone is already in process '%s'. Problematic.`, dbzone.Name,
 // a zone may decide to jump ship it will not be dangrous to eith the child,
 // nor the signer group if this occurs.
 
-func (mdb *MusicDB) ZoneLeaveGroup(dbzone *Zone, g string) (error, string) {
+func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (error, string) {
 	if !dbzone.Exists {
 		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
 	}
 
-	var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
