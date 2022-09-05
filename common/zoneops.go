@@ -317,7 +317,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	fmt.Printf("This is %sStateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
+	fmt.Printf("This is %s StateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
 	if fsm == "" {
 		return fmt.Errorf("Zone %s is not currently in any ongoing process.", z.Name)
 	}
@@ -358,13 +358,6 @@ func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool, error) {
 	return zone, exists, nil
 }
 
-const (
-	GZsql = `
-SELECT name, zonetype, state, fsmmode, COALESCE(statestamp, datetime('now')) AS timestamp,
-       fsm, fsmsigner, COALESCE(sgroup, '') AS signergroup
-FROM zones WHERE name=?`
-)
-
 func (mdb *MusicDB) GetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -375,12 +368,12 @@ func (mdb *MusicDB) GetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(GZsql)
-	if err != nil {
-		log.Printf("GetZone: Error from tx.Prepare(%s): %v\n", GZsql, err)
-		return nil, false, err
-	}
-	row := stmt.QueryRow(zonename)
+	const qsql = `
+SELECT name, zonetype, state, fsmmode, COALESCE(statestamp, datetime('now')) AS timestamp,
+       fsm, fsmsigner, COALESCE(sgroup, '') AS signergroup
+FROM zones WHERE name=?`
+
+	row := tx.QueryRow(qsql, zonename)
 
 	var name, zonetype, state, fsmmode, timestamp, fsm, fsmsigner, signergroup string
 	switch err = row.Scan(&name, &zonetype, &state, &fsmmode, &timestamp,

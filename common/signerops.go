@@ -19,16 +19,20 @@ func (s *Signer) MusicDB() *MusicDB {
 }
 
 func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error, string) {
-
+	var err error
      	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
 
-	var err error
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
+		return err, msg
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
 	if dbsigner.Exists {
 		return fmt.Errorf("Signer %s already present in system.",
 			dbsigner.Name), ""
 	}
-
-	fmt.Printf("AddSigner: err: %v\n", err)
 
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
@@ -45,26 +49,13 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 		}
 	}
 
-	const sqlq = "INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	const sqlq = `
+	INSERT INTO signers(name, method, auth, addr, port, usetcp, usetsig) VALUES (?, ?, ?, ?, ?, ?, ?)`
 
-	addstmt, err := tx.Prepare(sqlq)
-
-	if err != nil {
-		fmt.Printf("AddSigner: Error from tx.Prepare(%s): %v\n", sqlq, err)
-	}
-
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
-		return err, msg
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
-
-	_, err = addstmt.Exec(dbsigner.Name, dbsigner.Method,
+	_, err = tx.Exec(sqlq, dbsigner.Name, dbsigner.Method,
 		dbsigner.AuthStr, dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-
 	if err != nil {
-		fmt.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
+		log.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.AuthStr,
 			dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
 		return err, msg
@@ -77,9 +68,13 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 		   return err, msg
 		}
 
-		mdb.SignerJoinGroup(tx, dbsigner, group)          // we know that the signer exist
-		return nil, fmt.Sprintf(
-			"Signer %s was added and immediately attached to signer group %s.", dbsigner.Name, group)
+		err, _ = mdb.SignerJoinGroup(tx, dbsigner, group)          // we know that the signer exist
+		if err != nil {
+		   return err, fmt.Sprintf("AddSigner: Error joinging new signer %s to group %s: %v",
+		   	       			       dbsigner.Name, group, err)
+		}
+		return nil, fmt.Sprintf("Signer %s was added and immediately attached to signer group %s.",
+		       	    			dbsigner.Name, group)
 	}
 
 	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
