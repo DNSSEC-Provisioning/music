@@ -22,7 +22,10 @@ func main() {
 
 	ValidateConfig(nil, DefaultCfgFile) // will terminate on error
 
-	conf.MusicDB = music.NewDB(viper.GetString("scanner.db"), false)
+	conf.MusicDB, err = music.NewDB(viper.GetString("scanner.db"), "", false)
+	if err != nil {
+	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("scanner.db"), err)
+	}
 
 	// zones is the list of zones the scanner will be monitoring
 	zones := ReadConf(viper.GetString("scanner.zones"))
