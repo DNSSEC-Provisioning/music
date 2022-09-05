@@ -254,7 +254,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "delete":
-				err, resp.Msg = mdb.DeleteZone(dbzone)
+				resp.Msg, err = mdb.DeleteZone(dbzone)
 				if err != nil {
 					// log.Printf("Error from DeleteZone: %v", err)
 					resp.Error = true
@@ -270,7 +270,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "leave":
-				err, resp.Msg = mdb.ZoneLeaveGroup(dbzone, zp.SignerGroup)
+				err, resp.Msg = mdb.ZoneLeaveGroup(nil, dbzone, zp.SignerGroup)
 				if err != nil {
 					// log.Printf("Error from ZoneLeaveGroup: %v", err)
 					resp.Error = true
