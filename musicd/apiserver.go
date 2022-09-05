@@ -463,7 +463,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "delete":
-			err, resp.Msg = mdb.DeleteSigner(nil, dbsigner)
+			resp.Msg, err = mdb.DeleteSigner(nil, dbsigner)
 			if err != nil {
 				// log.Printf("Error from DeleteSigner: %v", err)
 				resp.Error = true

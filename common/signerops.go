@@ -375,56 +375,44 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 }
 
 const (
-	DSsql  = "DELETE FROM signers WHERE name=?"
-	DSsql2 = "DELETE FROM group_signers WHERE signer=?"
 )
 
 // XXX: It should not be possible to delete a signer that is part of a signer group.
 //      Full stop.
-func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (error, string) {
+func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sgs := dbsigner.SignerGroups
 	if len(sgs) != 0 {
-		return fmt.Errorf(
+		return "", fmt.Errorf(
 			"Signer %s can not be deleted as it is part of the signer groups %v.",
-			dbsigner.Name, sgs), ""
+			dbsigner.Name, sgs)
 	}
 
-	stmt, err := tx.Prepare(DSsql)
-	if err != nil {
-		fmt.Printf("DeleteSigner: Error from tx.Prepare '%s': %v\n", DSsql, err)
-	}
-	_, err = stmt.Exec(dbsigner.Name)
-
-	if CheckSQLError("DeleteSigner", DSsql, err, false) {
-		return err, ""
+	const dsql  = "DELETE FROM signers WHERE name=?"
+	_, err = tx.Exec(dsql, dbsigner.Name)
+	if CheckSQLError("DeleteSigner", dsql, err, false) {
+		return "", err
 	}
 
 	// This should be a no-op, as the signer must not be a member of any group.
 	// But we keep it as a GC mechanism in case something has gone wrong.
-	stmt, err = tx.Prepare(DSsql2)
-	if err != nil {
-		fmt.Printf("DeleteSigner: Error from tx.Prepare '%s': %v\n", DSsql2, err)
-	}
-	_, err = stmt.Exec(dbsigner.Name)
+	const dsql2 = "DELETE FROM group_signers WHERE signer=?"
 
-	if CheckSQLError("DeleteSigner", DSsql2, err, false) {
-		return err, ""
+	_, err = tx.Exec(dsql2, dbsigner.Name)
+	if CheckSQLError("DeleteSigner", dsql2, err, false) {
+		return "", err
 	}
-	return nil, fmt.Sprintf("Signer %s deleted.", dbsigner.Name)
+	return fmt.Sprintf("Signer %s deleted.", dbsigner.Name), nil
 }
 
 const (
-	LSIGsql = `
-SELECT name, method, addr, auth, port
-FROM signers`
 )
 
 func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
@@ -437,15 +425,16 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(LSIGsql)
-	if err != nil {
-		fmt.Printf("ListSigners: Error from tx.Prepare: %v\n", err)
-	}
+//	stmt, err := tx.Prepare(LSIGsql)
+//	if err != nil {
+//		fmt.Printf("ListSigners: Error from tx.Prepare: %v\n", err)
+//	}
 
-	rows, err := stmt.Query()
+	const sqlq = "SELECT name, method, addr, auth, port FROM signers"
+	rows, err := tx.Query(sqlq)
 	defer rows.Close()
 
-	if CheckSQLError("ListSigners", LSIGsql, err, false) {
+	if CheckSQLError("ListSigners", sqlq, err, false) {
 		return sl, err
 	} else {
 		var name, method, address, authstr, port string
@@ -474,7 +463,7 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 				Auth:    auth,    // AuthDataTmp(auth), // TODO: Issue #28
 				Port:    port,
 			}
-			sgs, err := mdb.GetSignerGroups(name)
+			sgs, err := mdb.GetSignerGroups(tx, name)
 			if err != nil {
 				log.Fatalf("mdb.ListSigners: Error from mdb.GetSignerGroups: %v",
 					err)
