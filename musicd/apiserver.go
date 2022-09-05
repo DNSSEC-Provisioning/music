@@ -471,7 +471,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "join":
-			err, resp.Msg = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from SignerJoinGroup: %v", err)
 				resp.Error = true
@@ -479,7 +479,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "leave":
-			err, resp.Msg = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from SignerLeaveGroup: %v", err)
 				resp.Error = true
