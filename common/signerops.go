@@ -87,36 +87,31 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
 }
 
-const (
-	USsql = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
-)
-
-func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (error, string) {
+func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (string, error) {
 	var err error
 	if !dbsigner.Exists {
-		return fmt.Errorf("Signer %s not present in system.",
-			dbsigner.Name), ""
+		return "", fmt.Errorf("Signer %s not present in system.",
+			   		      dbsigner.Name)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return fmt.Sprintf("UpdateSigner: Error from mdb.StartTransaction(): %v", err), err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
 	if !ok {
-		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: %v",
-			dbsigner.Method, updatermap), ""
+		return "", fmt.Errorf("Unknown signer method: %s. Known methods are: %v",
+			   		       dbsigner.Method, updatermap)
 	}
 
-	stmt, err := tx.Prepare(USsql)
-	if err != nil {
-		log.Printf("UpdateSigner: Error from tx.Prepare(%s): %v\n", USsql, err)
-	}
+//	stmt, err := tx.Prepare(USsql)
+//	if err != nil {
+//		log.Printf("UpdateSigner: Error from tx.Prepare(%s): %v\n", USsql, err)
+//	}
 
 	if us.Method != "" {
 		dbsigner.Method = us.Method
@@ -139,17 +134,23 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (error
 	dbsigner.UseTcp = us.UseTcp
 	dbsigner.UseTSIG = us.UseTSIG
 
-	_, err = stmt.Exec(dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
-		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
+	const sqlq = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
 
-	if CheckSQLError("UpdateSigner", USsql, err, false) {
-		return err, fmt.Sprintf("Failed to update signer %s", dbsigner.Name)
+	_, err = tx.Exec(sqlq, dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
+		 	       dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
+	if err != nil {
+		log.Printf("UpdateSigner: Error from tx.Exec(%s): %v\n", sqlq, err)
+		return fmt.Sprintf("UpdateSigner: Error from tx.Exec: %v", err), err
 	}
 
-	fmt.Printf("UpdateSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
+//	if CheckSQLError("UpdateSigner", USsql, err, false) {
+//		return err, fmt.Sprintf("Failed to update signer %s", dbsigner.Name)
+//	}
+
+	log.Printf("UpdateSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.Auth,
 		dbsigner.Address, dbsigner.Port)
-	return nil, fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name)
+	return fmt.Sprintf("Signer %s successfully updated.", dbsigner.Name), nil
 }
 
 // SignerJoinGroup(): add an already defined signer to an already defined signer group.
