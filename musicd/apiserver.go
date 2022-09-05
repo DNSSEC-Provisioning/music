@@ -455,7 +455,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "update":
-			err, resp.Msg = mdb.UpdateSigner(nil, dbsigner, sp.Signer)
+			resp.Msg, err = mdb.UpdateSigner(nil, dbsigner, sp.Signer)
 			if err != nil {
 				// log.Printf("Error from UpdateSigner: %v", err)
 				resp.Error = true
