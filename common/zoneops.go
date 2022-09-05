@@ -6,7 +6,6 @@ package music
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -313,22 +312,6 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	mdb := z.MusicDB
 	fsm := z.FSM
 
-	fmt.Printf("This is %sStateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
-	if fsm == "" {
-		return errors.New(fmt.Sprintf("Zone %s is not currently in any ongoing process.",
-			z.Name))
-	}
-
-	if z.State != from {
-		return errors.New(fmt.Sprintf("StateTransition: Error: zone %s is in state '%s'. Should be '%s'.\n", z.State, from))
-	}
-
-	if from == FsmStateStop && to == FsmStateStop {
-		fmt.Printf("StateTransition: terminal state reached. Exiting process.\n")
-		to = "---"
-		fsm = "---"
-	}
-
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("StateTransition: Error from mdb.StartTransaction(): %v\n", err)
@@ -336,19 +319,31 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	sqlq := "UPDATE zones SET state=?, fsm=?, fsmstatus=? WHERE name=?"
-	stmt, err := tx.Prepare(sqlq)
-	if err != nil {
-		fmt.Printf("Error from tx.Prepare: %v\n", err)
+	fmt.Printf("This is %sStateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
+	if fsm == "" {
+		return fmt.Errorf("Zone %s is not currently in any ongoing process.", z.Name)
 	}
 
-	_, err = stmt.Exec(to, fsm, "", z.Name)			// remove fsmstatus="blocked" if there
-	if CheckSQLError("StateTransition", sqlq, err, false) {
+	if z.State != from {
+		return fmt.Errorf("StateTransition: Error: zone %s is in state '%s'. Should be '%s'.\n",
+		       				    z.State, from)
+	}
+
+	if from == FsmStateStop && to == FsmStateStop {
+		log.Printf("StateTransition: terminal state reached. Exiting process.\n")
+		to = "---"
+		fsm = "---"
+	}
+
+	_, err = tx.Exec("UPDATE zones SET state=?, fsm=?, fsmstatus=? WHERE name=?", to, fsm, "", z.Name)
+	if err != nil {
+		log.Printf("StateTransition: Error from tx.Exec(): %v\n", err)
 		return err
 	}
 	err, _ = mdb.ZoneSetMeta(tx, z, "stop-reason", "")		// remove old stop-reason if there
 	if err != nil {
 		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
+		return err
 	}
 	log.Printf("Zone %s transitioned from %s to %s in process %s", z.Name, from, to, fsm)
 
