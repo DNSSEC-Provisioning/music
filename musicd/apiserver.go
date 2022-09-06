@@ -246,7 +246,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 			case "update":
 				// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup, enginecheck)
-				err, resp.Msg = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
+				resp.Msg, err = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
 				if err != nil {
 					// log.Printf("Error from UpdateZone: %v", err)
 					resp.Error = true
@@ -270,7 +270,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "leave":
-				err, resp.Msg = mdb.ZoneLeaveGroup(nil, dbzone, zp.SignerGroup)
+				resp.Msg, err = mdb.ZoneLeaveGroup(nil, dbzone, zp.SignerGroup)
 				if err != nil {
 					// log.Printf("Error from ZoneLeaveGroup: %v", err)
 					resp.Error = true
@@ -280,7 +280,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			// XXX: A single zone cannot "choose" to join an FSM, it's the Group that does that.
 			//      This endpoint is only here for development and debugging reasons.
 			case "fsm":
-				err, resp.Msg = mdb.ZoneAttachFsm(nil, dbzone, zp.FSM, zp.FSMSigner, false)
+				resp.Msg, err = mdb.ZoneAttachFsm(nil, dbzone, zp.FSM, zp.FSMSigner, false)
 				if err != nil {
 					// log.Printf("Error from ZoneAttachFsm: %v", err)
 					resp.Error = true
@@ -293,7 +293,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
 				// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
 				var success bool
-				success, err, resp.Msg = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
+				success, resp.Msg, err = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
 				if err != nil {
 					log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
 					resp.Error = true
@@ -309,7 +309,11 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					resp.ErrorMsg = err.Error()
 				} else {
 					if !success {
-						_, dbzone.StopReason = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
+						dbzone.StopReason, err = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
+						if err != nil {
+						   resp.Error = true
+						   resp.ErrorMsg = err.Error()
+						}
 					}
 					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
 				}
@@ -391,7 +395,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 			case "meta":
 				dbzone.ZoneType = zp.Zone.ZoneType
-				err, resp.Msg = mdb.ZoneSetMeta(nil, dbzone, zp.Metakey, zp.Metavalue)
+				resp.Msg, err = mdb.ZoneSetMeta(nil, dbzone, zp.Metakey, zp.Metavalue)
 				if err != nil {
 					// log.Printf("Error from ZoneSetMeta: %v", err)
 					resp.Error = true
@@ -447,7 +451,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			resp.Signers = ss
 
 		case "add":
-			err, resp.Msg = mdb.AddSigner(nil, dbsigner, sp.SignerGroup)
+			resp.Msg, err = mdb.AddSigner(nil, dbsigner, sp.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from AddSigner: %v", err)
 				resp.Error = true
@@ -463,7 +467,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "delete":
-			err, resp.Msg = mdb.DeleteSigner(nil, dbsigner)
+			resp.Msg, err = mdb.DeleteSigner(nil, dbsigner)
 			if err != nil {
 				// log.Printf("Error from DeleteSigner: %v", err)
 				resp.Error = true
@@ -471,7 +475,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "join":
-			err, resp.Msg = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from SignerJoinGroup: %v", err)
 				resp.Error = true
@@ -479,7 +483,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "leave":
-			err, resp.Msg = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
 				// log.Printf("Error from SignerLeaveGroup: %v", err)
 				resp.Error = true
@@ -547,14 +551,14 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			fmt.Printf("apiserver: AddSignerGroup\n")
-			err, msg := mdb.AddSignerGroup(nil, sgp.Name)
+			msg, err := mdb.AddSignerGroup(nil, sgp.Name)
 			if err != nil {
 				log.Printf("Error from AddSignerGroup: %v", err)
 			}
 			resp.Message = msg
 
 		case "delete":
-			err, msg := mdb.DeleteSignerGroup(nil, sgp.Name)
+			msg, err := mdb.DeleteSignerGroup(nil, sgp.Name)
 			if err != nil {
 				log.Printf("Error from DeleteSignerGroup: %v", err)
 			}

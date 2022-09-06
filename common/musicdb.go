@@ -112,15 +112,9 @@ func dbSetupTables(mdb *MusicDB) (bool, error) {
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	for t, s := range DefaultTables {
-		stmt, err := tx.Prepare(s)
+		_, err = tx.Exec(s)
 		if err != nil {
-			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v", t, s, err)
-			return false, err
-			
-		}
-		_, err = stmt.Exec()
-		if err != nil {
-			log.Fatalf("Failed to set up db schema: %s. Error: %s", s, err)
+			log.Fatalf("Failed to set up db schema for table %s: %s. Error: %v", t, s, err)
 		}
 	}
 
@@ -227,21 +221,21 @@ func (mdb *MusicDB) CloseTransaction(localtx bool, tx *sql.Tx, err error) {
      return
 }
 
-const (
-	GSGsql  = "SELECT name FROM signergroups WHERE signer=?"
-	GSGsql2 = "SELECT name FROM group_signers WHERE signer=?"
-)
+// const GSGsql  = "SELECT name FROM signergroups WHERE signer=?"
 
-func (mdb *MusicDB) GetSignerGroups(name string) ([]string, error) {
+func (mdb *MusicDB) GetSignerGroups(tx *sql.Tx, name string) ([]string, error) {
 	var sgs = []string{}
-	stmt, err := mdb.Prepare(GSGsql2)
-	if err != nil {
-		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql2, err)
-		return sgs, err
-	}
 
-	rows, err := stmt.Query(name)
-	if CheckSQLError("GetSignerGroups", GSGsql2, err, false) {
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return nil, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	const sqlq = "SELECT name FROM group_signers WHERE signer=?"
+	rows, err := tx.Query(sqlq, name)
+	if CheckSQLError("GetSignerGroups", sqlq, err, false) {
 		return []string{}, err
 	} else {
 		var signergroup string
@@ -271,13 +265,7 @@ func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, err
 
 	const GSsql = `SELECT name, method, auth, COALESCE (addr, '') AS address, port, usetcp, usetsig FROM signers WHERE name=?`
 
-	stmt, err := mdb.Prepare(GSsql)
-	if err != nil {
-		log.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
-		return nil, err
-	}
-
-	row := stmt.QueryRow(s.Name)
+	row := tx.QueryRow(GSsql, s.Name)
 
 	var name, method, authstr, address, port string
 	var usetcp, usetsig bool
@@ -299,7 +287,7 @@ func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, err
 	case nil:
 		// fmt.Printf("GetSigner: found signer(%s, %s, %s, %s, %s)\n", name,
 		// 			  method, authstr, address, signergroup)
-		sgs, err := mdb.GetSignerGroups(s.Name)
+		sgs, err := mdb.GetSignerGroups(tx, s.Name)
 		if err != nil {
 			log.Fatalf("mdb.GetSigner: Error from signer.GetSignerGroups: %v", err)
 		}
