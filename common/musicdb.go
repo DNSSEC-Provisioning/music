@@ -112,15 +112,15 @@ func dbSetupTables(mdb *MusicDB) (bool, error) {
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	for t, s := range DefaultTables {
-		stmt, err := tx.Prepare(s)
+//		stmt, err := tx.Prepare(s)
+//		if err != nil {
+//			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v", t, s, err)
+//			return false, err
+//			
+//		}
+		_, err = tx.Exec(s)
 		if err != nil {
-			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v", t, s, err)
-			return false, err
-			
-		}
-		_, err = stmt.Exec()
-		if err != nil {
-			log.Fatalf("Failed to set up db schema: %s. Error: %s", s, err)
+			log.Fatalf("Failed to set up db schema for table %s: %s. Error: %v", t, s, err)
 		}
 	}
 

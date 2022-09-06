@@ -39,18 +39,12 @@ func (mdb *MusicDB) AddZone(z *Zone, group string, enginecheck chan EngineCheck)
 		return "", fmt.Errorf("Zone %s already present in MuSiC system.", fqdn)
 	}
 
-	const AZsql = `
+	const sqlq = `
 INSERT INTO zones(name, zonetype, state, statestamp, fsm, fsmmode)
 VALUES (?, ?, ?, datetime('now'), ?, ?)`
 
-	stmt, err := tx.Prepare(AZsql)
-	if err != nil {
-		log.Printf("Error in SQL prepare(%s): %v", AZsql, err)
-		return fmt.Sprintf("Error in SQL prepare(%s): %v", AZsql, err), err
-	}
-
-	_, err = stmt.Exec(fqdn, z.ZoneType, "", "", z.FSMMode)
-	if CheckSQLError("AddZone", AZsql, err, false) {
+	_, err = tx.Exec(sqlq, fqdn, z.ZoneType, "", "", z.FSMMode)
+	if CheckSQLError("AddZone", sqlq, err, false) {
 		return "", err
 	}
 
@@ -60,6 +54,7 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 		if err != nil {
 		   return "", err
 		}
+
 		_, err = mdb.ZoneJoinGroup(tx, dbzone, group, enginecheck) // we know that the zone exist
 		if err != nil {
 			return fmt.Sprintf(
@@ -74,24 +69,18 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 }
 
 const (
-	UZsql = "UPDATE zones SET zonetype=?, fsmmode=? WHERE name=?"
 )
 
-func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (error, string) {
+func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
 	log.Printf("UpdateZone: zone: %v", uz)
 
 	var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
-
-	stmt, err := tx.Prepare(UZsql)
-	if err != nil {
-		fmt.Printf("Error in tx.Prepare(%s): %v", UZsql, err)
-	}
 
 	if uz.ZoneType != "" {
 		dbzone.ZoneType = uz.ZoneType
@@ -101,16 +90,18 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 		dbzone.FSMMode = uz.FSMMode
 	}
 
-	_, err = stmt.Exec(dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
-	if CheckSQLError("UpdateZone", UZsql, err, false) {
-		return err, ""
+	const sqlq = "UPDATE zones SET zonetype=?, fsmmode=? WHERE name=?"
+	
+	_, err = tx.Exec(sqlq, dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
+	if CheckSQLError("UpdateZone", sqlq, err, false) {
+		return "", err
 	}
 
 	if uz.FSMMode == "auto" {
 	   enginecheck <- EngineCheck{ Zone: dbzone.Name }
 	}
 
-	return nil, fmt.Sprintf("Zone %s updated.", dbzone.Name)
+	return fmt.Sprintf("Zone %s updated.", dbzone.Name), nil
 }
 
 func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
@@ -128,7 +119,7 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 
 	sg := z.SignerGroup()
 	if sg != nil {
-		err, _ := mdb.ZoneLeaveGroup(tx, z, sg.Name)
+		_, err := mdb.ZoneLeaveGroup(tx, z, sg.Name)
 		if err != nil {
 			log.Printf("DeleteZone: Error from ZoneLeaveGroup(%s, %s): %v", z.Name, sg.Name, err)
 			return fmt.Sprintf("Failed to delete zone '%s'. Error leaving group: %v", z.Name, err), err
@@ -167,29 +158,6 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
 	mdb := z.MusicDB
 
-//	localtx, tx, err := mdb.StartTransaction(tx)
-//	if err != nil {
-//		log.Printf("SetStopReason: Error from mdb.StartTransaction(): %v\n", err)
-//		return err, "fail"
-//	}
-//	defer mdb.CloseTransaction(localtx, tx, err)
-
-//	err, msg := mdb.ZoneSetMeta(tx, z, "stop-reason", value)
-//	if err != nil {
-//		return err, msg
-//	}
-
-//	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
-//	stmt, err1 := tx.Prepare(DSsql)
-//	if err1 != nil {
-//		log.Fatalf("DocumentStop: Error from tx.Prepare(%s): %v", DSsql, err)
-//	}
-//
-//	_, err1 = stmt.Exec(z.Name)
-//	if err1 != nil {
-//		log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
-//	}
-
 	mdb.UpdateC <- DBUpdate{
 		        Type:	"STOPREASON",
 			Zone:	z.Name,
@@ -198,112 +166,94 @@ func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
 		       }
 
 	log.Printf("%s: %s\n", z.Name, value)
-//	return err, msg
 	return nil, fmt.Sprintf("Zone %s stop-reason documented as '%s'", z.Name, value)
 }
 
 // XXX: SetDelayReason is not yet in use, but is needed for the wait-for-parent-ds stuff
-func (z *Zone) SetDelayReason(tx *sql.Tx, value string, delay time.Duration) (error, string) {
+func (z *Zone) SetDelayReason(tx *sql.Tx, value string, delay time.Duration) (string, error) {
 	mdb := z.MusicDB
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("SetDelayReason: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	err, msg := mdb.ZoneSetMeta(tx, z, "delay-reason", value)
+	msg, err := mdb.ZoneSetMeta(tx, z, "delay-reason", value)
 	if err != nil {
-		return err, msg
+		return msg, err
 	}
 
-	const DSsql = "UPDATE zones SET fsmstatus='delayed' WHERE name=?"
-	stmt, err1 := tx.Prepare(DSsql)
-	if err1 != nil {
-		log.Fatalf("DocumentStop: Error from tx.Prepare(%s): %v", DSsql, err)
-	}
+	const sqlq = "UPDATE zones SET fsmstatus='delayed' WHERE name=?"
 
-	_, err1 = stmt.Exec(z.Name)
-	if err1 != nil {
-		log.Fatalf("DocumentStop: Error from mdb.Exec(%s): %v", DSsql, err)
+	_, err = tx.Exec(sqlq, z.Name)
+	if err != nil {
+		log.Fatalf("DocumentStop: Error from tx.Exec(%s): %v", sqlq, err)
 	}
 	log.Printf("%s\n", value)
-	return err, msg
+	return msg, err
 }
 
-const (
-	ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
-)
-
-func (mdb *MusicDB) ZoneSetMeta(tx *sql.Tx, z *Zone, key, value string) (error, string) {
+func (mdb *MusicDB) ZoneSetMeta(tx *sql.Tx, z *Zone, key, value string) (string, error) {
 	if !z.Exists {
-		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
+		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneSetMeta: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	mstmt, err := tx.Prepare(ZSMsql)
-	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from tx.Prepare(%s) 1: %v\n", ZSMsql, err)
-	}
-	zstmt, err := tx.Prepare("UPDATE zones SET zonetype=? WHERE name=?")
-	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from tx.Prepare 2: %v\n", err)
+	const sqlq = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
+	_, err = tx.Exec(sqlq, z.Name, key, value)
+	if CheckSQLError("ZoneSetMeta", sqlq, err, false) {
+		return "", err
 	}
 
-	_, err = mstmt.Exec(z.Name, key, value)
-	if CheckSQLError("ZoneSetMeta", "INSERT OR REPLACE INTO", err, false) {
-		return err, ""
-	}
-	_, err = zstmt.Exec(z.ZoneType, z.Name)
-	if CheckSQLError("ZoneSetMeta", "UPDATE zones SET zonetype", err, false) {
-		return err, ""
+	const sqlq2 = "UPDATE zones SET zonetype=? WHERE name=?"
+
+	_, err = tx.Exec(sqlq2, z.ZoneType, z.Name)
+	if CheckSQLError("ZoneSetMeta", sqlq2, err, false) {
+		return "", err
 	}
 
-	return nil, fmt.Sprintf("Zone %s metadata '%s' updated to be '%s'",
-		z.Name, key, value)
+	return fmt.Sprintf("Zone %s metadata '%s' updated to be '%s'",
+		z.Name, key, value), nil
 }
 
 const (
-	ZGMsql = "SELECT value FROM metadata WHERE zone=? AND key=?"
 )
 
-func (mdb *MusicDB) ZoneGetMeta(tx *sql.Tx, z *Zone, key string) (error, string) {
+func (mdb *MusicDB) ZoneGetMeta(tx *sql.Tx, z *Zone, key string) (string, error) {
 	if !z.Exists {
-		return fmt.Errorf("Zone %s not present in MuSiC system.", z.Name), ""
+		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneGetMeta: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(ZGMsql)
-	if err != nil {
-		fmt.Printf("ZoneSetMeta: Error from tx.Prepare(%s): %v\n", ZGMsql, err)
-	}
+	const sqlq = "SELECT value FROM metadata WHERE zone=? AND key=?"
 
-	row := stmt.QueryRow(z.Name, key)
-	if CheckSQLError("ZoneGetMeta", ZGMsql, err, false) {
-		return err, ""
+	row := tx.QueryRow(sqlq, z.Name, key)
+	if CheckSQLError("ZoneGetMeta", sqlq, err, false) {
+		return "", err
 	}
 
 	var value string
 	switch err = row.Scan(&value); err {
 	case sql.ErrNoRows:
-		return err, ""
+		return "", err
 	case nil:
-		return nil, value
+		return value, nil 
 	}
-	return nil, ""
+	return "", nil
 }
 
 func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
@@ -338,7 +288,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 		log.Printf("StateTransition: Error from tx.Exec(): %v\n", err)
 		return err
 	}
-	err, _ = mdb.ZoneSetMeta(tx, z, "stop-reason", "")		// remove old stop-reason if there
+	_, err = mdb.ZoneSetMeta(tx, z, "stop-reason", "")		// remove old stop-reason if there
 	if err != nil {
 		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
 		return err
@@ -437,12 +387,10 @@ func (mdb *MusicDB) GetSignerGroupZones(tx *sql.Tx, sg *SignerGroup) ([]*Zone, e
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	sqlq := "SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm FROM zones WHERE sgroup=?"
-	stmt, err := tx.Prepare(sqlq)
-	if err != nil {
-		log.Printf("GetSignerGroupZones: Error from tx.Prepare(%s): %v\n", sqlq, err)
-	}
-	rows, err := stmt.Query(sg.Name)
+	const sqlq = `
+SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm FROM zones WHERE sgroup=?`
+
+	rows, err := tx.Query(sqlq, sg.Name)
 	defer rows.Close()
 
 	if CheckSQLError("GetSignerGroupZones", sqlq, err, false) {
@@ -533,13 +481,9 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	sqlq := "UPDATE zones SET sgroup=? WHERE name=?"
-	stmt, err := tx.Prepare(sqlq)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from tx.Prepare: %v\n", err)
-	}
+	const sqlq = "UPDATE zones SET sgroup=? WHERE name=?"
 
-	_, err = stmt.Exec(g, dbzone.Name)
+	_, err = tx.Exec(g, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		return fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
 	}
@@ -553,7 +497,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 	// VerifyZoneInSyncProcess as a method of ensuring that it is in sync.
 	// This process is currently a no-op, but doesn't have to be.
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
-		err, msg := mdb.ZoneAttachFsm(tx, dbzone, SignerJoinGroupProcess,
+		msg, err := mdb.ZoneAttachFsm(tx, dbzone, SignerJoinGroupProcess,
 			"all", false) // false=no preempting
 		if err != nil {
 			return msg, err
@@ -582,51 +526,42 @@ as the zone is already in process '%s'. Problematic.`, dbzone.Name,
 // a zone may decide to jump ship it will not be dangrous to eith the child,
 // nor the signer group if this occurs.
 
-func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (error, string) {
+func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (string, error) {
 	if !dbzone.Exists {
-		return fmt.Errorf("Zone %s unknown", dbzone.Name), ""
+		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if _, err := mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
-		return err, ""
+		return "", err
 	}
 
 	sg := dbzone.SignerGroup()
 
 	if sg.Name != g {
-		return fmt.Errorf("Zone %s is not assigned to signer group %s",
-			dbzone.Name, g), ""
+		return "", fmt.Errorf("Zone %s is not assigned to signer group %s",
+			dbzone.Name, g)
 	}
 
-	sqlq := "UPDATE zones SET sgroup='' WHERE name=?"
-	stmt, err := tx.Prepare(sqlq)
-	if err != nil {
-		fmt.Printf("ZoneLeaveGroup: Error from tx.Prepare(%s): %v\n", sqlq, err)
-	}
+	const sqlq = "UPDATE zones SET sgroup='' WHERE name=?"
 
-	_, err = stmt.Exec(dbzone.Name)
+	_, err = tx.Exec(sqlq, dbzone.Name)
 	if CheckSQLError("ZoneLeaveGroup", sqlq, err, false) {
-		return err, ""
+		return "", err
 	}
 
-	return nil, fmt.Sprintf("Zone %s has left the signer group %s.",
-		dbzone.Name, sg.Name)
+	return fmt.Sprintf("Zone %s has left the signer group %s.",
+		dbzone.Name, sg.Name), nil
 }
 
 const (
 	layout = "2006-01-02 15:04:05"
-	LZsqlq = `
-SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
-  COALESCE(statestamp, datetime('now')) AS timestamp,
-  COALESCE(sgroup, '') AS signergroup
-FROM zones`
 )
 
 func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
@@ -640,18 +575,19 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(LZsqlq)
-	if err != nil {
-		fmt.Printf("ListZones: Error from tx.Prepare: %v", err)
-	}
+	const sqlq = `
+SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
+  COALESCE(statestamp, datetime('now')) AS timestamp,
+  COALESCE(sgroup, '') AS signergroup
+FROM zones`
 
-	rows, err := stmt.Query()
+        rows, err := tx.Query(sqlq)
 	if err != nil {
 		log.Printf("ListZones: Error from db query: %v", err)
 	}
 	defer rows.Close()
 
-	if CheckSQLError("ListZones", LZsqlq, err, false) {
+	if CheckSQLError("ListZones", sqlq, err, false) {
 		return zl, err
 	} else {
 		rowcounter := 0
@@ -701,7 +637,10 @@ func (mdb *MusicDB) ListZones() (map[string]Zone, error) {
 			}
 
 			if fsmstatus == "blocked" {
-				_, stopreason = mdb.ZoneGetMeta(tx, &tz, "stop-reason")
+				stopreason, err = mdb.ZoneGetMeta(tx, &tz, "stop-reason")
+				if err != nil {
+				   return zl, err
+				}
 				log.Printf("ListZones: zone %s is blocked. reason: '%s'", name, stopreason)
 				tz.StopReason = stopreason
 			}

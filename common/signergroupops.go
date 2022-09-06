@@ -13,45 +13,34 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (error, string) {
+func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (string, error) {
 	fmt.Printf("AddSignerGroup(%s)\n", sg)
 
 	if sg == "" {
-		return errors.New("Signer group without name cannot be created"), ""
+		return "", errors.New("Signer group without name cannot be created")
 	}
 	
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	_, err = mdb.GetSignerGroup(tx, sg, false)
 	if err == nil {
-	    return err, fmt.Sprintf("Signergroup %s already exists.", sg)
+	    return fmt.Sprintf("Signergroup %s already exists.", sg), err
 	}
 
-	addcmd := "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
-	addstmt, err := tx.Prepare(addcmd)
-	if err != nil {
-		fmt.Printf("AddSignerGroup: Error from tx.Prepare: %v\n", err)
-	}
+	const addcmd = "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
 
-	_, err = addstmt.Exec(sg)
+	_, err = tx.Exec(addcmd, sg)
 
 	if CheckSQLError("AddSignerGroup", addcmd, err, false) {
-		return err, fmt.Sprintf("Signergroup %s not created. Reason: %v", sg, err)
+		return fmt.Sprintf("Signergroup %s not created. Reason: %v", sg, err), err
 	}
-	return nil, fmt.Sprintf("Signergroup %s created.", sg)
+	return fmt.Sprintf("Signergroup %s created.", sg), nil
 }
-
-const (
-	GSGsql1 = `
-SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
-  COALESCE(pendremove, '') AS prem
-FROM signergroups WHERE name=?`
-)
 
 func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
@@ -66,12 +55,11 @@ func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*Signer
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(GSGsql1)
-	if err != nil {
-		fmt.Printf("GetSignerGroup: Error from tx.Prepare '%s': %v\n", GSGsql1, err)
-	}
+	const sqlq = `
+SELECT name, locked, COALESCE(curprocess, '') AS curp, COALESCE(pendadd, '') AS padd,
+COALESCE(pendremove, '') AS prem FROM signergroups WHERE name=?`
 
-	row := stmt.QueryRow(sg)
+	row := tx.QueryRow(sqlq, sg)
 
 	var sqllocked int
 	var name, curprocess, pendadd, pendremove string
@@ -80,7 +68,10 @@ func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*Signer
 		fmt.Printf("GetSignerGroup: Signer group \"%s\" does not exist\n", sg)
 		return &SignerGroup{}, fmt.Errorf("GetSignerGroup: Signer group \"%s\" does not exist", sg)
 	case nil:
-		_, sm := mdb.GetGroupSigners(tx, name, apisafe)
+		sm, err := mdb.GetGroupSigners(tx, name, apisafe)
+		if err != nil {
+		   return nil, err
+		}
 		dbref := mdb
 		if apisafe {
 			dbref = nil
@@ -121,67 +112,52 @@ func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*Signer
 // more or less the only tool we have to force a cleanup if or when stuff has gotten seriously
 // out of whack.
 
-const (
-	DSGsql1 = "DELETE FROM signergroups WHERE name=?"
-	DSGsql2 = "UPDATE signers SET sgroup=? WHERE sgroup=?"
-	DSGsql3 = "DELETE FROM group_signers WHERE name=?"
-	DSGsql4 = "UPDATE zones SET sgroup='' WHERE sgroup=?"
-)
+// const (
+//	DSGsql2 = "UPDATE signers SET sgroup=? WHERE sgroup=?"
+// )
 
-func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (error, string) {
+func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (string, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, "fail"
+		log.Printf("DeleteSignerGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
         _, err = mdb.GetSignerGroup(tx, group, false)
 	if err != nil {
-	    return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	    return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
 	}
 
-	stmt, err := tx.Prepare(DSGsql1)
-	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql1, err)
-	}
-	_, err = stmt.Exec(group)
-	if CheckSQLError("DeleteSignerGroup", DSGsql1, err, false) {
-		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	const sqlq = "DELETE FROM signergroups WHERE name=?"
+
+	_, err = tx.Exec(sqlq, group)
+	if CheckSQLError("DeleteSignerGroup", sqlq, err, false) {
+		return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
 	}
 
-	stmt, err = tx.Prepare(DSGsql3)
-	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql3, err)
-	}
-		_, err = stmt.Exec(group)
+	const sqlq2 = "DELETE FROM group_signers WHERE name=?"
 
-	if CheckSQLError("DeleteSignerGroup", DSGsql3, err, false) {
-		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	_, err = tx.Exec(sqlq2, group)
+	if CheckSQLError("DeleteSignerGroup", sqlq2, err, false) {
+		return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
 	}
 
-	stmt, err = tx.Prepare(DSGsql4)
-	if err != nil {
-		fmt.Printf("DeleteSignerGroup: Error from tx.Prepare '%s': %v\n", DSGsql4, err)
-	}
-	_, err = stmt.Exec(group)
+	const sqlq3 = "UPDATE zones SET sgroup='' WHERE sgroup=?"
 
-	if CheckSQLError("DeleteSignerGroup", DSGsql3, err, false) {
-		return err, fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err)
+	_, err = tx.Exec(sqlq3, group)
+	if CheckSQLError("DeleteSignerGroup", sqlq3, err, false) {
+		return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
 	}
 
-	return nil, fmt.Sprintf("Signergroup %s deleted. Any zones or signers in signergroup were detached.", group)
+	return fmt.Sprintf("Signergroup %s deleted. Any zones or signers in signergroup were detached.", group),
+	       nil
 }
 
-const (
-	LSGsql = `
-SELECT name, COALESCE(curprocess, '') AS curp, COALESCE (pendadd, '') AS padd,
-   COALESCE(pendremove, '') AS prem, locked
-FROM signergroups`
-	LSGsql2 = "SELECT DISTINCT name FROM signergroups"
-	LSGsql3 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
-)
+// const (
+//	LSGsql2 = "SELECT DISTINCT name FROM signergroups"
+// )
 
 func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error) {
 	var sgl = make(map[string]SignerGroup, 2)
@@ -193,9 +169,12 @@ func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error)
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	rows, err := mdb.db.Query(LSGsql)
+	const sqlq = `
+SELECT name, COALESCE(curprocess, '') AS curp, COALESCE (pendadd, '') AS padd,
+COALESCE(pendremove, '') AS prem, locked FROM signergroups`
 
-	if CheckSQLError("ListSignerGroups", LSGsql, err, false) {
+	rows, err := tx.Query(sqlq)
+	if CheckSQLError("ListSignerGroups", sqlq, err, false) {
 		return sgl, err
 	} else {
 		var name, curp, pendadd, pendrem string
@@ -217,15 +196,11 @@ func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error)
 	rows.Close()
 
 	for sgname, sg := range sgl {
-		stmt, err := tx.Prepare(LSGsql3)
-		if err != nil {
-			log.Printf("ListSignerGroup: Error from tx.Prepare: %v\n", err)
-		}
-
-		rows, err := stmt.Query(sgname)
+		const sqlq2 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
+		rows, err := tx.Query(sqlq2, sgname)
 		defer rows.Close()
 
-		if CheckSQLError("ListSignerGroups", LSGsql3, err, false) {
+		if CheckSQLError("ListSignerGroups", sqlq2, err, false) {
 			return sgl, err
 		} else {
 			var signer string
@@ -246,7 +221,10 @@ func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error)
 					signers[signer] = s
 				}
 			}
-			zones, _ = mdb.GetSignerGroupZones(tx, &sg)
+			zones, err = mdb.GetSignerGroupZones(tx, &sg)
+			if err != nil {
+			   return sgl, err
+			}
 
 			pzones := 0
 			for _, z := range zones {
@@ -267,7 +245,6 @@ func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error)
 }
 
 func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
-
      mdb := sg.DB
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -277,13 +254,9 @@ func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	sqlcmd := "SELECT name FROM signers WHERE sgroup=?"
-	stmt, err := tx.Prepare(sqlcmd)
-	if err != nil {
-		fmt.Printf("PopulateSigners: Error from tx.Prepare: %v\n", err)
-	}
+	const sqlcmd = "SELECT name FROM signers WHERE sgroup=?"
 
-	rows, err := stmt.Query(sg.Name)
+	rows, err := tx.Query(sqlcmd, sg.Name)
 	defer rows.Close()
 
 	if CheckSQLError("PopulateSigners", sqlcmd, err, false) {
@@ -312,32 +285,28 @@ func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
 	return nil
 }
 
-const (
-	GGSsql1 = "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
-	GGSsql2 = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
-)
+// const (
+//	GGSsql1 = "SELECT name, method, auth, COALESCE (addr, '') AS address FROM signers WHERE sgroup=?"
+// )
 
-func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (error, map[string]*Signer) {
+func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (map[string]*Signer, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, nil
+		return nil, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(GGSsql2)
-	if err != nil {
-		fmt.Printf("GetGroupSigners: Error from tx.Prepare: %v\n", err)
-	}
+	const sqlq = "SELECT COALESCE (signer, '') AS signer2 FROM group_signers WHERE name=?"
 
-	rows, err := stmt.Query(name)
+	rows, err := tx.Query(sqlq, name)
 	defer rows.Close()
 
 	signers := map[string]*Signer{}
 
-	if CheckSQLError("GetGroupSigners", GGSsql2, err, false) {
-		return err, map[string]*Signer{}
+	if CheckSQLError("GetGroupSigners", sqlq, err, false) {
+		return map[string]*Signer{}, err
 	} else {
 		var signer string
 		for rows.Next() {
@@ -356,41 +325,33 @@ func (mdb *MusicDB) GetGroupSigners(tx *sql.Tx, name string, apisafe bool) (erro
 			}
 		}
 	}
-	return nil, signers
+	return signers, nil
 }
 
-const (
-	GGSNGsql = "SELECT signer FROM group_signers WHERE name=?"
-)
-
-func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (error, map[string]*Signer) {
+func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (map[string]*Signer, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return err, nil
+		return nil, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare(GGSNGsql)
-	if err != nil {
-		fmt.Printf("GetGroupSigners: Error from tx.Prepare '%s': %v\n", GGSNGsql, err)
-	}
-
-	rows, err := stmt.Query(name)
-	defer rows.Close()
-
 	signers := map[string]*Signer{}
 
-	if CheckSQLError("GetGroupSigners", GGSNGsql, err, false) {
-		return err, map[string]*Signer{}
+	const sqlq = "SELECT signer FROM group_signers WHERE name=?"
+
+	rows, err := tx.Query(sqlq, name)
+	defer rows.Close()
+
+	if CheckSQLError("GetGroupSigners", sqlq, err, false) {
+		return nil, err
 	} else {
 		var signername string
 		for rows.Next() {
 			err := rows.Scan(&signername)
 			if err != nil {
-				log.Fatal("GetGroupSigners: Error from rows.Next():",
-					err)
+				log.Fatal("GetGroupSigners: Error from rows.Next():", err)
 			} else {
 				s, err := mdb.GetSignerByName(tx, name, apisafe)
 				if err != nil {
@@ -401,7 +362,7 @@ func (mdb *MusicDB) GetGroupSignersNG(tx *sql.Tx, name string, apisafe bool) (er
 			}
 		}
 	}
-	return nil, signers
+	return signers, nil
 }
 
 // XXX: Todo: in the wrap up of a REMOVE-SIGNER the signer in PendingRemoval should be physically
@@ -444,32 +405,19 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 			log.Fatalf("CheckIfProcessIsComplete: Unknown process: %s. Terminating.", cp)
 		}
 
-		stmt, err := tx.Prepare(sqlq)
+		_, err = tx.Exec(sqlq, sg.Name)
 		if err != nil {
-			log.Printf("CheckIfProcessIsComplete: Error from tx.Prepare(%s): %v", sqlq, err)
-			return false, fmt.Sprintf("Error from tx.Prepare(%s): %v", sqlq, err), err
-		}
-		_, err = stmt.Exec(sg.Name)
-		if err != nil {
-			log.Printf("CheckIfProcessIsComplete: Error from db.Exec(%s): %v", sqlq, err)
+			log.Printf("CheckIfProcessIsComplete: Error from tx.Exec(%s): %v", sqlq, err)
 			return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
 		}
 
 		if cp == SignerLeaveGroupProcess {
 			sqlq = "DELETE FROM group_signers WHERE name=? AND signer=?"
-			stmt, err := tx.Prepare(sqlq)
+			_, err = tx.Exec(sqlq, sg.Name, pr)
 			if err != nil {
-				log.Printf("CheckIfProcessIsComplete: Error from tx.Prepare(%s): %v",
-								      sqlq, err)
-				return false, fmt.Sprintf("Error from tx.Prepare(%s): %v", sqlq, err), err
-								      
-			}
-			_, err = stmt.Exec(sg.Name, pr)
-			if err != nil {
-				log.Printf("CheckIfProcessIsComplete: Error from db.Exec(%s): %v",
+				log.Printf("CheckIfProcessIsComplete: Error from tx.Exec(%s): %v",
 								      sqlq, err)
 			        return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
-
 			}
 		}
 

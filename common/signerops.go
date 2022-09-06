@@ -18,28 +18,28 @@ func (s *Signer) MusicDB() *MusicDB {
 	return s.DB
 }
 
-func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error, string) {
+func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (string, error) {
 	var err error
      	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
-		return err, msg
+		return msg, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if dbsigner.Exists {
-		return fmt.Errorf("Signer %s already present in system.",
-			dbsigner.Name), ""
+		return "", fmt.Errorf("Signer %s already present in system.",
+			dbsigner.Name)
 	}
 
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
 
 	if !ok {
-		return fmt.Errorf(
-			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap), ""
+		return "", fmt.Errorf(
+			"Unknown signer method: %s. Known methods are: %v", dbsigner.Method, updatermap)
 	}
 
 	if dbsigner.Method == "ddns" || dbsigner.Method == "rlddns" {
@@ -58,28 +58,29 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (error
 		log.Printf("AddSigner: failure: %s, %s, %s, %s, %s\n",
 			dbsigner.Name, dbsigner.Method, dbsigner.AuthStr,
 			dbsigner.Address, dbsigner.Port, dbsigner.UseTcp, dbsigner.UseTSIG)
-		return err, msg
+		return msg, err
 	}
 
 	if group != "" {
-		log.Printf("AddSigner: signer %s has the signergroup %s specified so we set that too\n", dbsigner.Name, group)
+		log.Printf("AddSigner: signer %s has the signergroup %s specified so we set that too\n",
+				       dbsigner.Name, group)
 		dbsigner, err := mdb.GetSigner(tx, dbsigner, false) // no need for apisafe
 		if err != nil {
-		   return err, msg
+		   return msg, err
 		}
 
 		_, err = mdb.SignerJoinGroup(tx, dbsigner, group)          // we know that the signer exist
 		if err != nil {
-		   return err, fmt.Sprintf("AddSigner: Error joinging new signer %s to group %s: %v",
-		   	       			       dbsigner.Name, group, err)
+		   return fmt.Sprintf("AddSigner: Error joinging new signer %s to group %s: %v",
+		   	       			       dbsigner.Name, group, err), err
 		}
-		return nil, fmt.Sprintf("Signer %s was added and immediately attached to signer group %s.",
-		       	    			dbsigner.Name, group)
+		return fmt.Sprintf("Signer %s was added and immediately attached to signer group %s.",
+		       	    			dbsigner.Name, group), nil
 	}
 
 	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
 		dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port)
-	return nil, fmt.Sprintf("New signer %s successfully added.", dbsigner.Name)
+	return fmt.Sprintf("New signer %s successfully added.", dbsigner.Name), nil
 }
 
 func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (string, error) {
@@ -206,7 +207,6 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (str
 	// if we now have more than one signer in the signer group it is possible that they
 	// are unsynced. Then we must enter the "add-signer" process to get them in sync.
 	if len(sg.SignerMap) > 1 {
-
 		zones, err := mdb.GetSignerGroupZones(tx, sg)
 		if err != nil {
 			return "", err
@@ -235,7 +235,7 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (str
 		for _, z := range zones {
 			log.Printf("SignerJoinGroup: calling ZoneAttachFsm(%s, %s, %s)",
 				z.Name, SignerJoinGroupProcess, dbsigner.Name)
-			err, msg := mdb.ZoneAttachFsm(tx, z, SignerJoinGroupProcess, // we know that z exist
+			msg, err := mdb.ZoneAttachFsm(tx, z, SignerJoinGroupProcess, // we know that z exist
 				dbsigner.Name, true) // true=preempt
 			if err != nil {
 				log.Printf("SJG: Error from ZAF: %v", err)
@@ -316,11 +316,6 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 	// If the signer group has no zones attached to it, then it is ok to remove
 	// a signer immediately
 	if len(zones) == 0 {
-//		stmt, err := tx.Prepare(SLGsql2)
-//		if err != nil {
-//			fmt.Printf("SignerLeaveGroup: Error from tx.Prepare '%s': %v\n", SLGsql2, err)
-//		}
-
 		_, err = tx.Exec(sqlq, sg.Name, dbsigner.Name)
 		if CheckSQLError("SignerLeaveGroup", sqlq, err, false) {
 			return "", err
@@ -340,11 +335,6 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 
 	const sqlq3 = "UPDATE signergroups SET curprocess=?, pendremove=?, locked=1 WHERE name=?"
 
-//	stmt, err := tx.Prepare(SLGsql3)
-//	if err != nil {
-//		fmt.Printf("SignerLeaveGroup: Error from tx.Prepare '%s': %v\n", SLGsql3, err)
-//	}
-
 	_, err = tx.Exec(sqlq3, SignerLeaveGroupProcess, dbsigner.Name, sg.Name)
 	if CheckSQLError("SignerLeaveGroup", sqlq3, err, false) {
 		return "", err
@@ -353,7 +343,7 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 	// XXX: this is inefficient, but I don't think we will have enough
 	//      zones in the system for that to be an issue
 	for _, z := range zones {
-		err, _ := mdb.ZoneAttachFsm(tx, z, SignerLeaveGroupProcess, // we know that z exist
+		_, err := mdb.ZoneAttachFsm(tx, z, SignerLeaveGroupProcess, // we know that z exist
 			dbsigner.Name, true) // true=preempt
 		if err != nil {
 		   return fmt.Sprintf("Failed to attach zone %s to the REMOVE-SIGNER process as signer %s is leaving.",
@@ -412,9 +402,6 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 	return fmt.Sprintf("Signer %s deleted.", dbsigner.Name), nil
 }
 
-const (
-)
-
 func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 	var sl = make(map[string]Signer, 2)
 
@@ -424,11 +411,6 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 		return nil, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
-
-//	stmt, err := tx.Prepare(LSIGsql)
-//	if err != nil {
-//		fmt.Printf("ListSigners: Error from tx.Prepare: %v\n", err)
-//	}
 
 	const sqlq = "SELECT name, method, addr, auth, port FROM signers"
 	rows, err := tx.Query(sqlq)
