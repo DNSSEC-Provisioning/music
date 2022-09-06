@@ -136,39 +136,6 @@ func (s *Signer) UpdateRRset(zone, owner string, rrtype uint16, rrs []dns.RR) er
 	return nil
 }
 
-// func DNSRetrieveRRset(s *Signer, owner, zone string, rrtype uint16) (error, []dns.RR) {
-// 	mdb := s.MusicDB()
-// 	address := s.Address
-// 	log.Printf("DNSRetrieveRRset: looking up '%s IN %s' from %s\n", owner,
-// 		dns.TypeToString[rrtype], s.Address)
-//
-//    authservers := LookupZoneServers(zonename, imr, verbose)
-//    if len(authservers) == 0 {
-//       if verbose {
-//        log.Printf("Unable to locate authoritative nameservers for zone '%s'. Giving up.",
-//            zonename)
-//       }
-//       return errors.New("No auth nameservers")
-//    }
-
-// 	r := AuthoritativeDNSQuery(owner, address, rrtype, false)
-// 	if r != nil {
-// 		fmt.Printf("DNSRetrieveRRset: got a response msg for auth query with %d RRs:\n",
-// 			len(r.Answer))
-// 		if len(r.Answer) == 0 {
-// 			//
-// 		} else {
-// 			// if RRs in Answer, they must be CDS + RRSIG(CDS)
-// 			// rr := response.Answer[0].(*dns.CDS)
-// 			mdb.WriteRRs(s, owner, zone, rrtype, r.Answer)
-// 			return nil, DNSFilterRRsetOnType(r.Answer, rrtype)
-// 		}
-// 	} else {
-// 		log.Printf("ScanGroup: Answer section is empty.")
-// 	}
-// 	return nil, []dns.RR{}
-// }
-
 func DNSFilterRRsetOnType(rrs []dns.RR, rrtype uint16) []dns.RR {
 	var out []dns.RR
 
@@ -196,27 +163,26 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const delsql = "DELETE FROM records WHERE zone=? AND owner=? AND signer=? AND rrtype=?"
-	delstmt, err := tx.Prepare(delsql)
-	if err != nil {
-		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", delsql, err)
+
+	_, err = tx.Exec(delsql, zone, owner, signer.Name, int(rrtype))
+	if CheckSQLError("WriteRRs", delsql, err, false) {
+		return err
 	}
 
 	addsql := "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
+
 	addstmt, err := tx.Prepare(addsql)
 	if err != nil {
 		log.Printf("mdb.WriteRRs: Error from db.Prepare(%s): %v", addsql, err)
-	}
-
-	_, err = delstmt.Exec(zone, owner, signer.Name, int(rrtype))
-	if CheckSQLError("WriteRRs", delsql, err, false) {
-		return err
 	}
 
 	for _, r := range rrs {
 		rr := r.String()
 		if r.Header().Rrtype == rrtype {
 			_, err = addstmt.Exec(zone, owner, signer.Name, int(rrtype), rr)
-			CheckSQLError("WriteRRs", addsql, err, false)
+			if CheckSQLError("WriteRRs", addsql, err, false) {
+			   return err
+			}
 		} else {
 			// if verbose {
 			// fmt.Printf("Not saving RR: %s\n", rr)
@@ -227,6 +193,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	return nil
 }
 
+// XXX: is this still in use?
 // XXX: broken, should return a []dns.RR, not []string.
 func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (error, string, []string) {
 	var rrs []string
@@ -284,31 +251,28 @@ func RecursiveDNSQuery(qname, nameserver string, rrtype uint16, verbose bool) (*
 	return r, validated
 }
 
-func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool) {
+func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return "", false
+		return "", false, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-	stmt, err := tx.Prepare("SELECT value FROM metadata WHERE zone=? AND key=?")
-	if err != nil {
-		fmt.Printf("GetMeta: Error from db.Prepare: %v\n", err)
-	}
+	const sqlq = "SELECT value FROM metadata WHERE zone=? AND key=?"
 
-	row := stmt.QueryRow(z.Name, key)
+	row := tx.QueryRow(sqlq, z.Name, key)
 
 	var value string
 	switch err = row.Scan(&value); err {
 	case sql.ErrNoRows:
 		// fmt.Printf("GetMeta: Key \"%s\" does not exist\n", key)
-		return "", false
+		return "", false, nil
 
 	case nil:
 		// fmt.Printf("GetMeta: found key %s\n", key)
-		return value, true
+		return value, true, nil
 	}
-	return "", false
+	return "", false, nil
 }

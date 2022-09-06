@@ -112,12 +112,6 @@ func dbSetupTables(mdb *MusicDB) (bool, error) {
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	for t, s := range DefaultTables {
-//		stmt, err := tx.Prepare(s)
-//		if err != nil {
-//			log.Printf("dbSetupTables: Error from %s schema \"%s\": %v", t, s, err)
-//			return false, err
-//			
-//		}
 		_, err = tx.Exec(s)
 		if err != nil {
 			log.Fatalf("Failed to set up db schema for table %s: %s. Error: %v", t, s, err)
@@ -239,12 +233,6 @@ func (mdb *MusicDB) GetSignerGroups(tx *sql.Tx, name string) ([]string, error) {
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-//	stmt, err := mdb.Prepare(GSGsql2)
-//	if err != nil {
-//		fmt.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSGsql2, err)
-//		return sgs, err
-//	}
-
 	const sqlq = "SELECT name FROM group_signers WHERE signer=?"
 	rows, err := tx.Query(sqlq, name)
 	if CheckSQLError("GetSignerGroups", sqlq, err, false) {
@@ -276,12 +264,6 @@ func (mdb *MusicDB) GetSigner(tx *sql.Tx, s *Signer, apisafe bool) (*Signer, err
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const GSsql = `SELECT name, method, auth, COALESCE (addr, '') AS address, port, usetcp, usetsig FROM signers WHERE name=?`
-
-//	stmt, err := mdb.Prepare(GSsql)
-//	if err != nil {
-//		log.Printf("GetSigner: Error from db.Prepare '%s': %v\n", GSsql, err)
-//		return nil, err
-//	}
 
 	row := tx.QueryRow(GSsql, s.Name)
 

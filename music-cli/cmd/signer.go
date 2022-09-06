@@ -205,7 +205,7 @@ func init() {
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|desec)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
-		"authdata for signer")
+		fmt.Sprintf("authdata for signer:\nDDNS: algname:key.name:secret\ndeSEC: ?"))
 	signerCmd.PersistentFlags().StringVarP(&signeraddress, "address", "", "",
 		"IP address of signer")
 	signerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",

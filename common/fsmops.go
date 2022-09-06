@@ -55,11 +55,6 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	initialstate := process.InitialState
 
-//	stmt, err := tx.Prepare(sqlq)
-//	if err != nil {
-//		log.Printf("ZoneAttachFsm: Error from tx.Prepare: %v\n", err)
-//	}
-
 	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
 
 	const sqlq = "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
@@ -258,7 +253,10 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate), nil
 			} else {
-				stopreason, exist := z.MusicDB.GetMeta(tx, z, "stop-reason")
+				stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
+				if err != nil {
+				   return false, fmt.Sprintf("Error retrieving metadata for zone %s", z.Name), err
+				}
 				if exist {
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 				}
@@ -275,7 +273,12 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 		}
 	}
 	// pre-condition returns false
-	stopreason, exist := z.MusicDB.GetMeta(tx, z, "stop-reason")
+	stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
+	if err != nil {
+	   return false, fmt.Sprintf("%s: Error retrieving current stop reason: %v",
+		z.Name, stopreason), err
+
+	}
 	if exist {
 		stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
 	}
@@ -297,8 +300,13 @@ func (mdb *MusicDB) ListProcesses() ([]Process, error, string) {
 func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var parentAddress string
 	var exist bool
+	var err error
 
-	if parentAddress, exist = z.MusicDB.GetMeta(nil, z, "parentaddr"); !exist {
+	if parentAddress, exist, err = z.MusicDB.GetMeta(nil, z, "parentaddr"); err != nil {
+	   return "", fmt.Errorf("Zone %s: Error retrieving parent address: %v", z.Name, err)
+	}
+
+	if !exist {
 		z.SetStopReason(nil, "No parent-agent address registered")
 		return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
 	}

@@ -22,7 +22,7 @@ func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (string, error) {
 	
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("AddSignerGroup: Error from mdb.StartTransaction(): %v\n", err)
 		return "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
@@ -112,10 +112,6 @@ COALESCE(pendremove, '') AS prem FROM signergroups WHERE name=?`
 // more or less the only tool we have to force a cleanup if or when stuff has gotten seriously
 // out of whack.
 
-// const (
-//	DSGsql2 = "UPDATE signers SET sgroup=? WHERE sgroup=?"
-// )
-
 func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (string, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -154,10 +150,6 @@ func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (string, error) 
 	return fmt.Sprintf("Signergroup %s deleted. Any zones or signers in signergroup were detached.", group),
 	       nil
 }
-
-// const (
-//	LSGsql2 = "SELECT DISTINCT name FROM signergroups"
-// )
 
 func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error) {
 	var sgl = make(map[string]SignerGroup, 2)

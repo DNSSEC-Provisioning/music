@@ -483,7 +483,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 
 	const sqlq = "UPDATE zones SET sgroup=? WHERE name=?"
 
-	_, err = tx.Exec(g, dbzone.Name)
+	_, err = tx.Exec(sqlq, g, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		return fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
 	}
