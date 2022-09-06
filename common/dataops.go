@@ -82,7 +82,6 @@ func (z *Zone) RetrieveRRset(owner string, rrtype uint16) (error, map[string][]d
 	var rrmap = map[string][]dns.RR{}
 
 	// fmt.Printf("RetRRset: zone %s has signer group %s: %v\n", z.Name, sg.Name, sg)
-	// fmt.Printf("RetrieveRRset: signers: %v\n", signers)
 
 	var err error
 	var rrs []dns.RR
