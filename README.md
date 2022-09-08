@@ -1,7 +1,7 @@
 ## MUSIC
 
 MUSIC, Multi-Signer Controller, is a proof of concept software implementation of the 
-[dnsop-dnssec-autoamtion](https://datatracker.ietf.org/doc/draft-ietf-dnsop-dnssec-automation/) 
+[dnsop-dnssec-automation](https://datatracker.ietf.org/doc/draft-ietf-dnsop-dnssec-automation/) 
 Internet Draft. Based on the following RFCs:
 
 * [RFC8901](https://datatracker.ietf.org/doc/rfc8901/) "Multi-Signer DNSSEC Models"
