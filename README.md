@@ -32,4 +32,4 @@ make install
 
 * [TODO] Add minimal test lab description
 * [TODO] Add explanation of config settings
-* [TODO] Add minimal test lab description
+* [TODO] Add list of test scenarios
