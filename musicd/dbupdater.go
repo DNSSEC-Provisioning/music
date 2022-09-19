@@ -1,5 +1,5 @@
 /*
- * 
+ *
  */
 
 package main
@@ -15,11 +15,11 @@ import (
 
 func dbUpdater(conf *Config) {
 
-     log.Printf("dbUpdater: Starting DB Update Service.")
+	log.Printf("dbUpdater: Starting DB Update Service.")
 
 	mdb := conf.Internal.MusicDB
 
-	dbupdateC := make(chan music.DBUpdate, 5)
+	dbupdateC := make(chan common.DBUpdate, 5)
 	mdb.UpdateC = dbupdateC
 
 	const ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
@@ -37,8 +37,8 @@ func dbUpdater(conf *Config) {
 
 	ticker := time.NewTicker(2 * time.Second)
 
-	queue := []music.DBUpdate{}
-	var update music.DBUpdate
+	queue := []common.DBUpdate{}
+	var update common.DBUpdate
 
 	RunDBQueue := func() {
 		for {
@@ -90,7 +90,7 @@ func dbUpdater(conf *Config) {
 			if err != nil {
 				log.Printf("dbUpdater: RunQueue: Error from tx.Commit: %v", err)
 			} else {
-			        log.Printf("dbUpdater: Updated zone %s stop-reason to '%s'", u.Zone, u.Value)			
+				log.Printf("dbUpdater: Updated zone %s stop-reason to '%s'", u.Zone, u.Value)
 				queue = queue[1:] // only drop item after successful commit
 			}
 		}

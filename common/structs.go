@@ -1,7 +1,7 @@
 //
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
 //
-package music
+package common
 
 import (
 	"database/sql"
@@ -17,10 +17,10 @@ type CliConfig struct {
 }
 
 type DBUpdate struct {
-     Type     string
-     Zone     string
-     Key      string
-     Value    string
+	Type  string
+	Zone  string
+	Key   string
+	Value string
 }
 
 type EngineCheck struct {
@@ -98,7 +98,7 @@ type AuthData struct {
 
 type MusicDB struct {
 	db      *sql.DB
-	UpdateC	chan DBUpdate
+	UpdateC chan DBUpdate
 	FSMlist map[string]FSM
 	Tokvip  *viper.Viper
 }

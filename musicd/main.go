@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/DNSSEC-Provisioning/music/common"
 	"github.com/DNSSEC-Provisioning/music/fsm"
+	"github.com/spf13/viper"
 )
 
 func usage() {
@@ -26,7 +26,7 @@ func usage() {
 
 // yes, this must be global
 var tokvip *viper.Viper
-var cliconf = music.CliConfig{}
+var cliconf = common.CliConfig{}
 
 //
 // This will wait forever on an external signal, but even better would be
@@ -112,7 +112,7 @@ func LoadConfig(conf *Config, safemode bool) error {
 	tokvip.SetConfigFile(tokenfile)
 	err = tokvip.ReadInConfig()
 	if err != nil {
-	       log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
+		log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
 	} else {
 		if cliconf.Verbose {
 			fmt.Println("Using token store file:", tokvip.ConfigFileUsed())
@@ -139,13 +139,13 @@ func main() {
 	conf.Internal = InternalConf{}
 
 	apistopper := make(chan struct{})
-	conf.Internal.EngineCheck = make(chan music.EngineCheck, 100)
+	conf.Internal.EngineCheck = make(chan common.EngineCheck, 100)
 
-	conf.Internal.MusicDB, err = music.NewDB(viper.GetString("db.file"), viper.GetString("db.mode"), false) // Don't drop status tables if they exist
+	conf.Internal.MusicDB, err = common.NewDB(viper.GetString("db.file"), viper.GetString("db.mode"), false) // Don't drop status tables if they exist
 	if err != nil {
-	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
+		log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
 	}
-	
+
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 	fsml := fsm.NewFSMlist()
@@ -153,25 +153,25 @@ func main() {
 	conf.Internal.MusicDB.FSMlist = fsml
 
 	// deSEC stuff
-	conf.Internal.DesecFetch = make(chan music.SignerOp, 100)
-	conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
-	conf.Internal.DdnsFetch = make(chan music.SignerOp, 100)
-	conf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
+	conf.Internal.DesecFetch = make(chan common.SignerOp, 100)
+	conf.Internal.DesecUpdate = make(chan common.SignerOp, 100)
+	conf.Internal.DdnsFetch = make(chan common.SignerOp, 100)
+	conf.Internal.DdnsUpdate = make(chan common.SignerOp, 100)
 
 	rootcafile := viper.GetString("common.rootCA")
-	desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
+	desecapi, err := common.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
 	if err != nil {
-	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
+		log.Fatalf("Error from DesecSetupClient: %v\n", err)
 	}
 	desecapi.TokViper = tokvip
 
-	rldu := music.Updaters["rldesec-api"]
+	rldu := common.Updaters["rldesec-api"]
 	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
 	rldu.SetApi(*desecapi)
-	du := music.Updaters["desec-api"]
-	du.SetApi(*desecapi)			// it is ok to reuse the same object here
+	du := common.Updaters["desec-api"]
+	du.SetApi(*desecapi) // it is ok to reuse the same object here
 
-	rlddu := music.Updaters["rlddns"]
+	rlddu := common.Updaters["rlddns"]
 	rlddu.SetChannels(conf.Internal.DdnsFetch, conf.Internal.DdnsUpdate)
 
 	var done = make(chan struct{}, 1)

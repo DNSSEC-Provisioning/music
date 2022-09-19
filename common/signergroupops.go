@@ -2,7 +2,7 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
 	"database/sql"
@@ -19,7 +19,7 @@ func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (string, error) {
 	if sg == "" {
 		return "", errors.New("Signer group without name cannot be created")
 	}
-	
+
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("AddSignerGroup: Error from mdb.StartTransaction(): %v\n", err)
@@ -29,7 +29,7 @@ func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (string, error) {
 
 	_, err = mdb.GetSignerGroup(tx, sg, false)
 	if err == nil {
-	    return fmt.Sprintf("Signergroup %s already exists.", sg), err
+		return fmt.Sprintf("Signergroup %s already exists.", sg), err
 	}
 
 	const addcmd = "INSERT OR REPLACE INTO signergroups(name) VALUES (?)"
@@ -44,7 +44,7 @@ func (mdb *MusicDB) AddSignerGroup(tx *sql.Tx, sg string) (string, error) {
 
 func (mdb *MusicDB) GetSignerGroup(tx *sql.Tx, sg string, apisafe bool) (*SignerGroup, error) {
 	if sg == "" {
-//		return &SignerGroup{}, errors.New("Empty signer group does not exist")
+		//		return &SignerGroup{}, errors.New("Empty signer group does not exist")
 		return &SignerGroup{}, nil // A non-existent signergroup is not an error
 	}
 
@@ -70,7 +70,7 @@ COALESCE(pendremove, '') AS prem FROM signergroups WHERE name=?`
 	case nil:
 		sm, err := mdb.GetGroupSigners(tx, name, apisafe)
 		if err != nil {
-		   return nil, err
+			return nil, err
 		}
 		dbref := mdb
 		if apisafe {
@@ -121,9 +121,9 @@ func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (string, error) 
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
-        _, err = mdb.GetSignerGroup(tx, group, false)
+	_, err = mdb.GetSignerGroup(tx, group, false)
 	if err != nil {
-	    return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
+		return fmt.Sprintf("Signergroup %s not deleted. Reason: %v", group, err), err
 	}
 
 	const sqlq = "DELETE FROM signergroups WHERE name=?"
@@ -148,7 +148,7 @@ func (mdb *MusicDB) DeleteSignerGroup(tx *sql.Tx, group string) (string, error) 
 	}
 
 	return fmt.Sprintf("Signergroup %s deleted. Any zones or signers in signergroup were detached.", group),
-	       nil
+		nil
 }
 
 func (mdb *MusicDB) ListSignerGroups(tx *sql.Tx) (map[string]SignerGroup, error) {
@@ -215,7 +215,7 @@ COALESCE(pendremove, '') AS prem, locked FROM signergroups`
 			}
 			zones, err = mdb.GetSignerGroupZones(tx, &sg)
 			if err != nil {
-			   return sgl, err
+				return sgl, err
 			}
 
 			pzones := 0
@@ -237,7 +237,7 @@ COALESCE(pendremove, '') AS prem, locked FROM signergroups`
 }
 
 func (sg *SignerGroup) PopulateSigners(tx *sql.Tx) error {
-     mdb := sg.DB
+	mdb := sg.DB
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
@@ -408,12 +408,12 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 			_, err = tx.Exec(sqlq, sg.Name, pr)
 			if err != nil {
 				log.Printf("CheckIfProcessIsComplete: Error from tx.Exec(%s): %v",
-								      sqlq, err)
-			        return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
+					sqlq, err)
+				return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
 			}
 		}
 
 		return true, msg, nil
 	}
-	return false, "", nil	// not an error
+	return false, "", nil // not an error
 }

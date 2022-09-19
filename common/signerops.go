@@ -2,7 +2,7 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
 	"database/sql"
@@ -20,7 +20,7 @@ func (s *Signer) MusicDB() *MusicDB {
 
 func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (string, error) {
 	var err error
-     	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
+	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
@@ -63,19 +63,19 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (strin
 
 	if group != "" {
 		log.Printf("AddSigner: signer %s has the signergroup %s specified so we set that too\n",
-				       dbsigner.Name, group)
+			dbsigner.Name, group)
 		dbsigner, err := mdb.GetSigner(tx, dbsigner, false) // no need for apisafe
 		if err != nil {
-		   return msg, err
+			return msg, err
 		}
 
-		_, err = mdb.SignerJoinGroup(tx, dbsigner, group)          // we know that the signer exist
+		_, err = mdb.SignerJoinGroup(tx, dbsigner, group) // we know that the signer exist
 		if err != nil {
-		   return fmt.Sprintf("AddSigner: Error joinging new signer %s to group %s: %v",
-		   	       			       dbsigner.Name, group, err), err
+			return fmt.Sprintf("AddSigner: Error joinging new signer %s to group %s: %v",
+				dbsigner.Name, group, err), err
 		}
 		return fmt.Sprintf("Signer %s was added and immediately attached to signer group %s.",
-		       	    			dbsigner.Name, group), nil
+			dbsigner.Name, group), nil
 	}
 
 	log.Printf("AddSigner: success: %s, %s, %s, %s, %s\n", dbsigner.Name,
@@ -87,7 +87,7 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (strin
 	var err error
 	if !dbsigner.Exists {
 		return "", fmt.Errorf("Signer %s not present in system.",
-			   		      dbsigner.Name)
+			dbsigner.Name)
 	}
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -101,7 +101,7 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (strin
 	_, ok := updatermap[dbsigner.Method]
 	if !ok {
 		return "", fmt.Errorf("Unknown signer method: %s. Known methods are: %v",
-			   		       dbsigner.Method, updatermap)
+			dbsigner.Method, updatermap)
 	}
 
 	if us.Method != "" {
@@ -128,7 +128,7 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (strin
 	const sqlq = "UPDATE signers SET method=?, auth=?, addr=?, port=?, usetcp=?, usetsig=? WHERE name =?"
 
 	_, err = tx.Exec(sqlq, dbsigner.Method, dbsigner.AuthStr, dbsigner.Address, dbsigner.Port,
-		 	       dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
+		dbsigner.UseTcp, dbsigner.UseTSIG, dbsigner.Name)
 	if err != nil {
 		log.Printf("UpdateSigner: Error from tx.Exec(%s): %v\n", sqlq, err)
 		return fmt.Sprintf("UpdateSigner: Error from tx.Exec: %v", err), err
@@ -198,7 +198,7 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (str
 	if CheckSQLError("SignerJoinGroup", sqlq, err, false) {
 		return "", err
 	}
-	
+
 	log.Printf("SignerJoinGroup: signers in group %s: %v\n", sg.Name, sg.SignerMap)
 	if sg, err = mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
 		return "", err
@@ -240,7 +240,7 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (str
 			if err != nil {
 				log.Printf("SJG: Error from ZAF: %v", err)
 				return "", err
-			} 
+			}
 			log.Printf("SJG: Message from ZAF: %s", msg)
 		}
 		return fmt.Sprintf(
@@ -346,8 +346,8 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 		_, err := mdb.ZoneAttachFsm(tx, z, SignerLeaveGroupProcess, // we know that z exist
 			dbsigner.Name, true) // true=preempt
 		if err != nil {
-		   return fmt.Sprintf("Failed to attach zone %s to the REMOVE-SIGNER process as signer %s is leaving.",
-		   	       			   z.Name, dbsigner.Name), err
+			return fmt.Sprintf("Failed to attach zone %s to the REMOVE-SIGNER process as signer %s is leaving.",
+				z.Name, dbsigner.Name), err
 		}
 	}
 
@@ -364,8 +364,7 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 		dbsigner.Name, g, len(zones), SignerLeaveGroupProcess), nil
 }
 
-const (
-)
+const ()
 
 // XXX: It should not be possible to delete a signer that is part of a signer group.
 //      Full stop.
@@ -385,7 +384,7 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 			dbsigner.Name, sgs)
 	}
 
-	const dsql  = "DELETE FROM signers WHERE name=?"
+	const dsql = "DELETE FROM signers WHERE name=?"
 	_, err = tx.Exec(dsql, dbsigner.Name)
 	if CheckSQLError("DeleteSigner", dsql, err, false) {
 		return "", err

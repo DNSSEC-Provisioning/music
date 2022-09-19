@@ -2,7 +2,7 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
 	"bytes"

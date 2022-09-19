@@ -1,4 +1,4 @@
-package music
+package common
 
 import (
 	"fmt"
@@ -54,7 +54,7 @@ func (signer *Signer) PrepareTSIGExchange(c *dns.Client, m *dns.Msg) error {
 }
 
 func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
-		      		    inserts, removes *[][]dns.RR) error {
+	inserts, removes *[][]dns.RR) error {
 	inserts_len := 0
 	removes_len := 0
 	if inserts != nil {
@@ -68,8 +68,8 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 		}
 	}
 	if viper.GetString("log.ddns") == "debug" {
-	   log.Printf("DDNS Updater: signer: %s, zone: %s, fqdn: %s inserts: %d removes: %d\n",
-		signer.Name, zone, fqdn, inserts_len, removes_len)
+		log.Printf("DDNS Updater: signer: %s, zone: %s, fqdn: %s inserts: %d removes: %d\n",
+			signer.Name, zone, fqdn, inserts_len, removes_len)
 	}
 	if inserts_len == 0 && removes_len == 0 {
 		return fmt.Errorf("Inserts and removes empty, nothing to do")
@@ -100,15 +100,15 @@ func (u *DdnsUpdater) Update(signer *Signer, zone, fqdn string,
 
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {
-	        if viper.GetString("log.ddns") == "debug" {
-		   log.Printf("Update msg that caused error:\n%v\n", m.String())
+		if viper.GetString("log.ddns") == "debug" {
+			log.Printf("Update msg that caused error:\n%v\n", m.String())
 		}
 		return err
 	}
 	if in.MsgHdr.Rcode != dns.RcodeSuccess {
-	        if viper.GetString("log.ddns") == "debug" {
-		   log.Printf("Update msg that caused error:\n%v\n", m.String())
-		   log.Printf("Response:\n%v\n", in.String())
+		if viper.GetString("log.ddns") == "debug" {
+			log.Printf("Update msg that caused error:\n%v\n", m.String())
+			log.Printf("Response:\n%v\n", in.String())
 		}
 		return fmt.Errorf("Update failed, RCODE = %s", dns.RcodeToString[in.MsgHdr.Rcode])
 	}

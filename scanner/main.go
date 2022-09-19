@@ -22,9 +22,9 @@ func main() {
 
 	ValidateConfig(nil, DefaultCfgFile) // will terminate on error
 
-	conf.MusicDB, err = music.NewDB(viper.GetString("scanner.db"), "", false)
+	conf.MusicDB, err = common.NewDB(viper.GetString("scanner.db"), "", false)
 	if err != nil {
-	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("scanner.db"), err)
+		log.Fatalf("Error from NewDB(%s): %v", viper.GetString("scanner.db"), err)
 	}
 
 	// zones is the list of zones the scanner will be monitoring
@@ -47,17 +47,17 @@ func main() {
 	RunScanner(zones)
 	RunScannerNG(&conf, conf.ZoneMap)
 	log.Printf("***** Run %d complete *****", runcount)
-	
+
 	for {
 		select {
 		case <-ticker.C:
-		        runcount++
+			runcount++
 			log.Printf("***** Starting run %d ****", runcount)
 			RunScanner(zones)
 			RunScannerNG(&conf, conf.ZoneMap)
 			log.Printf("***** Run %d complete ****", runcount)
-		
-		// no default case
+
+			// no default case
 		}
 	}
 }

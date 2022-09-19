@@ -32,7 +32,7 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 	// Locate zone nameservers and current DS from the parent
 	// var zone_nses []string
 	for zone, z := range zonesng {
-		var signer music.Signer
+		var signer common.Signer
 		var known bool
 
 		z.DelegationNS = make(map[string]*ZoneNS)
@@ -53,8 +53,8 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 
 		// get zone NSes from parent and create ZoneNS struct
 		// zone_nses = GetNS(zone, z.PName, parent.Address)
-//		updater_old := GetUpdaterNG("parent")
-		updater := music.GetUpdater(signer.Method)
+		//		updater_old := GetUpdaterNG("parent")
+		updater := common.GetUpdater(signer.Method)
 		err, ns_rrs := updater.FetchRRset(&signer, z.PName, zone, dns.TypeNS)
 		if err != nil {
 			log.Printf("Error from FetchRRset (%s, NS): %v", zone, err)
@@ -91,7 +91,7 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 
 		zonesng[zone] = z
 		log.Printf("*** Scanner: GetNS done ***")
-		
+
 		//	}
 
 		// Get zone data from each zone NS information
@@ -122,7 +122,7 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 			log.Printf("NS from child: %v", nses)
 		}
 		log.Printf("*** Scanner: GetCDS+GetCSYNC done ***")
-		
+
 		//	}
 
 		// Update DS information
@@ -149,17 +149,17 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 
 		output := []string{}
 		if len(adds) != 0 || len(removes) != -0 {
-//			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds}, &[][]dns.RR{removes}, &output)
-//			if err != nil {
-//				fmt.Printf("bob Got an err %v\n", err)
-//			}
-//			fmt.Println(output)
+			//			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds}, &[][]dns.RR{removes}, &output)
+			//			if err != nil {
+			//				fmt.Printf("bob Got an err %v\n", err)
+			//			}
+			//			fmt.Println(output)
 
 			err = updater.Update(&signer, z.PName, zone, &[][]dns.RR{adds},
 				&[][]dns.RR{removes})
 			if err != nil {
 				log.Printf("Error: updater.Update(zone: %s, rr: %s DS): %v",
-						   z.PName, zone, err)
+					z.PName, zone, err)
 			}
 			fmt.Println(output)
 		} else {
@@ -190,19 +190,19 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 			if err != nil {
 				fmt.Printf("CSYNC Update got err %v\n", err)
 			}
-//			parent := conf.ParentMap[z.PName]
-//			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds},
-//				&[][]dns.RR{removes}, &output)
-//			if err != nil {
-//				fmt.Printf("bob Got an err %v\n", err)
-//			}
-//			fmt.Println(output)
+			//			parent := conf.ParentMap[z.PName]
+			//			err = updater_old.Update(z.PName, parent, &[][]dns.RR{adds},
+			//				&[][]dns.RR{removes}, &output)
+			//			if err != nil {
+			//				fmt.Printf("bob Got an err %v\n", err)
+			//			}
+			//			fmt.Println(output)
 
 			err = updater.Update(&signer, z.PName, zone, &[][]dns.RR{adds},
 				&[][]dns.RR{removes})
 			if err != nil {
 				log.Printf("Error: updater.Update(zone %s, RR: %s NS): %v",
-						   z.PName, zone, err)
+					z.PName, zone, err)
 			}
 
 		} else {
@@ -210,7 +210,7 @@ func RunScannerNG(conf *Config, zonesng map[string]ZoneNG) {
 
 		}
 		log.Printf("*** Scanner: UpdateNS done ***")
-		
+
 	}
 }
 

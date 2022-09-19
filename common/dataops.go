@@ -2,7 +2,7 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
 	"database/sql"
@@ -181,7 +181,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 		if r.Header().Rrtype == rrtype {
 			_, err = addstmt.Exec(zone, owner, signer.Name, int(rrtype), rr)
 			if CheckSQLError("WriteRRs", addsql, err, false) {
-			   return err
+				return err
 			}
 		} else {
 			// if verbose {

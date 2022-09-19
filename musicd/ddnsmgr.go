@@ -73,8 +73,8 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 					fetchOpQueue = fetchOpQueue[1:]
 
 					log.Printf("ddnsmgr: Fetch request to signer %s (%s) for '%s %s'\n",
-							     fdop.Signer.Name, fdop.Signer.Address,
-							     fdop.Owner, dns.TypeToString[fdop.RRtype])
+						fdop.Signer.Name, fdop.Signer.Address,
+						fdop.Owner, dns.TypeToString[fdop.RRtype])
 					for {
 						rl, hold, err = music.RLDdnsFetchRRset(fdop)
 						if err != nil {

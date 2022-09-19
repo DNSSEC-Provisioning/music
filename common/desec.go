@@ -1,7 +1,7 @@
 /*
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package music
+package common
 
 import (
 	"bytes"
@@ -165,8 +165,8 @@ func (api *Api) DesecTokenRefresh() bool {
 	apikey := api.apiKey
 	// perhaps the token is only on disk (due to restart), if so store it in api again
 	if apikey == "" {
-	   apikey = tokvip.GetString("desec.token")
-	   api.apiKey = apikey
+		apikey = tokvip.GetString("desec.token")
+		api.apiKey = apikey
 	}
 	maxdur, _ := time.ParseDuration(tokvip.GetString("desec.maxunused"))
 	lasttouch, _ := time.Parse(layout, tokvip.GetString("desec.touched"))

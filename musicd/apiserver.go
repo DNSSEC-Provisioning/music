@@ -5,6 +5,7 @@
  */
 package main
 
+import "C"
 import (
 	"encoding/json"
 	"fmt"
@@ -13,11 +14,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/miekg/dns"
-
-	music "github.com/DNSSEC-Provisioning/music/common"
-
+	"github.com/DNSSEC-Provisioning/music/common"
 	"github.com/gorilla/mux"
+	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 )
 
@@ -32,7 +31,7 @@ func API_NYI(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		status := 101
 		resp := "NYI"
 
-		apistatus := music.APIstatus{Status: status, Message: resp}
+		apistatus := common.APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
@@ -46,7 +45,7 @@ func APIGoAway(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		status := 404
 		resp := "These are not the droids you're looking for"
 
-		apistatus := music.APIstatus{Status: status, Message: resp}
+		apistatus := common.APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
@@ -68,7 +67,7 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		decoder := json.NewDecoder(r.Body)
-		var pp music.PingPost
+		var pp common.PingPost
 		err := decoder.Decode(&pp)
 		if err != nil {
 			log.Println("APIping: error decoding ping post:", err)
@@ -77,14 +76,14 @@ func APIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		pongs += 1
 
 		for i := 1; i < pp.Fetches; i++ {
-			conf.Internal.DesecFetch <- music.SignerOp{}
+			conf.Internal.DesecFetch <- common.SignerOp{}
 		}
 		for i := 1; i < pp.Updates; i++ {
-			conf.Internal.DesecUpdate <- music.SignerOp{}
+			conf.Internal.DesecUpdate <- common.SignerOp{}
 		}
 
 		host, _ := os.Hostname()
-		response := music.PingResponse{
+		response := common.PingResponse{
 			Time:    time.Now(),
 			Client:  r.RemoteAddr,
 			Message: fmt.Sprintf("%spong from musicd @ %s", tls, host),
@@ -104,7 +103,7 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
-		var tp music.TestPost
+		var tp common.TestPost
 		err := decoder.Decode(&tp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
@@ -113,7 +112,7 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APItest: received /test request (command: %s) from %s.\n",
 			tp.Command, r.RemoteAddr)
 
-		var resp = music.TestResponse{
+		var resp = common.TestResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -122,12 +121,12 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		switch tp.Command {
 		case "dnsquery":
-			signer, err := mdb.GetSigner(nil, &music.Signer{Name: tp.Signer}, false)
+			signer, err := mdb.GetSigner(nil, &common.Signer{Name: tp.Signer}, false)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
-			updater := music.GetUpdater(signer.Method)
+			updater := common.GetUpdater(signer.Method)
 			if updater == nil {
 				resp.Error = true
 				resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
@@ -180,7 +179,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
-		var zp music.ZonePost
+		var zp common.ZonePost
 		err := decoder.Decode(&zp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
@@ -189,7 +188,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APIzone: received /zone request (command: %s) from %s.\n",
 			zp.Command, r.RemoteAddr)
 
-		var resp = music.ZoneResponse{
+		var resp = common.ZoneResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -209,24 +208,24 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				resp.Zones = zs
 			// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 			case "status":
-				var zl = make(map[string]music.Zone, 1)
+				var zl = make(map[string]common.Zone, 1)
 				if dbzone.Exists {
 					sg, err := mdb.GetSignerGroup(nil, dbzone.SGname, true)
 					if err != nil {
-					   resp.Error = true
-					   resp.ErrorMsg = err.Error()
+						resp.Error = true
+						resp.ErrorMsg = err.Error()
 					} else {
 
-					zl[dbzone.Name] = music.Zone{
-						Name:       dbzone.Name,
-						State:      dbzone.State,
-						Statestamp: dbzone.Statestamp,
-						NextState:  dbzone.NextState,
-						FSM:        dbzone.FSM,
-						SGroup:     sg,
-						SGname:     sg.Name,
-					}
-					resp.Zones = zl
+						zl[dbzone.Name] = common.Zone{
+							Name:       dbzone.Name,
+							State:      dbzone.State,
+							Statestamp: dbzone.Statestamp,
+							NextState:  dbzone.NextState,
+							FSM:        dbzone.FSM,
+							SGroup:     sg,
+							SGname:     sg.Name,
+						}
+						resp.Zones = zl
 					}
 
 				} else {
@@ -288,7 +287,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "step-fsm":
-				// var zones map[string]music.Zone
+				// var zones map[string]common.Zone
 				// var success bool
 				// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
 				// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
@@ -311,11 +310,11 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					if !success {
 						dbzone.StopReason, err = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
 						if err != nil {
-						   resp.Error = true
-						   resp.ErrorMsg = err.Error()
+							resp.Error = true
+							resp.ErrorMsg = err.Error()
 						}
 					}
-					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
+					resp.Zones = map[string]common.Zone{dbzone.Name: *dbzone}
 				}
 				err = json.NewEncoder(w).Encode(resp)
 				if err != nil {
@@ -425,7 +424,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
-		var sp music.SignerPost
+		var sp common.SignerPost
 		err := decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIsigner: error decoding signer post:",
@@ -435,7 +434,7 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APIsigner: received /signer request (command: %s) from %s.\n",
 			sp.Command, r.RemoteAddr)
 
-		var resp = music.SignerResponse{
+		var resp = common.SignerResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -532,14 +531,14 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
-		var sgp music.SignerGroupPost
+		var sgp common.SignerGroupPost
 		err := decoder.Decode(&sgp)
 		if err != nil {
 			log.Println("APIsignergroup: error decoding signergroup post:",
 				err)
 		}
 
-		var resp = music.SignerGroupResponse{
+		var resp = common.SignerGroupResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -583,20 +582,20 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
-	var check music.EngineCheck
+	var check common.EngineCheck
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("APIprocess: received /process request from %s.\n",
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
-		var pp music.ProcessPost
+		var pp common.ProcessPost
 		err := decoder.Decode(&pp)
 		if err != nil {
 			log.Println("APIprocess: error decoding process post:", err)
 		}
 
-		var resp = music.ProcessResponse{
+		var resp = common.ProcessResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -643,7 +642,7 @@ func APIshow(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
-		var sp music.ShowPost
+		var sp common.ShowPost
 		err := decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIshow: error decoding show post:", err)
@@ -652,7 +651,7 @@ func APIshow(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *ht
 		log.Printf("APIshow: received /show request (command: %s) from %s.\n",
 			sp.Command, r.RemoteAddr)
 
-		var resp = music.ShowResponse{
+		var resp = common.ShowResponse{
 			Status: 101,
 		}
 
@@ -680,7 +679,7 @@ func APIshow(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *ht
 
 		case "updaters":
 			resp.Message = "Defined updaters"
-			resp.Updaters = music.ListUpdaters()
+			resp.Updaters = common.ListUpdaters()
 		}
 
 		w.Header().Set("Content-Type", "application/json")

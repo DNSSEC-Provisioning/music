@@ -2,12 +2,12 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
-        "database/sql"
+	"database/sql"
 	"fmt"
- 	"log"
+	"log"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -86,7 +86,7 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
 		return "", fmt.Errorf("Zone %s is not attached to any process.\n",
-			   		    dbzone.Name, dbzone.FSM)
+			dbzone.Name, dbzone.FSM)
 	}
 
 	if dbzone.FSM != fsm {
@@ -150,12 +150,12 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 
 		res, msg2, err := mdb.CheckIfProcessComplete(tx, dbzone.SignerGroup())
 		if err != nil {
-		        // "process complete" is the more important message
-			return false, fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err 
+			// "process complete" is the more important message
+			return false, fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err
 		}
 		if res {
-		        // "process complete" is the more important message
-			return true, fmt.Sprintf("%s\n%s", msg, msg2), nil 
+			// "process complete" is the more important message
+			return true, fmt.Sprintf("%s\n%s", msg, msg2), nil
 		}
 		return true, msg, nil
 	}
@@ -225,8 +225,7 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	t FSMTransition) (bool, string, error) {
 
-
-	mdb := z.MusicDB  
+	mdb := z.MusicDB
 	currentstate := z.State
 
 	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
@@ -249,13 +248,13 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 			postcond := t.PostCondition(z)
 			if postcond {
 				z.StateTransition(tx, currentstate, nextstate) // success
-				return true, 
+				return true,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate), nil
 			} else {
 				stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
 				if err != nil {
-				   return false, fmt.Sprintf("Error retrieving metadata for zone %s", z.Name), err
+					return false, fmt.Sprintf("Error retrieving metadata for zone %s", z.Name), err
 				}
 				if exist {
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)
@@ -275,8 +274,8 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	// pre-condition returns false
 	stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
 	if err != nil {
-	   return false, fmt.Sprintf("%s: Error retrieving current stop reason: %v",
-		z.Name, stopreason), err
+		return false, fmt.Sprintf("%s: Error retrieving current stop reason: %v",
+			z.Name, stopreason), err
 
 	}
 	if exist {
@@ -303,7 +302,7 @@ func (z *Zone) GetParentAddressOrStop() (string, error) {
 	var err error
 
 	if parentAddress, exist, err = z.MusicDB.GetMeta(nil, z, "parentaddr"); err != nil {
-	   return "", fmt.Errorf("Zone %s: Error retrieving parent address: %v", z.Name, err)
+		return "", fmt.Errorf("Zone %s: Error retrieving parent address: %v", z.Name, err)
 	}
 
 	if !exist {

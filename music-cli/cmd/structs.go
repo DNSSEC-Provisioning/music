@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Login music.DesecLPost
+	Login common.DesecLPost
 	API   struct {
 		BaseUrl string `validate:"required"`
 	}
@@ -16,8 +16,8 @@ type Config struct {
 }
 
 type MusicdConf struct {
-	BaseUrl   string `validate:"required"`
-	RootCApem string `validate:"required,file"`
-	ApiKey    string `validate:"required"`
-	AuthMethod	 string `validate:"required"`
+	BaseUrl    string `validate:"required"`
+	RootCApem  string `validate:"required,file"`
+	ApiKey     string `validate:"required"`
+	AuthMethod string `validate:"required"`
 }

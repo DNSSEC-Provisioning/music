@@ -2,10 +2,10 @@
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
 //
 
-package music
+package common
 
 import (
-        "database/sql"
+	"database/sql"
 	"log"
 	"strings"
 )
@@ -16,7 +16,7 @@ SELECT name, zonetype, fsm, fsmsigner, fsmstatus
 FROM zones WHERE fsmmode='auto' AND fsm != '' AND fsmstatus != 'blocked'`
 	AllAutoZones = `
 SELECT name, zonetype, fsm, fsmsigner, fsmstatus
-FROM zones WHERE fsmmode='auto' AND fsm != ''` 
+FROM zones WHERE fsmmode='auto' AND fsm != ''`
 )
 
 // PushZones: Try to move all "auto" zones forward through their respective processes until they
@@ -39,9 +39,9 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if checkall {
-	   stmt, err = tx.Prepare(AllAutoZones)
+		stmt, err = tx.Prepare(AllAutoZones)
 	} else {
-	   stmt, err = tx.Prepare(AutoZones)
+		stmt, err = tx.Prepare(AutoZones)
 	}
 	if err != nil {
 		log.Fatalf("PushZones: Error from tx.Prepare(%s): %v", AutoZones, err)
@@ -63,48 +63,48 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 				log.Fatalf("PushZones: Error from rows.Scan: %v", err)
 			}
 
-			z := Zone{ Name: name, FSMStatus: fsmstatus }
+			z := Zone{Name: name, FSMStatus: fsmstatus}
 
 			if len(checkzones) == 0 {
-			   zones = append(zones, z)
+				zones = append(zones, z)
 			} else {
-			   if checkzones[name] {
-			      zones = append(zones, z)
-			   }
+				if checkzones[name] {
+					zones = append(zones, z)
+				}
 			}
 		}
 	}
 
 	if len(zones) > 0 {
-	   	      zonelist := []string{}
-		      for _, z := range zones {
-			    zonelist = append(zonelist, z.Name)
-		      }
+		zonelist := []string{}
+		for _, z := range zones {
+			zonelist = append(zonelist, z.Name)
+		}
 
 		log.Printf("PushZones: will push on these zones: %v", strings.Join(zonelist, " "))
 		for _, z := range zones {
-		        if z.FSMStatus == "delayed" {
-			   log.Printf("PushZones: zone %s is delayed until %v. Leaving for now.",
-			   			  z.Name, "time-when zone-has-waited-long-enough")
+			if z.FSMStatus == "delayed" {
+				log.Printf("PushZones: zone %s is delayed until %v. Leaving for now.",
+					z.Name, "time-when zone-has-waited-long-enough")
 			} else {
-			  mdb.PushZone(tx, z)
+				mdb.PushZone(tx, z)
 			}
 		}
-	} 
+	}
 	return zones, nil
 }
 
 func (mdb *MusicDB) PushZone(tx *sql.Tx, z Zone) error {
 	dbzone, _, err := mdb.GetZone(tx, z.Name)
 	if err != nil {
-	   return err
+		return err
 	}
 	success, _, _ := mdb.ZoneStepFsm(tx, dbzone, "")
 	oldstate := dbzone.State
 	if success {
 		dbzone, _, err := mdb.GetZone(tx, z.Name)
 		if err != nil {
-		   return err
+			return err
 		}
 		log.Printf("PushZone: successfully transitioned zone '%s' from '%s' to '%s'",
 			z.Name, oldstate, dbzone.State)

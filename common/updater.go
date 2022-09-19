@@ -1,4 +1,4 @@
-package music
+package common
 
 import (
 	"log"
@@ -34,11 +34,9 @@ func GetUpdater(type_ string) Updater {
 }
 
 func ListUpdaters() map[string]bool {
-     res := map[string]bool{}
-     for u, _ := range Updaters {
-     	 res[u] = true
-     }
-     return res
+	res := map[string]bool{}
+	for u, _ := range Updaters {
+		res[u] = true
+	}
+	return res
 }
-
-

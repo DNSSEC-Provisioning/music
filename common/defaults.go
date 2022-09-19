@@ -1,7 +1,7 @@
 /*
  * Johan Stenstam, johani@johani.org
  */
-package music
+package common
 
 const (
 	SignerJoinGroupProcess  = "add-signer"

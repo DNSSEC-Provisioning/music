@@ -2,7 +2,7 @@
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package music
+package common
 
 import (
 	"database/sql"
@@ -17,9 +17,9 @@ import (
 
 var DefaultTables = map[string]string{
 
-// zones: fsmmode = {auto,manual}, if auto then the fsmengine in musicd will try to move the zone
-//        forward through its process until it hits a stop. "stop" is indicated by fststate="stop"
-//        and then there should be a documented stop-reason in the metadata table.
+	// zones: fsmmode = {auto,manual}, if auto then the fsmengine in musicd will try to move the zone
+	//        forward through its process until it hits a stop. "stop" is indicated by fststate="stop"
+	//        and then there should be a documented stop-reason in the metadata table.
 
 	"zones": `CREATE TABLE IF NOT EXISTS 'zones' (
 id          INTEGER PRIMARY KEY,
@@ -126,9 +126,9 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 
 	_, err := os.Stat(dbfile)
 	if !os.IsNotExist(err) {
-	   if err := os.Chmod(dbfile, 0664); err != nil {
-		log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", err)
-	   }
+		if err := os.Chmod(dbfile, 0664); err != nil {
+			log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", err)
+		}
 	}
 	db, err := sql.Open("sqlite3", dbfile)
 	if err != nil {
@@ -136,13 +136,13 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 		return nil, err
 	}
 
-        if dbmode == "WAL" {
-                _, err := db.Exec("PRAGMA journal_mode=WAL;")
-                if err != nil {
-                        log.Fatalf("NewDB: Error entering DB WAL mode: %v", err)
-                }
-                log.Printf("NewDB: Running DB in WAL (write-ahead logging) mode.")
-        }
+	if dbmode == "WAL" {
+		_, err := db.Exec("PRAGMA journal_mode=WAL;")
+		if err != nil {
+			log.Fatalf("NewDB: Error entering DB WAL mode: %v", err)
+		}
+		log.Printf("NewDB: Running DB in WAL (write-ahead logging) mode.")
+	}
 
 	if force {
 		for table, _ := range DefaultTables {
@@ -162,7 +162,7 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 
 	_, err = dbSetupTables(&mdb)
 	if err != nil {
-	   return nil, err
+		return nil, err
 	}
 
 	return &mdb, nil
@@ -177,48 +177,48 @@ func (mdb *MusicDB) Begin() (*sql.Tx, error) {
 }
 
 func (mdb *MusicDB) StartTransaction(tx *sql.Tx) (bool, *sql.Tx, error) {
-     	 if tx != nil {
-	    return false, tx, nil
-	 }
-	 tx, err := mdb.Begin()
-	 if err != nil {
-	    log.Printf("mdb.StartTransaction: Error from mdb.Begin(): %v", err)
-	 }
-	 return true, tx, err
+	if tx != nil {
+		return false, tx, nil
+	}
+	tx, err := mdb.Begin()
+	if err != nil {
+		log.Printf("mdb.StartTransaction: Error from mdb.Begin(): %v", err)
+	}
+	return true, tx, err
 }
 
 func (mdb *MusicDB) Rollback(localtx bool, tx *sql.Tx) {
-     if localtx {
-     	err := tx.Rollback()
-	if err != nil {
-		log.Printf("Error from tx.Rollback(): %v", err)
+	if localtx {
+		err := tx.Rollback()
+		if err != nil {
+			log.Printf("Error from tx.Rollback(): %v", err)
+		}
+		return
 	}
-	return 
-     }
 }
 
 func (mdb *MusicDB) CloseTransaction(localtx bool, tx *sql.Tx, err error) {
-     if localtx {
-          if err != nil {
-     	     // Rollback path
-     	     err := tx.Rollback()
-	     if err != nil {
-		    log.Printf("Error from tx.Rollback(): %v", err)
-	     }
-     	  } else {
-     	    // Commit path
-     	     err := tx.Commit()
-	     if err != nil {
-		    log.Printf("Error from tx.Commit(): %v", err)
-	     }
-	  }
-     } else {
-       // not a localtx, so we mustn't txRollback(), nor tx.Commit()
-       // But how to signal back what we *would* have done, had it been a localtx?
-       // Perhaps not our problem? err != nil and it's the callers problem?
-       // return err
-     }
-     return
+	if localtx {
+		if err != nil {
+			// Rollback path
+			err := tx.Rollback()
+			if err != nil {
+				log.Printf("Error from tx.Rollback(): %v", err)
+			}
+		} else {
+			// Commit path
+			err := tx.Commit()
+			if err != nil {
+				log.Printf("Error from tx.Commit(): %v", err)
+			}
+		}
+	} else {
+		// not a localtx, so we mustn't txRollback(), nor tx.Commit()
+		// But how to signal back what we *would* have done, had it been a localtx?
+		// Perhaps not our problem? err != nil and it's the callers problem?
+		// return err
+	}
+	return
 }
 
 // const GSGsql  = "SELECT name FROM signergroups WHERE signer=?"

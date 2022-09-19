@@ -30,7 +30,7 @@ var desecLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: fmt.Sprintf("Login to the deSEC API. Store the received token on disk, in %s", DefaultTokenFile),
 	Run: func(cmd *cobra.Command, args []string) {
-	        api := music.GetUpdater("desec-api").GetApi()
+		api := common.GetUpdater("desec-api").GetApi()
 		dlr, err := api.DesecLogin() // DesecLogin() will only return on success
 		if err != nil {
 			fmt.Printf("Error from DesecLogin: %v\n", err)
@@ -52,7 +52,7 @@ var desecLogoutCmd = &cobra.Command{
 		tok := tokvip.GetString("token")
 		fmt.Printf("About to log out with token %s\n", tok)
 
-		err := music.DesecLogout(&cliconf, tokvip)
+		err := common.DesecLogout(&cliconf, tokvip)
 		if err != nil {
 			fmt.Printf("Warning: error from desec logout: %v\n", err)
 		}

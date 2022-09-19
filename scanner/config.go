@@ -7,24 +7,24 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/miekg/dns"
 	"github.com/spf13/viper"
-	"github.com/go-playground/validator/v10"
 
 	"github.com/DNSSEC-Provisioning/music/common"
 )
 
 type Config struct {
 	Scanner   ScannerConf
-	Signers	  []music.Signer
-	SignerMap map[string]music.Signer
+	Signers   []common.Signer
+	SignerMap map[string]common.Signer
 	Parents   []ParentNG
 	ParentMap map[string]ParentNG
 	ZoneMap   map[string]ZoneNG
 	Keys      []TsigKey
 	KeyMap    map[string]TsigKey
 	Log       LogConf
-	MusicDB	  *music.MusicDB
+	MusicDB   *common.MusicDB
 }
 
 type ScannerConf struct {
@@ -86,7 +86,7 @@ func ReadConfNG(conf *Config) error {
 	zones := make(map[string]ZoneNG, 5)
 	km := map[string]TsigKey{}
 	pm := map[string]ParentNG{}
-	sm := map[string]music.Signer{}
+	sm := map[string]common.Signer{}
 
 	err := viper.Unmarshal(&conf)
 	if err != nil {

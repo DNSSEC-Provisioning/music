@@ -1,7 +1,7 @@
 //
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
 //
-package music
+package common
 
 import (
 	"net/http"
@@ -23,14 +23,14 @@ type APIresponse struct {
 }
 
 type ShowPost struct {
-	Command	string
+	Command string
 }
 
 type ShowResponse struct {
-	Status  	int
-	Message		string
-	ApiData		[]string
-	Updaters	map[string]bool
+	Status   int
+	Message  string
+	ApiData  []string
+	Updaters map[string]bool
 }
 
 type ShowAPIresponse struct {
@@ -62,20 +62,20 @@ type PingResponse struct {
 
 type TestPost struct {
 	Command string
-	Updater	string
-	Signer	string
-	Zone	string
-	Qname	string
-	RRtype	string
-	Count	int
+	Updater string
+	Signer  string
+	Zone    string
+	Qname   string
+	RRtype  string
+	Count   int
 }
 
 type TestResponse struct {
-	Time    time.Time
-	Client  string
-	Message string
-	Error	bool
-	ErrorMsg	string
+	Time     time.Time
+	Client   string
+	Message  string
+	Error    bool
+	ErrorMsg string
 }
 
 type ZonePost struct {
@@ -110,9 +110,9 @@ type ZoneResponse struct {
 }
 
 type SignerPost struct {
-	Command         string
-	Signer		Signer
-	SignerGroup	string
+	Command     string
+	Signer      Signer
+	SignerGroup string
 }
 
 type SignerResponse struct {
@@ -139,7 +139,7 @@ type SignerGroupResponse struct {
 }
 
 type Api struct {
-     	Name	   string
+	Name       string
 	Client     *http.Client
 	BaseUrl    string
 	apiKey     string

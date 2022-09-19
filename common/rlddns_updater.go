@@ -1,4 +1,4 @@
-package music
+package common
 
 import (
 	"fmt"
@@ -169,7 +169,7 @@ func RLDdnsRemoveRRset(udop SignerOp) (bool, int, error) {
 		m.RemoveRRset(rrset)
 	}
 
-	signer.PrepareTSIGExchange(&c, m)	
+	signer.PrepareTSIGExchange(&c, m)
 
 	in, _, err := c.Exchange(m, signer.Address+":"+signer.Port) // TODO: add DnsAddress or solve this in a better way
 	if err != nil {

@@ -34,8 +34,8 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	mdb := conf.Internal.MusicDB
 	var err error
 	var count int
-	var zones []music.Zone
-	var foo music.EngineCheck
+	var zones []common.Zone
+	var foo common.EngineCheck
 	var z string
 	var emptymap = map[string]bool{}
 	checkch := conf.Internal.EngineCheck
@@ -95,9 +95,9 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	ReportProgress := func() {
 		count = len(zones)
 		if count > 0 {
-		   	zonelist := []string{}
+			zonelist := []string{}
 			for _, z := range zones {
-			    zonelist = append(zonelist, z.Name)
+				zonelist = append(zonelist, z.Name)
 			}
 			log.Printf("FSM Engine: tried to move these zones forward: %s (will run every %d seconds)",
 				strings.Join(zonelist, " "), current)
@@ -148,4 +148,3 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		}
 	}
 }
-

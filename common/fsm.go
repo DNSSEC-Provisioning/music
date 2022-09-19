@@ -1,14 +1,14 @@
 /*
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package music
+package common
 
 import (
-	// "fmt"
+// "fmt"
 )
 
 const (
- 	FsmStateStop             = "stop"		// XXX: Yes, we need to keep this in the music package
+	FsmStateStop = "stop" // XXX: Yes, we need to keep this in the music package
 )
 
 type FSMState struct {
