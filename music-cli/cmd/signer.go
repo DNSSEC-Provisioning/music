@@ -10,7 +10,7 @@ import (
 	"log"
 	"strings"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	music "github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"

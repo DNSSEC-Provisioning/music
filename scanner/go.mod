@@ -2,19 +2,19 @@ module github.com/DNSSEC-Provisioning/music/scanner
 
 go 1.17
 
-replace github.com/DNSSEC-Provisioning/music/common => ../common
+replace github.com/DNSSEC-Provisioning/music/music => ../music
 
 require (
+	github.com/DNSSEC-Provisioning/music/music v0.0.0-00010101000000-000000000000
+	github.com/go-playground/validator/v10 v10.9.0
 	github.com/miekg/dns v1.1.46
 	github.com/spf13/viper v1.10.1
 )
 
 require (
-	github.com/DNSSEC-Provisioning/music/common v0.0.0-20220310123022-5510c1ffcb0f // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
-	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect

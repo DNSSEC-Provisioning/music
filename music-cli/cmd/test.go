@@ -15,7 +15,7 @@ import (
 
 	// "github.com/go-playground/validator/v10"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	music "github.com/DNSSEC-Provisioning/music/music"
 )
 
 var testcount int
@@ -38,15 +38,15 @@ var testDnsQueryCmd = &cobra.Command{
 
 		data := music.TestPost{
 			Command: "dnsquery",
-			Signer:	 signername,
+			Signer:  signername,
 			Qname:   dns.Fqdn(ownername),
 			RRtype:  rrtype,
-			Count:	 testcount,
+			Count:   testcount,
 		}
 
 		tr, _ := SendTestCommand(zone, data)
 		if tr.Error {
-		   fmt.Printf("Error: %s\n", tr.ErrorMsg)
+			fmt.Printf("Error: %s\n", tr.ErrorMsg)
 		}
 		fmt.Printf("TestResponse: %v\n", tr)
 	},

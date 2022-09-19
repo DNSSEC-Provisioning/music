@@ -4,29 +4,29 @@
 package fsm
 
 import (
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 const (
-	FsmStateSignerUnsynced   = "signers-unsynced"
-	FsmStateDnskeysSynced    = "dnskeys-synced"
-	FsmStateCDSAdded         = "cds-added"
-	FsmStateParentDsSynced   = "parent-ds-synced"
-	FsmStateDsPropagated     = "ds-propagated"
-	FsmStateCsyncAdded       = "csync-added"
-	FsmStateParentNsSynced   = "parent-ns-synced"
-	FsmStateNsesSynced       = "nses-synced"
-	FsmStateNsPropagated     = "ns-propagated"
-//	FsmStateStop             = "stop"		// XXX: This state is defined in music package
+	FsmStateSignerUnsynced = "signers-unsynced"
+	FsmStateDnskeysSynced  = "dnskeys-synced"
+	FsmStateCDSAdded       = "cds-added"
+	FsmStateParentDsSynced = "parent-ds-synced"
+	FsmStateDsPropagated   = "ds-propagated"
+	FsmStateCsyncAdded     = "csync-added"
+	FsmStateParentNsSynced = "parent-ns-synced"
+	FsmStateNsesSynced     = "nses-synced"
+	FsmStateNsPropagated   = "ns-propagated"
+	//	FsmStateStop             = "stop"		// XXX: This state is defined in music package
 
-	FsmStateSignersUnknown	 = "signers-unknown"	// Only used in the VERIFY-ZONE-SYNC proc
+	FsmStateSignersUnknown = "signers-unknown" // Only used in the VERIFY-ZONE-SYNC proc
 
 )
 
 var FsmGenericStop = music.FsmTransitionStopFactory(music.FsmStateStop)
 
 func NewFSMlist() map[string]music.FSM {
-     return FSMlist
+	return FSMlist
 }
 
 var FSMlist = map[string]music.FSM{
@@ -35,21 +35,20 @@ var FSMlist = map[string]music.FSM{
 	"add-zone": music.FSM{
 		Type:         "single-run",
 		InitialState: "ready",
-		States: map[string]music.FSMState{
-		},
+		States:       map[string]music.FSMState{},
 	},
 
 	// PROCESS: VERIFY-ZONE-SYNC: This is presently an empty process, but should
 	//          contain steps needed to verify whether a zone is in sync across
 	//          signers (or not).
-	
+
 	"verify-zone-sync": music.FSM{
 		Type:         "single-run",
 		InitialState: FsmStateSignersUnknown,
 		States: map[string]music.FSMState{
 			FsmStateSignersUnknown: music.FSMState{
 				Next: map[string]music.FSMTransition{
-				      music.FsmStateStop: FsmZoneIsInSync,
+					music.FsmStateStop: FsmZoneIsInSync,
 				},
 			},
 		},
@@ -71,42 +70,42 @@ DS and NS RRsets in the parent.`,
 			FsmStateSignerUnsynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateDnskeysSynced: FsmJoinSyncDnskeys,
-					},
+				},
 			},
 			FsmStateDnskeysSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateCDSAdded: FsmJoinAddCDS,
-					},
+				},
 			},
 			FsmStateCDSAdded: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateParentDsSynced: FsmJoinParentDsSynced,
-					},
+				},
 			},
 			FsmStateParentDsSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateDsPropagated: FsmJoinWaitDs,
-					},
+				},
 			},
 			FsmStateDsPropagated: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateCsyncAdded: FsmJoinAddCsync,
-					},
+				},
 			},
 			FsmStateCsyncAdded: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateParentNsSynced: FsmJoinParentNsSynced,
-					},
+				},
 			},
 			FsmStateParentNsSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					music.FsmStateStop: music.FsmTransitionStopFactory(FsmStateParentNsSynced),
-					},
+				},
 			},
 			music.FsmStateStop: music.FSMState{
 				Next: map[string]music.FSMTransition{
-				      music.FsmStateStop: FsmGenericStop,
-				      },
+					music.FsmStateStop: FsmGenericStop,
+				},
 			},
 		},
 	},
@@ -162,22 +161,22 @@ as that would cause the attached zones to have to go unsigned.`,
 		Name:         "zsk-rollover",
 		Type:         "single-run",
 		InitialState: FsmStateSignerUnsynced,
-		States: map[string]music.FSMState{
-// 			FsmStateSignerUnsynced: music.FSMState{
-// 				Next: map[string]music.FSMTransition{"zsk-known": FSMT_ZR_1},
-// 			},
-// 			"zsk-known": music.FSMState{
-// 				Next: map[string]music.FSMTransition{"zsk-synced": FSMT_ZR_2},
-// 			},
-// 			"zsk-synced": music.FSMState{
-// 				Next: map[string]music.FSMTransition{"signers-synced": FSMT_ZR_3},
-// 			},
-// 			"signers-synced": music.FSMState{
-// 				Next: map[string]music.FSMTransition{FsmStateStop: FSMT_ZR_4},
-// 			},
-// 			FsmStateStop: music.FSMState{
-// 				Next: map[string]music.FSMTransition{FsmStateStop: FSMT_ZR_5},
-// 			},
+		States:       map[string]music.FSMState{
+			// 			FsmStateSignerUnsynced: music.FSMState{
+			// 				Next: map[string]music.FSMTransition{"zsk-known": FSMT_ZR_1},
+			// 			},
+			// 			"zsk-known": music.FSMState{
+			// 				Next: map[string]music.FSMTransition{"zsk-synced": FSMT_ZR_2},
+			// 			},
+			// 			"zsk-synced": music.FSMState{
+			// 				Next: map[string]music.FSMTransition{"signers-synced": FSMT_ZR_3},
+			// 			},
+			// 			"signers-synced": music.FSMState{
+			// 				Next: map[string]music.FSMTransition{FsmStateStop: FSMT_ZR_4},
+			// 			},
+			// 			FsmStateStop: music.FSMState{
+			// 				Next: map[string]music.FSMTransition{FsmStateStop: FSMT_ZR_5},
+			// 			},
 		},
 	},
 
@@ -188,4 +187,3 @@ as that would cause the attached zones to have to go unsigned.`,
 		States:       map[string]music.FSMState{},
 	},
 }
-

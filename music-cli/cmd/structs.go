@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 type Config struct {
@@ -16,8 +16,8 @@ type Config struct {
 }
 
 type MusicdConf struct {
-	BaseUrl   string `validate:"required"`
-	RootCApem string `validate:"required,file"`
-	ApiKey    string `validate:"required"`
-	AuthMethod	 string `validate:"required"`
+	BaseUrl    string `validate:"required"`
+	RootCApem  string `validate:"required,file"`
+	ApiKey     string `validate:"required"`
+	AuthMethod string `validate:"required"`
 }

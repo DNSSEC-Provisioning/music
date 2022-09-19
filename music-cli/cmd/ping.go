@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	music "github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/spf13/cobra"
 )
@@ -44,7 +44,7 @@ func init() {
 func PingMusicdServer() {
 
 	data := music.PingPost{
-		Pings: pings,
+		Pings:   pings,
 		Fetches: fetches,
 		Updates: updates,
 	}

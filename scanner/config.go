@@ -7,16 +7,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/miekg/dns"
 	"github.com/spf13/viper"
-	"github.com/go-playground/validator/v10"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 type Config struct {
 	Scanner   ScannerConf
-	Signers	  []music.Signer
+	Signers   []music.Signer
 	SignerMap map[string]music.Signer
 	Parents   []ParentNG
 	ParentMap map[string]ParentNG
@@ -24,7 +24,7 @@ type Config struct {
 	Keys      []TsigKey
 	KeyMap    map[string]TsigKey
 	Log       LogConf
-	MusicDB	  *music.MusicDB
+	MusicDB   *music.MusicDB
 }
 
 type ScannerConf struct {

@@ -18,7 +18,7 @@ import (
 
 	// "github.com/go-playground/validator/v10"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	music "github.com/DNSSEC-Provisioning/music/music"
 )
 
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
@@ -580,11 +580,11 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 		if cliconf.Verbose || showheaders {
 			// out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
 			if showall {
-			   out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)")
+				out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)")
 			} else if fsmstatus == "blocked" {
-			  out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Stop reason")
+				out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Stop reason")
 			} else if fsmstatus == "delayed" {
-			  out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Delay reason|Until")
+				out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Delay reason|Until")
 			}
 		}
 
@@ -595,7 +595,7 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 		sort.Strings(zonenames)
 
 		for _, zn := range zonenames {
-		        modebits := ""
+			modebits := ""
 			zone = zm[zn]
 			zname := zn
 			if zone.FSMMode == "auto" {
@@ -606,7 +606,7 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 				modebits += "D"
 			}
 			if len(modebits) != 0 {
-			   zname += fmt.Sprintf("[%s]", modebits)
+				zname += fmt.Sprintf("[%s]", modebits)
 			}
 
 			group := "---"
@@ -634,14 +634,14 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 			for k, _ := range zone.NextState {
 				nextStates = append(nextStates, k)
 			}
-			if  showall {
-			   out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]", zname, group, fsm,
-				zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
-				strings.Join(nextStates, " ")))
+			if showall {
+				out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|[%s]", zname, group, fsm,
+					zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
+					strings.Join(nextStates, " ")))
 			} else if zone.FSMStatus == fsmstatus {
-			   out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|%s", zname, group, fsm,
-				zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
-				zone.StopReason))
+				out = append(out, fmt.Sprintf("%s|%s|%s|%s|%s|%s", zname, group, fsm,
+					zone.State, zone.Statestamp.Format("2006-01-02 15:04:05"),
+					zone.StopReason))
 			}
 		}
 		fmt.Printf("%s\n", columnize.SimpleFormat(out))

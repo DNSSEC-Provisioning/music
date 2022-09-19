@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
