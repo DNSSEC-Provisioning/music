@@ -271,7 +271,6 @@ func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool, erro
 		return "", false, nil
 
 	case nil:
-		fmt.Printf("GetMeta: found key: %s value:%s \n", key, value)
 		return value, true, nil
 	}
 	return "", false, nil

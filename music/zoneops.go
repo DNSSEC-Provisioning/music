@@ -68,8 +68,6 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 		fqdn), nil
 }
 
-const ()
-
 func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
 	log.Printf("UpdateZone: zone: %v", uz)
 

@@ -272,7 +272,6 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 		}
 	}
 	// pre-condition returns false
-	fmt.Printf("Rog: We have a false pre-condition and we are going to get the Zone Meta data. \n")
 	stopreason, exist, err := z.MusicDB.GetStopReason(tx, z)
 	if err != nil {
 		return false, fmt.Sprintf("%s: Error retrieving current stop reason: %v",
