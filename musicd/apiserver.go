@@ -309,7 +309,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					resp.ErrorMsg = err.Error()
 				} else {
 					if !success {
-						dbzone.StopReason, err = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
+						dbzone.StopReason, _, err = mdb.GetStopReason(nil, dbzone)
 						if err != nil {
 							resp.Error = true
 							resp.ErrorMsg = err.Error()

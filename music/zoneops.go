@@ -20,9 +20,9 @@ func (z *Zone) SignerGroup() *SignerGroup {
 
 func (mdb *MusicDB) AddZone(z *Zone, group string, enginecheck chan EngineCheck) (string, error) {
 
-        fmt.Printf("AddZone: Zone: %v group: '%s'", z, group)
+	fmt.Printf("AddZone: Zone: %v group: '%s'", z, group)
 
-        var tx *sql.Tx
+	var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
@@ -33,7 +33,7 @@ func (mdb *MusicDB) AddZone(z *Zone, group string, enginecheck chan EngineCheck)
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _, err := mdb.GetZone(tx, fqdn)
 	if err != nil {
-	   return "", err
+		return "", err
 	}
 	if dbzone.Exists {
 		return "", fmt.Errorf("Zone %s already present in MuSiC system.", fqdn)
@@ -52,7 +52,7 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 		fmt.Printf("AddGroup: the zone %s has the signergroup %s specified so we set that too\n", z.Name, group)
 		dbzone, _, err := mdb.GetZone(tx, z.Name)
 		if err != nil {
-		   return "", err
+			return "", err
 		}
 
 		_, err = mdb.ZoneJoinGroup(tx, dbzone, group, enginecheck) // we know that the zone exist
@@ -67,9 +67,6 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 	return fmt.Sprintf("Zone %s was added but is not yet attached to any signer group.",
 		fqdn), nil
 }
-
-const (
-)
 
 func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
 	log.Printf("UpdateZone: zone: %v", uz)
@@ -91,14 +88,14 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 	}
 
 	const sqlq = "UPDATE zones SET zonetype=?, fsmmode=? WHERE name=?"
-	
+
 	_, err = tx.Exec(sqlq, dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
 	if CheckSQLError("UpdateZone", sqlq, err, false) {
 		return "", err
 	}
 
 	if uz.FSMMode == "auto" {
-	   enginecheck <- EngineCheck{ Zone: dbzone.Name }
+		enginecheck <- EngineCheck{Zone: dbzone.Name}
 	}
 
 	return fmt.Sprintf("Zone %s updated.", dbzone.Name), nil
@@ -137,7 +134,7 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 		log.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
 		return fmt.Sprintf("Failed to delete zone '%s'", z.Name), err
 	}
-	
+
 	_, err = tx.Exec("DELETE FROM metadata WHERE zone=?", z.Name)
 	if err != nil {
 		log.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
@@ -147,7 +144,7 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 	deletemsg := fmt.Sprintf("Zone %s deleted.", z.Name)
 	processcomplete, msg, err := mdb.CheckIfProcessComplete(tx, sg)
 	if err != nil {
-	   return fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err
+		return fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err
 	}
 	if processcomplete {
 		return deletemsg + "\n" + msg, nil
@@ -158,12 +155,14 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
 	mdb := z.MusicDB
 
+	mdb.StopReasonCache[z.Name] = value
+
 	mdb.UpdateC <- DBUpdate{
-		        Type:	"STOPREASON",
-			Zone:	z.Name,
-			Key:	"stop-reason",
-			Value:	value,
-		       }
+		Type:  "STOPREASON",
+		Zone:  z.Name,
+		Key:   "stop-reason",
+		Value: value,
+	}
 
 	log.Printf("%s: %s\n", z.Name, value)
 	return nil, fmt.Sprintf("Zone %s stop-reason documented as '%s'", z.Name, value)
@@ -224,9 +223,8 @@ func (mdb *MusicDB) ZoneSetMeta(tx *sql.Tx, z *Zone, key, value string) (string,
 		z.Name, key, value), nil
 }
 
-const (
-)
-
+/*
+rog: This is replaced by *MusicDB GetStopReason allow some time and test and then remove.
 func (mdb *MusicDB) ZoneGetMeta(tx *sql.Tx, z *Zone, key string) (string, error) {
 	if !z.Exists {
 		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
@@ -251,10 +249,11 @@ func (mdb *MusicDB) ZoneGetMeta(tx *sql.Tx, z *Zone, key string) (string, error)
 	case sql.ErrNoRows:
 		return "", err
 	case nil:
-		return value, nil 
+		return value, nil
 	}
 	return "", nil
 }
+*/
 
 func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	mdb := z.MusicDB
@@ -274,7 +273,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 
 	if z.State != from {
 		return fmt.Errorf("StateTransition: Error: zone %s is in state '%s'. Should be '%s'.\n",
-		       				    z.State, from)
+			z.State, from)
 	}
 
 	if from == FsmStateStop && to == FsmStateStop {
@@ -288,7 +287,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 		log.Printf("StateTransition: Error from tx.Exec(): %v\n", err)
 		return err
 	}
-	_, err = mdb.ZoneSetMeta(tx, z, "stop-reason", "")		// remove old stop-reason if there
+	_, err = mdb.ZoneSetMeta(tx, z, "stop-reason", "") // remove old stop-reason if there
 	if err != nil {
 		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
 		return err
@@ -301,7 +300,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool, error) {
 	zone, exists, err := mdb.GetZone(nil, zonename)
 	if err != nil {
-	   return nil, false, err
+		return nil, false, err
 	}
 	zone.MusicDB = nil
 	zone.SGroup = nil // another one
@@ -333,7 +332,7 @@ FROM zones WHERE name=?`
 		return &Zone{
 			Name:   zonename,
 			Exists: false,
-		}, false, nil		// not an error
+		}, false, nil // not an error
 
 	case nil:
 		t, err := time.Parse(layout, timestamp)
@@ -344,9 +343,9 @@ FROM zones WHERE name=?`
 
 		sg, err := mdb.GetSignerGroup(tx, signergroup, false) // not apisafe
 		if err != nil {
-		      return nil, false, err
+			return nil, false, err
 		}
-		
+
 		nexttransitions := mdb.FSMlist[fsm].States[state].Next
 		next := map[string]bool{}
 		for k, _ := range nexttransitions {
@@ -362,7 +361,7 @@ FROM zones WHERE name=?`
 			Statestamp: t,
 			NextState:  next,
 			FSM:        fsm,
-			FSMSigner:  fsmsigner,	// is this still used for anything?
+			FSMSigner:  fsmsigner, // is this still used for anything?
 			SGroup:     sg,
 			SGname:     sg.Name,
 			MusicDB:    mdb, // can not be json encoded, i.e. not used in API
@@ -446,7 +445,7 @@ SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm FROM
 // group enters a proceess (and unlock when all zones are done)
 
 func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
-     	  	    		     enginecheck chan EngineCheck) (string, error) {
+	enginecheck chan EngineCheck) (string, error) {
 	var group *SignerGroup
 	var err error
 
@@ -490,7 +489,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 
 	dbzone, _, err = mdb.GetZone(tx, dbzone.Name)
 	if err != nil {
-	   return fmt.Sprintf("Error from mdb.GetZone(%s): %v", dbzone.Name, err), err
+		return fmt.Sprintf("Error from mdb.GetZone(%s): %v", dbzone.Name, err), err
 	}
 
 	// If the new zone is not already in a process then we put it in the
@@ -503,17 +502,17 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 			return msg, err
 		}
 
-	        enginecheck <- EngineCheck{ Zone: dbzone.Name }
+		enginecheck <- EngineCheck{Zone: dbzone.Name}
 		return fmt.Sprintf(
 			"Zone %s has joined signer group %s and started the process '%s'.",
 			dbzone.Name, g, SignerJoinGroupProcess), nil
 	}
 
-        enginecheck <- EngineCheck{ Zone: dbzone.Name }
+	enginecheck <- EngineCheck{Zone: dbzone.Name}
 	return fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'
 as the zone is already in process '%s'. Problematic.`, dbzone.Name,
-   g, SignerJoinGroupProcess, dbzone.FSM), nil
+		g, SignerJoinGroupProcess, dbzone.FSM), nil
 }
 
 // Leaving a signer group is different from joining in the sense that
@@ -581,7 +580,7 @@ SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
   COALESCE(sgroup, '') AS signergroup
 FROM zones`
 
-        rows, err := tx.Query(sqlq)
+	rows, err := tx.Query(sqlq)
 	if err != nil {
 		log.Printf("ListZones: Error from db query: %v", err)
 	}
@@ -608,12 +607,12 @@ FROM zones`
 
 			sg := &SignerGroup{}
 			if signergroup != "" {
-			   sg, err = mdb.GetSignerGroup(tx, signergroup, true) // apisafe
-			   if err != nil {
-			      return zl, err
-			   }
+				sg, err = mdb.GetSignerGroup(tx, signergroup, true) // apisafe
+				if err != nil {
+					return zl, err
+				}
 			} else {
-			  sg.Name = signergroup
+				sg.Name = signergroup
 			}
 
 			nexttransitions := mdb.FSMlist[fsm].States[state].Next
@@ -637,9 +636,9 @@ FROM zones`
 			}
 
 			if fsmstatus == "blocked" {
-				stopreason, err = mdb.ZoneGetMeta(tx, &tz, "stop-reason")
+				stopreason, _, err = mdb.GetStopReason(tx, &tz)
 				if err != nil {
-				   return zl, err
+					return zl, err
 				}
 				log.Printf("ListZones: zone %s is blocked. reason: '%s'", name, stopreason)
 				tz.StopReason = stopreason
