@@ -75,7 +75,7 @@ func initConfig() {
 
 	validate = validator.New()
 	if err := validate.Struct(&config); err != nil {
-		log.Fatalf("Config '%s' is missing required attributes %v\n", cfgFile, err)
+		log.Fatalf("Config '%s' is missing required attributes:\n%v\n", cfgFile, err)
 	}
 
 	tokvip = viper.New()
