@@ -40,7 +40,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -63,7 +63,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -84,7 +84,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -117,7 +117,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	c = new(dns.Client)
 	r, _, err = c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -128,7 +128,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 		}
 
 		if _, ok := nsmap[ns.Ns]; !ok {
-			z.SetStopReason(nil, fmt.Sprintf("NS %s still exists in parent", ns.Ns))
+			z.SetStopReason(fmt.Sprintf("NS %s still exists in parent", ns.Ns))
 			return false
 		}
 	}
@@ -158,7 +158,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -180,7 +180,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 				signer.Name, err))
 			return false
 		}
@@ -189,7 +189,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 
 	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name, [][]dns.RR{[]dns.RR{csync}}); err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+		z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 			leavingSigner.Name, err))
 		return false
 	}

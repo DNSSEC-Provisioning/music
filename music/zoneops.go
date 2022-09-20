@@ -152,7 +152,7 @@ func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
 	return deletemsg, nil
 }
 
-func (z *Zone) SetStopReason(tx *sql.Tx, value string) (error, string) {
+func (z *Zone) SetStopReason(value string) (error, string) {
 	mdb := z.MusicDB
 
 	mdb.StopReasonCache[z.Name] = value
