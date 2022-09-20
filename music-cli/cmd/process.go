@@ -12,7 +12,7 @@ import (
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 
-	music "github.com/DNSSEC-Provisioning/music/music"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 var processname string

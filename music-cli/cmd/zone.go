@@ -18,7 +18,7 @@ import (
 
 	// "github.com/go-playground/validator/v10"
 
-	music "github.com/DNSSEC-Provisioning/music/music"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
