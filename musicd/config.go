@@ -4,13 +4,11 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	"log"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
+	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
 	// "github.com/DNSSEC-Provisioning/music/signer"
@@ -22,6 +20,7 @@ var verbose bool
 type Config struct {
 	ApiServer ApiServerConf
 	Signers   []SignerConf
+	Db        DbConf
 	Common    CommonConf
 	Internal  InternalConf
 }
@@ -54,8 +53,12 @@ type TsigConf struct {
 	KeySecret string
 }
 
+type DbConf struct {
+	File string `validate:"file,required"`
+	Mode string `validate:"required"`
+}
+
 type CommonConf struct {
-	DB        string `validate:"required"` // `validate:"file"`
 	TokenFile string `validate:"file,required"`
 	RootCA    string `validate:"file,required"`
 }
@@ -65,7 +68,7 @@ type CommonConf struct {
 type InternalConf struct {
 	APIStopCh   chan struct{}
 	EngineCheck chan music.EngineCheck
-	DB          *sql.DB
+	//DB          *sql.DB // This should be gone from the code, can be removed at next clean up. XXX:comment
 	MusicDB     *music.MusicDB
 	TokViper    *viper.Viper
 	DesecFetch  chan music.SignerOp
