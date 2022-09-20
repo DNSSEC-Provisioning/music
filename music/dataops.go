@@ -181,7 +181,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 		if r.Header().Rrtype == rrtype {
 			_, err = addstmt.Exec(zone, owner, signer.Name, int(rrtype), rr)
 			if CheckSQLError("WriteRRs", addsql, err, false) {
-			   return err
+				return err
 			}
 		} else {
 			// if verbose {
@@ -271,7 +271,36 @@ func (mdb *MusicDB) GetMeta(tx *sql.Tx, z *Zone, key string) (string, bool, erro
 		return "", false, nil
 
 	case nil:
-		// fmt.Printf("GetMeta: found key %s\n", key)
+		fmt.Printf("GetMeta: found key: %s value:%s \n", key, value)
+		return value, true, nil
+	}
+	return "", false, nil
+}
+
+func (mdb *MusicDB) GetStopReason(tx *sql.Tx, z *Zone) (string, bool, error) {
+
+	foo := mdb.StopReasonCache[z.Name]
+	if foo != "" {
+		return foo, true, nil
+	}
+
+	localtx, tx, err := mdb.StartTransaction(tx)
+	if err != nil {
+		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		return "", false, err
+	}
+	defer mdb.CloseTransaction(localtx, tx, err)
+
+	const sqlq = "SELECT value FROM metadata WHERE zone=? AND key='stop-reason'"
+
+	row := tx.QueryRow(sqlq, z.Name)
+
+	var value string
+	switch err = row.Scan(&value); err {
+	case sql.ErrNoRows:
+		return "", false, nil
+
+	case nil:
 		return value, true, nil
 	}
 	return "", false, nil
