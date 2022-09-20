@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 func ZoneStatus() {

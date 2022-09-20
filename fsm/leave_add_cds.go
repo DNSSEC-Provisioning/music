@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -40,7 +40,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -86,7 +86,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -97,7 +97,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 			}
 
 			if _, ok := dnskeys[fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey)]; ok {
-				z.SetStopReason(nil, fmt.Sprintf("DNSKEY %s still exists in signer %s",
+				z.SetStopReason(fmt.Sprintf("DNSKEY %s still exists in signer %s",
 					dnskey.PublicKey, s.Name))
 				return false
 			}
@@ -141,7 +141,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -165,7 +165,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
 				signer.Name, err))
 			return false
 		}

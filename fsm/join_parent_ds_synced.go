@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -38,7 +38,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port) // TODO: add DnsAddress or solve this in a better way
 
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CDSes from %s: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to fetch CDSes from %s: %s",
 				s.Name, err))
 			return false
 		}
@@ -66,7 +66,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch DSes from parent: %s", err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch DSes from parent: %s", err))
 		return false
 	}
 	dses := []*dns.DS{}
@@ -97,12 +97,12 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	}
 	for _, cds := range cdsmap {
 		// log.Printf("%s: Missing DS for CDS: %d %d %d %s", z.Name, cds.KeyTag, cds.Algorithm, cds.DigestType, cds.Digest)
-		z.SetStopReason(nil, fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
+		z.SetStopReason(fmt.Sprintf("Missing DS for CDS: %d", cds.KeyTag))
 		parent_up_to_date = false
 	}
 	for _, ds := range removedses {
 		// log.Printf("%s: Unknown DS: %d %d %d %s", z.Name, ds.KeyTag, ds.Algorithm, ds.DigestType, ds.Digest)
-		z.SetStopReason(nil, fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
+		z.SetStopReason(fmt.Sprintf("Unknown DS: %d", ds.KeyTag))
 		parent_up_to_date = false // TODO: should unknown DS be allowed?
 	}
 
@@ -142,7 +142,7 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name, [][]dns.RR{[]dns.RR{cds},
 			[]dns.RR{ccds}}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CDS/CDNSKEY record sets from %s: %s", signer.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to remove CDS/CDNSKEY record sets from %s: %s", signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
@@ -177,7 +177,7 @@ func VerifyCdsRemoved(z *music.Zone) bool {
 		}
 
 		if len(cdsrrs) > 0 {
-			z.SetStopReason(nil, fmt.Sprintf("CDS RRset still published by %s\n",
+			z.SetStopReason(fmt.Sprintf("CDS RRset still published by %s\n",
 				signer.Name))
 			return false
 		}
@@ -188,7 +188,7 @@ func VerifyCdsRemoved(z *music.Zone) bool {
 		}
 
 		if len(cdnskeyrrs) > 0 {
-			z.SetStopReason(nil, fmt.Sprintf("CDNSKEY RRset still published by %s\n",
+			z.SetStopReason(fmt.Sprintf("CDNSKEY RRset still published by %s\n",
 				signer.Name))
 			return false
 		}

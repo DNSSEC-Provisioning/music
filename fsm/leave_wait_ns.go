@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -35,7 +35,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
-		   	// XXX: Here we need z.SetDelayReason(reason, duration)
+			// XXX: Here we need z.SetDelayReason(reason, duration)
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
 			return false
 		}
@@ -57,7 +57,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -71,7 +71,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -92,7 +92,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -109,7 +109,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason set in GetParentAddressOrStop()
+		return false // stop-reason set in GetParentAddressOrStop()
 	}
 
 	m = new(dns.Msg)
@@ -117,7 +117,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	c = new(dns.Client)
 	r, _, err = c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 

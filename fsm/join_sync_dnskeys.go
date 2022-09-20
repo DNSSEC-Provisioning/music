@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -61,7 +61,7 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 			// err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
 			// log.Printf("%s\n", stopreason)
 			// err, _ = z.SetStopReason(fmt.Sprintf("Error from updater.FetchRRset: %v\n", err))
-			err, _ = z.SetStopReason(nil, err.Error())
+			err, _ = z.SetStopReason(err.Error())
 			return false
 		}
 
@@ -143,7 +143,7 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 			// err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
 			// log.Printf("%s\n", stopreason)
 			// err, _ = z.SetStopReason(fmt.Sprintf("Error from updater.FetchRRset: %v\n", err))
-			err, _ = z.SetStopReason(nil, err.Error())
+			err, _ = z.SetStopReason(err.Error())
 			return false
 		}
 

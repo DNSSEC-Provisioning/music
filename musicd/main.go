@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
-	"github.com/DNSSEC-Provisioning/music/common"
 	"github.com/DNSSEC-Provisioning/music/fsm"
+	"github.com/DNSSEC-Provisioning/music/music"
+	"github.com/spf13/viper"
 )
 
 func usage() {
@@ -112,7 +112,7 @@ func LoadConfig(conf *Config, safemode bool) error {
 	tokvip.SetConfigFile(tokenfile)
 	err = tokvip.ReadInConfig()
 	if err != nil {
-	       log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
+		log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
 	} else {
 		if cliconf.Verbose {
 			fmt.Println("Using token store file:", tokvip.ConfigFileUsed())
@@ -143,9 +143,9 @@ func main() {
 
 	conf.Internal.MusicDB, err = music.NewDB(viper.GetString("db.file"), viper.GetString("db.mode"), false) // Don't drop status tables if they exist
 	if err != nil {
-	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
+		log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
 	}
-	
+
 	conf.Internal.TokViper = tokvip
 	conf.Internal.MusicDB.Tokvip = tokvip
 	fsml := fsm.NewFSMlist()
@@ -161,7 +161,7 @@ func main() {
 	rootcafile := viper.GetString("common.rootCA")
 	desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
 	if err != nil {
-	   log.Fatalf("Error from DesecSetupClient: %v\n", err)
+		log.Fatalf("Error from DesecSetupClient: %v\n", err)
 	}
 	desecapi.TokViper = tokvip
 
@@ -169,7 +169,7 @@ func main() {
 	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
 	rldu.SetApi(*desecapi)
 	du := music.Updaters["desec-api"]
-	du.SetApi(*desecapi)			// it is ok to reuse the same object here
+	du.SetApi(*desecapi) // it is ok to reuse the same object here
 
 	rlddu := music.Updaters["rlddns"]
 	rlddu.SetChannels(conf.Internal.DdnsFetch, conf.Internal.DdnsUpdate)

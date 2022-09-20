@@ -12,7 +12,7 @@ import (
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 var processname string
@@ -45,17 +45,17 @@ var processCheckCmd = &cobra.Command{
 	Short: "Kick the FSM engine to immediately run through all auto zones",
 	Run: func(cmd *cobra.Command, args []string) {
 		pr, err := SendProcess(music.ProcessPost{
-						Command:	"check",
-						})
+			Command: "check",
+		})
 		if err != nil {
 			fmt.Printf("Error from SendProcess: %v\n", err)
 		}
 		if pr.Error {
-		   	   fmt.Printf("%s\n", pr.ErrorMsg)
+			fmt.Printf("%s\n", pr.ErrorMsg)
 		}
 		if pr.Msg != "" {
-		   fmt.Printf("%s\n", pr.Msg)
-	  	}
+			fmt.Printf("%s\n", pr.Msg)
+		}
 	},
 }
 
@@ -111,13 +111,13 @@ func PrintProcesses(pr music.ProcessResponse) {
 	for _, p := range pr.Processes {
 		// out = append(out, fmt.Sprintf("%s|%s", p.Name, p.Desc))
 		if p.Desc == "" {
-		   out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
+			out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
 		} else {
-		  fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
+			fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
 		}
 	}
 	if len(out) > 0 {
-	   fmt.Printf("%s\n", columnize.SimpleFormat(out))
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}
 }
 
@@ -145,19 +145,19 @@ func ListProcesses() error {
 	}
 
 	var out []string
-//	if cliconf.Verbose {
-//		out = append(out, "Process|Description")
-//	}
+	//	if cliconf.Verbose {
+	//		out = append(out, "Process|Description")
+	//	}
 	for _, p := range pr.Processes {
 		// out = append(out, fmt.Sprintf("%s|%s", p.Name, p.Desc))
 		if p.Desc == "" {
-		   out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
+			out = append(out, fmt.Sprintf("%s|[no information]", p.Name))
 		} else {
-		  fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
+			fmt.Printf("%s\n%s\n\n", p.Name, p.Desc)
 		}
 	}
 	if len(out) > 0 {
-	   fmt.Printf("%s\n", columnize.SimpleFormat(out))
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	}
 	return nil
 }

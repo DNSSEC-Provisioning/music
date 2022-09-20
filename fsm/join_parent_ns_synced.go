@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -36,8 +36,8 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s",
-							    s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s",
+				s.Name, err))
 			return false
 		}
 
@@ -63,7 +63,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason defined in GetParentAddressOrStop()
+		return false // stop-reason defined in GetParentAddressOrStop()
 	}
 
 	m := new(dns.Msg)
@@ -71,7 +71,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -85,11 +85,11 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	}
 
 	if len(nsmap) > 0 {
-	   	missing_ns := []string{}
+		missing_ns := []string{}
 		for ns, _ := range nsmap {
 			missing_ns = append(missing_ns, ns)
 		}
-		z.SetStopReason(nil, fmt.Sprintf("Missing NS in parent: %v", missing_ns))
+		z.SetStopReason(fmt.Sprintf("Missing NS in parent: %v", missing_ns))
 		return false
 	}
 
@@ -112,8 +112,8 @@ func JoinParentNsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
-							    signer.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+				signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)

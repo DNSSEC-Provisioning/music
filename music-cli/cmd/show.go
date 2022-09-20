@@ -4,13 +4,13 @@
 package cmd
 
 import (
-        "bytes"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/spf13/cobra"
-	music "github.com/DNSSEC-Provisioning/music/common"
 )
 
 var showCmd = &cobra.Command{
@@ -22,11 +22,11 @@ var showUpdatersCmd = &cobra.Command{
 	Use:   "updaters",
 	Short: "List the updaters known to musicd",
 	Run: func(cmd *cobra.Command, args []string) {
-		sr := SendShowCommand(music.ShowPost{ Command: "updaters"})
+		sr := SendShowCommand(music.ShowPost{Command: "updaters"})
 		for u, v := range sr.Updaters {
-		    if v {
-		       fmt.Printf("%s\n", u)
-		    }
+			if v {
+				fmt.Printf("%s\n", u)
+			}
 		}
 	},
 }
@@ -35,9 +35,9 @@ var showApiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		sr := SendShowCommand(music.ShowPost{ Command: "api"})
+		sr := SendShowCommand(music.ShowPost{Command: "api"})
 		for _, l := range sr.ApiData {
-		    fmt.Printf("%s\n", l)
+			fmt.Printf("%s\n", l)
 		}
 	},
 }

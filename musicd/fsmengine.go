@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/spf13/viper"
 )
 
@@ -95,9 +95,9 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	ReportProgress := func() {
 		count = len(zones)
 		if count > 0 {
-		   	zonelist := []string{}
+			zonelist := []string{}
 			for _, z := range zones {
-			    zonelist = append(zonelist, z.Name)
+				zonelist = append(zonelist, z.Name)
 			}
 			log.Printf("FSM Engine: tried to move these zones forward: %s (will run every %d seconds)",
 				strings.Join(zonelist, " "), current)
@@ -148,4 +148,3 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		}
 	}
 }
-

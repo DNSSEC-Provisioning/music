@@ -3,13 +3,13 @@ module musicd
 go 1.17
 
 replace (
-	github.com/DNSSEC-Provisioning/music/common => ../common
 	github.com/DNSSEC-Provisioning/music/fsm => ../fsm
+	github.com/DNSSEC-Provisioning/music/music => ../music
 	github.com/DNSSEC-Provisioning/music/signer => ../signer
 )
 
 require (
-	github.com/DNSSEC-Provisioning/music/common v0.0.0-00010101000000-000000000000
+	github.com/DNSSEC-Provisioning/music/music v0.0.0-00010101000000-000000000000
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/gorilla/mux v1.8.0
 	github.com/miekg/dns v1.1.43
@@ -24,7 +24,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
-	github.com/mattn/go-sqlite3 v1.14.9 // indirect
+	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/mitchellh/mapstructure v1.4.2 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/spf13/afero v1.6.0 // indirect

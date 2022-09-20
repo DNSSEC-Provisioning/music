@@ -17,10 +17,10 @@ type CliConfig struct {
 }
 
 type DBUpdate struct {
-     Type     string
-     Zone     string
-     Key      string
-     Value    string
+	Type  string
+	Zone  string
+	Key   string
+	Value string
 }
 
 type EngineCheck struct {
@@ -97,10 +97,11 @@ type AuthData struct {
 }
 
 type MusicDB struct {
-	db      *sql.DB
-	UpdateC	chan DBUpdate
-	FSMlist map[string]FSM
-	Tokvip  *viper.Viper
+	db              *sql.DB
+	UpdateC         chan DBUpdate
+	FSMlist         map[string]FSM
+	Tokvip          *viper.Viper
+	StopReasonCache map[string]string // key: zonename value: stopreason
 }
 
 type SignerOp struct {

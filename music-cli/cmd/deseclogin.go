@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/spf13/cobra"
 )
@@ -30,7 +30,7 @@ var desecLoginCmd = &cobra.Command{
 	Use:   "login",
 	Short: fmt.Sprintf("Login to the deSEC API. Store the received token on disk, in %s", DefaultTokenFile),
 	Run: func(cmd *cobra.Command, args []string) {
-	        api := music.GetUpdater("desec-api").GetApi()
+		api := music.GetUpdater("desec-api").GetApi()
 		dlr, err := api.DesecLogin() // DesecLogin() will only return on success
 		if err != nil {
 			fmt.Printf("Error from DesecLogin: %v\n", err)
