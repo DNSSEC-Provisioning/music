@@ -53,12 +53,10 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigFile(DefaultCfgFile)
+	if cfgFile == "" {
+		cfgFile = DefaultCfgFile
 	}
+	viper.SetConfigFile(cfgFile)
 
 	viper.AutomaticEnv() // read in environment variables that match
 
@@ -77,7 +75,7 @@ func initConfig() {
 
 	validate = validator.New()
 	if err := validate.Struct(&config); err != nil {
-		log.Fatalf("Missing required attributes %v\n", err)
+		log.Fatalf("Config '%s' is missing required attributes %v\n", cfgFile, err)
 	}
 
 	tokvip = viper.New()
