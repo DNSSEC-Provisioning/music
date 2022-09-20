@@ -15,7 +15,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	music "github.com/DNSSEC-Provisioning/music/music"
+	"github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"

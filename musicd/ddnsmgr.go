@@ -12,7 +12,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 
-	music "github.com/DNSSEC-Provisioning/music/music"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 // According to https://desec.readthedocs.io/en/latest/rate-limits.html
