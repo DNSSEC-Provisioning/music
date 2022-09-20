@@ -45,7 +45,7 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -90,7 +90,7 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch DNSKEYs from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -110,7 +110,7 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 		if len(rem) > 0 {
 			updater := music.GetUpdater(s.Method)
 			if err := updater.Update(s, z.Name, z.Name, nil, &[][]dns.RR{rem}); err != nil {
-				z.SetStopReason(nil, fmt.Sprintf("Unable to remove DNSKEYs from %s: %s",
+				z.SetStopReason(fmt.Sprintf("Unable to remove DNSKEYs from %s: %s",
 					s.Name, err))
 				return false
 			}

@@ -41,7 +41,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -86,7 +86,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", s.Name, err))
 			return false
 		}
 
@@ -97,7 +97,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 			}
 
 			if _, ok := nses[ns.Ns]; ok {
-				z.SetStopReason(nil, fmt.Sprintf("NS %s still exists in signer %s", ns.Ns, s.Name))
+				z.SetStopReason(fmt.Sprintf("NS %s still exists in signer %s", ns.Ns, s.Name))
 				return false
 			}
 		}
@@ -108,7 +108,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, leavingSigner.Address+":"+leavingSigner.Port)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 
@@ -119,7 +119,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 		}
 
 		if _, ok := nses[ns.Ns]; ok {
-			z.SetStopReason(nil, fmt.Sprintf("NS %s still exists in signer %s",
+			z.SetStopReason(fmt.Sprintf("NS %s still exists in signer %s",
 				ns.Ns, leavingSigner.Name))
 			return false
 		}
@@ -154,7 +154,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -179,13 +179,13 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
-			err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
 			return false
 		}
 		if len(csyncrrs) != 0 {
 			if err := updater.RemoveRRset(signer, z.Name, z.Name,
 				[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
-				z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+				z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 					signer.Name, err))
 				return false
 			}
@@ -196,7 +196,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{[]dns.RR{z.CSYNC}}, nil); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
 				signer.Name, err))
 			return false
 		}
@@ -206,13 +206,13 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 	updater := music.GetUpdater(leavingSigner.Method)
 	err, csyncrrs := updater.FetchRRset(leavingSigner, z.Name, z.Name, dns.TypeCSYNC)
 	if err != nil {
-		err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
+		err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
 		return false
 	}
 	if len(csyncrrs) != 0 {
 		if err := updater.RemoveRRset(leavingSigner, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{z.CSYNC}}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 				leavingSigner.Name, err))
 			return false
 		}
@@ -221,7 +221,7 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 
 	if err := updater.Update(leavingSigner, z.Name, z.Name,
 		&[][]dns.RR{[]dns.RR{z.CSYNC}}, nil); err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
+		z.SetStopReason(fmt.Sprintf("Unable to update %s with CSYNC record sets: %s",
 			leavingSigner.Name, err))
 		return false
 	}
@@ -244,20 +244,20 @@ func LeaveVerifyCsyncPublished(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		err, csyncrrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeCSYNC)
 		if err != nil {
-			err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
+			err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", signer.Name, err))
 			return false
 		}
 		switch len(csyncrrs) {
 		case 0:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
-			z.SetStopReason(nil, fmt.Sprintf("No CSYNC RRset returned from %s", signer.Name))
+			z.SetStopReason(fmt.Sprintf("No CSYNC RRset returned from %s", signer.Name))
 			return false
 		case 1:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
 			csynclist = append(csynclist, csyncrrs[0].(*dns.CSYNC))
 		default:
 			log.Printf("csyncrrs is %d long", len(csyncrrs))
-			z.SetStopReason(nil, fmt.Sprintf("Multiple CSYNC RRset returned from %s", signer.Name))
+			z.SetStopReason(fmt.Sprintf("Multiple CSYNC RRset returned from %s", signer.Name))
 			return false
 		}
 	}
@@ -270,34 +270,34 @@ func LeaveVerifyCsyncPublished(z *music.Zone) bool {
 	// Need to get signer to remove records for it also, since it's not part of zone SignerMap anymore
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
 	updater := music.GetUpdater(leavingSigner.Method)
 	err, csyncrrs := updater.FetchRRset(leavingSigner, z.Name, z.Name, dns.TypeCSYNC)
 	if err != nil {
-		err, _ = z.SetStopReason(nil, fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
+		err, _ = z.SetStopReason(fmt.Sprintf("Unable to fetch CSYNC RRset from %s: %v", leavingSigner.Name, err))
 		return false
 	}
 	switch len(csyncrrs) {
 	case 0:
 		log.Printf("csyncrrs is %d long", len(csyncrrs))
-		z.SetStopReason(nil, fmt.Sprintf("No CSYNC RRset returned from %s", leavingSigner.Name))
+		z.SetStopReason(fmt.Sprintf("No CSYNC RRset returned from %s", leavingSigner.Name))
 		return false
 	case 1:
 		log.Printf("csyncrrs is %d long", len(csyncrrs))
 		csynclist = append(csynclist, csyncrrs[0].(*dns.CSYNC))
 	default:
 		log.Printf("csyncrrs is %d long", len(csyncrrs))
-		z.SetStopReason(nil, fmt.Sprintf("Multiple CSYNC RRset returned from %s", leavingSigner.Name))
+		z.SetStopReason(fmt.Sprintf("Multiple CSYNC RRset returned from %s", leavingSigner.Name))
 		return false
 	}
 
 	// compare that the CSYNC records are the same as the created CSYNC
 	for _, csyncrr := range csynclist {
 		if !dns.IsDuplicate(csyncrr, z.CSYNC) {
-			z.SetStopReason(nil, fmt.Sprintf("CSYNC records are not identical"))
+			z.SetStopReason(fmt.Sprintf("CSYNC records are not identical"))
 			return false
 		}
 	}

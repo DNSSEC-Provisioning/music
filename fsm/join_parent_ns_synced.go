@@ -36,7 +36,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 		c := new(dns.Client)
 		r, _, err := c.Exchange(m, s.Address+":"+s.Port)
 		if err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from %s: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from %s: %s",
 				s.Name, err))
 			return false
 		}
@@ -71,7 +71,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	c := new(dns.Client)
 	r, _, err := c.Exchange(m, parentAddress)
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
+		z.SetStopReason(fmt.Sprintf("Unable to fetch NSes from parent: %s", err))
 		return false
 	}
 
@@ -89,7 +89,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 		for ns, _ := range nsmap {
 			missing_ns = append(missing_ns, ns)
 		}
-		z.SetStopReason(nil, fmt.Sprintf("Missing NS in parent: %v", missing_ns))
+		z.SetStopReason(fmt.Sprintf("Missing NS in parent: %v", missing_ns))
 		return false
 	}
 
@@ -112,7 +112,7 @@ func JoinParentNsSyncedAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.RemoveRRset(signer, z.Name, z.Name,
 			[][]dns.RR{[]dns.RR{csync}}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
+			z.SetStopReason(fmt.Sprintf("Unable to remove CSYNC record sets from %s: %s",
 				signer.Name, err))
 			return false
 		}

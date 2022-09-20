@@ -307,7 +307,7 @@ func (z *Zone) GetParentAddressOrStop() (string, error) {
 	}
 
 	if !exist {
-		z.SetStopReason(nil, "No parent-agent address registered")
+		z.SetStopReason("No parent-agent address registered")
 		return "", fmt.Errorf("Zone %s has no parent address registered", z.Name)
 	}
 	return parentAddress, nil

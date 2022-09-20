@@ -45,7 +45,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	// or is it?? it is not ! so the SGroup.SignerMap in signerops and the z.SGroup.SignerMap is two seperate maps,
 	leavingSigner, err := z.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
 	if err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
+		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
 
@@ -91,7 +91,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
-			z.SetStopReason(nil, fmt.Sprintf("Unable to remove NSes from %s: %s", signer.Name, err))
+			z.SetStopReason(fmt.Sprintf("Unable to remove NSes from %s: %s", signer.Name, err))
 			return false
 		}
 		log.Printf("%s: Removed NSes from %s successfully", z.Name, signer.Name)
@@ -99,7 +99,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 
 	updater := music.GetUpdater(leavingSigner.Method)
 	if err := updater.Update(leavingSigner, z.Name, z.Name, nil, &[][]dns.RR{nsrem}); err != nil {
-		z.SetStopReason(nil, fmt.Sprintf("Unable to remove NSes from %s: %s", leavingSigner.Name, err))
+		z.SetStopReason(fmt.Sprintf("Unable to remove NSes from %s: %s", leavingSigner.Name, err))
 		return false
 	}
 	log.Printf("%s: Removed NSes from %s successfully", z.Name, leavingSigner.Name)
