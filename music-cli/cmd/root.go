@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -47,7 +47,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
 	rootCmd.PersistentFlags().StringVarP(&signername, "signer", "s", "", "name of signer")
-	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g",	"", "name of signer group")
+	rootCmd.PersistentFlags().StringVarP(&sgroupname, "group", "g", "", "name of signer group")
 
 }
 
@@ -97,10 +97,10 @@ func initConfig() {
 func initApi() {
 
 	baseurl := viper.GetString("musicd.baseurl")
-	apikey 	:= viper.GetString("musicd.apikey")
+	apikey := viper.GetString("musicd.apikey")
 	authmethod := viper.GetString("musicd.authmethod")
 	rootcafile := viper.GetString("musicd.rootCApem")
 
 	api = music.NewClient("musicd", baseurl, apikey, authmethod, rootcafile,
-	      			        cliconf.Verbose, cliconf.Debug)
+		cliconf.Verbose, cliconf.Debug)
 }

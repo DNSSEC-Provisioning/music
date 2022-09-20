@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -35,7 +35,7 @@ var desecZoneAddCmd = &cobra.Command{
 		}
 		_, err := music.DesecAddZone(&cliconf, zonename, tokvip)
 		if err != nil {
-		   fmt.Printf("Error from DesecAddZone: %v\n", err)
+			fmt.Printf("Error from DesecAddZone: %v\n", err)
 		}
 	},
 }
@@ -51,7 +51,7 @@ var desecZoneDeleteCmd = &cobra.Command{
 		}
 		err := music.DesecDeleteZone(&cliconf, zonename, tokvip)
 		if err != nil {
-		   fmt.Printf("Error from DesecDeleteZone: %v\n", err)
+			fmt.Printf("Error from DesecDeleteZone: %v\n", err)
 		}
 	},
 }
@@ -63,7 +63,7 @@ var desecZoneListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		zl, err := music.DesecListZone(&cliconf, zonename, tokvip)
 		if err != nil {
-		   fmt.Printf("Error from DesecListZone: %v\n", err)
+			fmt.Printf("Error from DesecListZone: %v\n", err)
 		}
 
 		if len(zl) > 0 {

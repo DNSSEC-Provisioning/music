@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/spf13/viper"
 	"github.com/go-playground/validator/v10"
+	"github.com/spf13/viper"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	// "github.com/DNSSEC-Provisioning/music/signer"
 )
 
@@ -40,12 +40,12 @@ type SignerConf struct {
 	Method  string // ddns | desec | ...
 	Auth    string // tsig | userpasstoken
 	Tsig    TsigConf
-	Limits	RateLimitsConf
+	Limits  RateLimitsConf
 }
 
 type RateLimitsConf struct {
-        Fetch	    int // get rrset ops / second
-        Update	    int // update rrset ops / second
+	Fetch  int // get rrset ops / second
+	Update int // update rrset ops / second
 }
 
 type TsigConf struct {
@@ -57,21 +57,21 @@ type TsigConf struct {
 type CommonConf struct {
 	DB        string `validate:"required"` // `validate:"file"`
 	TokenFile string `validate:"file,required"`
-	RootCA	  string `validate:"file,required"`
+	RootCA    string `validate:"file,required"`
 }
 
 // Internal stuff that we want to be able to reach via the Config struct, but are not
 // represented in the yaml config file.
 type InternalConf struct {
-	APIStopCh  chan struct{}
-	EngineCheck	chan music.EngineCheck
-	DB         *sql.DB
-	MusicDB    *music.MusicDB
-	TokViper   *viper.Viper
-	DesecFetch chan music.SignerOp
+	APIStopCh   chan struct{}
+	EngineCheck chan music.EngineCheck
+	DB          *sql.DB
+	MusicDB     *music.MusicDB
+	TokViper    *viper.Viper
+	DesecFetch  chan music.SignerOp
 	DesecUpdate chan music.SignerOp
-	DdnsFetch chan music.SignerOp
-	DdnsUpdate chan music.SignerOp
+	DdnsFetch   chan music.SignerOp
+	DdnsUpdate  chan music.SignerOp
 	Processes   map[string]music.FSM
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 
-	"github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 
 	conf.MusicDB, err = music.NewDB(viper.GetString("scanner.db"), "", false)
 	if err != nil {
-	   log.Fatalf("Error from NewDB(%s): %v", viper.GetString("scanner.db"), err)
+		log.Fatalf("Error from NewDB(%s): %v", viper.GetString("scanner.db"), err)
 	}
 
 	// zones is the list of zones the scanner will be monitoring
@@ -47,17 +47,17 @@ func main() {
 	RunScanner(zones)
 	RunScannerNG(&conf, conf.ZoneMap)
 	log.Printf("***** Run %d complete *****", runcount)
-	
+
 	for {
 		select {
 		case <-ticker.C:
-		        runcount++
+			runcount++
 			log.Printf("***** Starting run %d ****", runcount)
 			RunScanner(zones)
 			RunScannerNG(&conf, conf.ZoneMap)
 			log.Printf("***** Run %d complete ****", runcount)
-		
-		// no default case
+
+			// no default case
 		}
 	}
 }

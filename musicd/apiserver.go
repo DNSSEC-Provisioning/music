@@ -15,7 +15,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -213,20 +213,20 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				if dbzone.Exists {
 					sg, err := mdb.GetSignerGroup(nil, dbzone.SGname, true)
 					if err != nil {
-					   resp.Error = true
-					   resp.ErrorMsg = err.Error()
+						resp.Error = true
+						resp.ErrorMsg = err.Error()
 					} else {
 
-					zl[dbzone.Name] = music.Zone{
-						Name:       dbzone.Name,
-						State:      dbzone.State,
-						Statestamp: dbzone.Statestamp,
-						NextState:  dbzone.NextState,
-						FSM:        dbzone.FSM,
-						SGroup:     sg,
-						SGname:     sg.Name,
-					}
-					resp.Zones = zl
+						zl[dbzone.Name] = music.Zone{
+							Name:       dbzone.Name,
+							State:      dbzone.State,
+							Statestamp: dbzone.Statestamp,
+							NextState:  dbzone.NextState,
+							FSM:        dbzone.FSM,
+							SGroup:     sg,
+							SGname:     sg.Name,
+						}
+						resp.Zones = zl
 					}
 
 				} else {
@@ -311,8 +311,8 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					if !success {
 						dbzone.StopReason, err = mdb.ZoneGetMeta(nil, dbzone, "stop-reason")
 						if err != nil {
-						   resp.Error = true
-						   resp.ErrorMsg = err.Error()
+							resp.Error = true
+							resp.ErrorMsg = err.Error()
 						}
 					}
 					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}

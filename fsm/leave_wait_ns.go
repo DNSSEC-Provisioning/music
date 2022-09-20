@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	music "github.com/DNSSEC-Provisioning/music/common"
+	"github.com/DNSSEC-Provisioning/music/music"
 	"github.com/miekg/dns"
 )
 
@@ -35,7 +35,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
-		   	// XXX: Here we need z.SetDelayReason(reason, duration)
+			// XXX: Here we need z.SetDelayReason(reason, duration)
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
 			return false
 		}
@@ -109,7 +109,7 @@ func LeaveWaitNsPreCondition(z *music.Zone) bool {
 
 	parentAddress, err := z.GetParentAddressOrStop()
 	if err != nil {
-		return false	// stop-reason set in GetParentAddressOrStop()
+		return false // stop-reason set in GetParentAddressOrStop()
 	}
 
 	m = new(dns.Msg)
