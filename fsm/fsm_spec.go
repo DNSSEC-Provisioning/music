@@ -84,10 +84,10 @@ DS and NS RRsets in the parent.`,
 			},
 			FsmStateParentDsSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
-					FsmStateDsPropagated: FsmJoinWaitDs,
+					FsmStateNsesSynced: FsmJoinNsSynced,
 				},
 			},
-			FsmStateDsPropagated: music.FSMState{
+			FsmStateNsesSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
 					FsmStateCsyncAdded: FsmJoinAddCsync,
 				},

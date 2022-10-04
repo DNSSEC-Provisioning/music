@@ -15,7 +15,7 @@ func init() {
 	zoneWaitDs = make(map[string]time.Time)
 }
 
-var FsmJoinWaitDs = music.FSMTransition{
+var FsmJoinNsSynced = music.FSMTransition{
 	Description: "Wait enough time for parent DS records to propagate (criteria), then sync NS records between all signers (action)",
 
 	MermaidPreCondDesc:  "Wait for DS to propagate",
@@ -23,7 +23,7 @@ var FsmJoinWaitDs = music.FSMTransition{
 	MermaidPostCondDesc: "Verify that NS RRsets are in sync",
 
 	PreCondition: JoinWaitDsPreCondition,
-	Action:       JoinWaitDsAction,
+	Action:       JoinSyncNs,
 	PostCondition: func(z *music.Zone) bool {
 		// verify that the NS RRset is in sync for all signers
 		return true
@@ -108,11 +108,11 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	return false
 }
 
-func JoinWaitDsAction(z *music.Zone) bool {
-	log.Printf("JoinWaitDsAction: %s: Fetch all NS records from all signers", z.Name)
+func JoinSyncNs(z *music.Zone) bool {
+	log.Printf("JoinSyncNs: %s: Fetch all NS records from all signers", z.Name)
 
 	if z.ZoneType == "debug" {
-		log.Printf("JoinWaitDsAction: zone %s (DEBUG) is automatically ok", z.Name)
+		log.Printf("JoinSyncNs: zone %s (DEBUG) is automatically ok", z.Name)
 		return true
 	}
 
@@ -120,7 +120,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
-		log.Printf("JoinWaitDsAction: Using FetchRRset interface:\n")
+		log.Printf("JoinSyncNs: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(signer, z.Name, z.Name, dns.TypeNS)
 		if err != nil {
 			z.SetStopReason(err.Error())
@@ -167,7 +167,7 @@ func JoinWaitDsAction(z *music.Zone) bool {
 	// Create RRset for insert
 	nsset := []dns.RR{}
 	for _, rr := range nsmap {
-		log.Printf("[JoinWaitDsAction] adding %v to nsset\n", rr)
+		log.Printf("[JoinSyncNs] adding %v to nsset\n", rr)
 		nsset = append(nsset, rr)
 	}
 
