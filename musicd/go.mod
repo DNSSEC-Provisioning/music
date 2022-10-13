@@ -5,7 +5,6 @@ go 1.17
 replace (
 	github.com/DNSSEC-Provisioning/music/fsm => ../fsm
 	github.com/DNSSEC-Provisioning/music/music => ../music
-	github.com/DNSSEC-Provisioning/music/signer => ../signer
 )
 
 require (

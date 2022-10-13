@@ -59,6 +59,7 @@ type DbConf struct {
 }
 
 type CommonConf struct {
+	Debug	  *bool  `validate:"required"`
 	TokenFile string `validate:"file,required"`
 	RootCA    string `validate:"file,required"`
 }
