@@ -68,9 +68,6 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	current := target
 
 	completeinterval := viper.GetInt("fsmengine.intervals.complete")
-	if completeinterval < 3600 || completeinterval > 24*3600 {
-		completeinterval = 7200
-	}
 
 	log.Printf("Starting FSM Engine (will run once every %d seconds)", current)
 
