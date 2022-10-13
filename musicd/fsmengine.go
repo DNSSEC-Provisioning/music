@@ -70,6 +70,9 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	completeinterval := viper.GetInt("fsmengine.intervals.complete")
 	if completeinterval < 3600 || completeinterval > 24*3600 {
 		completeinterval = 7200
+		if !viper.GetBool("common.debug") {
+			completeinterval = 30
+		}
 	}
 
 	log.Printf("Starting FSM Engine (will run once every %d seconds)", current)
@@ -93,8 +96,11 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	}
 
 	ReportProgress := func() {
+		// TODO: find out where zones is set
 		count = len(zones)
 		if count > 0 {
+			log.Printf("Enterd the report progress zone count > 0 tree")
+
 			zonelist := []string{}
 			for _, z := range zones {
 				zonelist = append(zonelist, z.Name)
@@ -102,8 +108,8 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			log.Printf("FSM Engine: tried to move these zones forward: %s (will run every %d seconds)",
 				strings.Join(zonelist, " "), current)
 		} else {
-			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)",
-				current)
+			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)\n %v",
+				current, zones)
 		}
 	}
 
