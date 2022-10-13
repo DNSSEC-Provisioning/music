@@ -99,8 +99,6 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		// TODO: find out where zones is set
 		count = len(zones)
 		if count > 0 {
-			log.Printf("Enterd the report progress zone count > 0 tree")
-
 			zonelist := []string{}
 			for _, z := range zones {
 				zonelist = append(zonelist, z.Name)
@@ -108,8 +106,8 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			log.Printf("FSM Engine: tried to move these zones forward: %s (will run every %d seconds)",
 				strings.Join(zonelist, " "), current)
 		} else {
-			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)\n %v",
-				current, zones)
+			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)",
+				current)
 		}
 	}
 
