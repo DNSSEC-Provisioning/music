@@ -83,7 +83,6 @@ type CommonConf struct {
 type InternalConf struct {
 	APIStopCh   chan struct{}
 	EngineCheck chan music.EngineCheck
-	//DB          *sql.DB // This should be gone from the code, can be removed at next clean up. XXX:comment
 	MusicDB     *music.MusicDB
 	TokViper    *viper.Viper
 	DesecFetch  chan music.SignerOp

@@ -95,7 +95,7 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 	}
 
 	if uz.FSMMode == "auto" {
-		enginecheck <- EngineCheck{Zone: dbzone.Name}
+		enginecheck <- EngineCheck{ZoneName: dbzone.Name}
 	}
 
 	return fmt.Sprintf("Zone %s updated.", dbzone.Name), nil
@@ -502,13 +502,13 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 			return msg, err
 		}
 
-		enginecheck <- EngineCheck{Zone: dbzone.Name}
+		enginecheck <- EngineCheck{ZoneName: dbzone.Name}
 		return fmt.Sprintf(
 			"Zone %s has joined signer group %s and started the process '%s'.",
 			dbzone.Name, g, SignerJoinGroupProcess), nil
 	}
 
-	enginecheck <- EngineCheck{Zone: dbzone.Name}
+	enginecheck <- EngineCheck{ZoneName: dbzone.Name}
 	return fmt.Sprintf(
 		`Zone %s has joined signer group %s but could not start the process '%s'
 as the zone is already in process '%s'. Problematic.`, dbzone.Name,
