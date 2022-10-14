@@ -68,11 +68,12 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	current := target
 
 	completeinterval := viper.GetInt("fsmengine.intervals.complete")
+
 	if completeinterval < 3600 || completeinterval > 24*3600 {
 		completeinterval = 7200
 		if !viper.GetBool("common.debug") {
 			completeinterval = 30
-			log.Printf("Debug mode on, completeinterval is set to:%d", completeinterval)
+			log.Printf("Debug mode on, complete check of all zones every %d seconds", completeinterval)
 		}
 	}
 

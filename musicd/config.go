@@ -23,13 +23,27 @@ type Config struct {
 	Db        DbConf
 	Common    CommonConf
 	Internal  InternalConf
+	FSMEngine FSMEngineConf
 }
 
 type ApiServerConf struct {
 	Address  string `validate:"required,hostname_port"`
+	ApiKey   string `validate:"required"`
 	CertFile string `validate:"required,file"`
 	KeyFile  string `validate:"required,file"`
 	UseTLS   bool
+}
+
+type FSMEngineConf struct {
+	Active    bool `validate:"required"`
+	Intervals IntervalsConf
+}
+
+type IntervalsConf struct {
+	Target   int `validate:"required"`
+	Minimum  int `validate:"required"`
+	Maximum  int `validate:"required"`
+	Complete int `validate:"required,gte=3599,lte=86401"` // must be greater 1hr and less than 24hr
 }
 
 type SignerConf struct {
@@ -59,7 +73,7 @@ type DbConf struct {
 }
 
 type CommonConf struct {
-	Debug	  *bool  `validate:"required"`
+	Debug     *bool  `validate:"required"`
 	TokenFile string `validate:"file,required"`
 	RootCA    string `validate:"file,required"`
 }
