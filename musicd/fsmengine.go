@@ -107,7 +107,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 			log.Printf("FSM Engine: tried to move these zones forward: %s (will run every %d seconds)",
 				strings.Join(zonelist, " "), current)
 		} else {
-			log.Printf("FSM Engine: All zones are currently blocked (will run every %d seconds)",
+			log.Printf("FSM Engine: There are currently no unblocked zones (this check will run every %d seconds)",
 				current)
 		}
 	}
