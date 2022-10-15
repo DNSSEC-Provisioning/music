@@ -484,7 +484,7 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 
 	_, err = tx.Exec(sqlq, g, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
-		return fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
+		return fmt.Sprintf("Error from tx.Exec(%s): %v", sqlq, err), err
 	}
 
 	dbzone, _, err = mdb.GetZone(tx, dbzone.Name)

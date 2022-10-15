@@ -339,7 +339,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					var result = map[string][]string{}
 					var rrset []string
 					for k, _ := range sg.Signers() {
-						err, resp.Msg, rrset = mdb.ListRRset(dbzone, k, zp.Owner,
+						err, resp.Msg, rrset = mdb.ListRRset(nil, dbzone, k, zp.Owner,
 							zp.RRtype)
 						if err != nil {
 							log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
@@ -378,7 +378,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 			case "list-rrset":
 				var rrset []string
-				err, resp.Msg, rrset = mdb.ListRRset(dbzone, zp.Signer,
+				err, resp.Msg, rrset = mdb.ListRRset(nil, dbzone, zp.Signer,
 					zp.Owner, zp.RRtype)
 				if err != nil {
 					log.Printf("Error from ListRRset: %v", err)

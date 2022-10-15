@@ -169,7 +169,7 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 		return err
 	}
 
-	addsql := "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
+	const addsql = "INSERT INTO records (zone, owner, signer, rrtype, rdata) VALUES (?, ?, ?, ?, ?)"
 
 	addstmt, err := tx.Prepare(addsql)
 	if err != nil {
@@ -193,22 +193,25 @@ func (mdb *MusicDB) WriteRRs(signer *Signer, owner, zone string,
 	return nil
 }
 
-// XXX: is this still in use?
+// XXX: is this still in use? Not really, only from apiserver:APIzone:{get-rrsets,list-rrset}.
 // XXX: broken, should return a []dns.RR, not []string.
-func (mdb *MusicDB) ListRRset(dbzone *Zone, signer, ownername, rrtype string) (error, string, []string) {
+func (mdb *MusicDB) ListRRset(tx *sql.Tx, dbzone *Zone, signer, ownername, rrtype string) (error, string, []string) {
 	var rrs []string
 	RRtype := dns.StringToType[rrtype]
 
-	const sql = "SELECT rdata FROM records WHERE owner=? AND signer=? AND rrtype=?"
-	stmt, err := mdb.Prepare(sql)
+	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		fmt.Printf("ListRRset: Error from db.Prepare: %v\n", err)
+		log.Printf("WriteRRs: Error from mdb.StartTransaction(): %v\n", err)
+		return err, "", rrs
 	}
+	defer mdb.CloseTransaction(localtx, tx, err)
 
-	rows, err := stmt.Query(ownername, signer, RRtype)
+	const sqlq = "SELECT rdata FROM records WHERE owner=? AND signer=? AND rrtype=?"
+
+	rows, err := tx.Query(sqlq, ownername, signer, RRtype)
 	defer rows.Close()
 
-	if CheckSQLError("ListRRset", sql, err, false) {
+	if CheckSQLError("ListRRset", sqlq, err, false) {
 		return err, "", rrs
 	} else {
 		var rdata string
