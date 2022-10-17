@@ -10,9 +10,15 @@ Internet Draft. Based on the following RFCs:
 * [RFC7477](https://datatracker.ietf.org/doc/rfc7477/) "Child-to-Parent Synchronization in
   DNS"
 
-### Install MUSIC 
+## W.I.P
+### Requirements:
+* Working golang installation
+
+
+### Download and Install MUSIC 
+
 This is just enough to get MUSIC up and running.
-W.I.P
+
 ```
 
 git clone git@github.com:DNSSEC-Provisioning/music.git
