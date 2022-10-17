@@ -66,6 +66,8 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 		}
 
 		signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
+
+		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
@@ -77,13 +79,8 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 			//if f := dnskey.Flags & 0x101; f == 256 {
 			signerzsks[s.Name][dnskey.KeyTag()] = dnskey
 			allzsks[dnskey.KeyTag()] = dnskey
-			stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
-			if err != nil {
-				log.Printf("VerifyDnskeysSynched: %s: Statement prepare failed: %s", z.Name, err)
-				return false
-			}
 
-			res, err := stmt.Exec(z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
+			res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
 			if err != nil {
 				log.Printf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err)
 				return false
@@ -149,6 +146,7 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
 
+		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
@@ -158,20 +156,17 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 			dnskeys[s.Name] = append(dnskeys[s.Name], dnskey)
 
 			if f := dnskey.Flags & 0x101; f == 256 || f == 257 {
-				stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)")
+				res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s",
+					dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
 				if err != nil {
-					log.Printf("JoinSyncDnskeys: %s: Statement prepare failed: %s", z.Name, err)
-					return false
-				}
-
-				res, err := stmt.Exec(z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
-				if err != nil {
-					log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s", z.Name, err)
+					log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s",
+						z.Name, err)
 					return false
 				}
 				rows, _ := res.RowsAffected()
 				if rows > 0 {
-					log.Printf("JoinSyncDnskeys: %s: Origin for %s set to %s", z.Name, dnskey.PublicKey, s.Name)
+					log.Printf("JoinSyncDnskeys: %s: Origin for %s set to %s",
+						z.Name, dnskey.PublicKey, s.Name)
 				}
 			}
 		}

@@ -24,7 +24,7 @@ type DBUpdate struct {
 }
 
 type EngineCheck struct {
-	Zone string
+	ZoneName string
 }
 
 type Zone struct {

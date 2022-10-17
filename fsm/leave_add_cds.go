@@ -56,15 +56,11 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	log.Printf("%s: Verifying that leaving signer %s DNSKEYs has been removed from all signers",
 		z.Name, leavingSigner.Name)
 
-	stmt, err := z.MusicDB.Prepare("SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?")
-	if err != nil {
-		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
-		return false
-	}
+	const sqlq = "SELECT dnskey FROM zone_dnskeys WHERE zone = ? AND signer = ?"
 
-	rows, err := stmt.Query(z.Name, leavingSigner.Name)
+	rows, err := z.MusicDB.Query(sqlq, z.Name, leavingSigner.Name)
 	if err != nil {
-		log.Printf("%s: Statement execute failed: %s", z.Name, err)
+		log.Printf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err)
 		return false
 	}
 

@@ -35,8 +35,8 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	var err error
 	var count int
 	var zones []music.Zone
-	var foo music.EngineCheck
-	var z string
+	var zonename string
+	var checkitem music.EngineCheck
 	var emptymap = map[string]bool{}
 	checkch := conf.Internal.EngineCheck
 
@@ -98,7 +98,6 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 	}
 
 	ReportProgress := func() {
-		// TODO: find out where zones is set
 		count = len(zones)
 		if count > 0 {
 			zonelist := []string{}
@@ -115,12 +114,12 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 
 	for {
 		select {
-		case foo = <-checkch:
-			z = foo.Zone
-			if z != "" {
+		case checkitem = <-checkch:
+			zonename = checkitem.ZoneName
+			if zonename != "" {
 				log.Printf("FSM Engine: Someone wants me to check the zone '%s', so I'll do that.",
-					z)
-				zones, err = mdb.PushZones(nil, map[string]bool{z: true}, false)
+					zonename)
+				zones, err = mdb.PushZones(nil, map[string]bool{zonename: true}, false)
 			} else {
 				log.Print("FSM Engine: Someone wants me to do a run now, so I'll do that.")
 				zones, err = mdb.PushZones(nil, emptymap, false)

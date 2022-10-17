@@ -400,7 +400,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 		_, err = tx.Exec(sqlq, sg.Name)
 		if err != nil {
 			log.Printf("CheckIfProcessIsComplete: Error from tx.Exec(%s): %v", sqlq, err)
-			return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
+			return false, fmt.Sprintf("Error from tx.Exec(%s): %v", sqlq, err), err
 		}
 
 		if cp == SignerLeaveGroupProcess {
@@ -409,7 +409,7 @@ func (mdb *MusicDB) CheckIfProcessComplete(tx *sql.Tx, sg *SignerGroup) (bool, s
 			if err != nil {
 				log.Printf("CheckIfProcessIsComplete: Error from tx.Exec(%s): %v",
 								      sqlq, err)
-			        return false, fmt.Sprintf("Error from stmt.Exec(%s): %v", sqlq, err), err
+			        return false, fmt.Sprintf("Error from tx.Exec(%s): %v", sqlq, err), err
 			}
 		}
 

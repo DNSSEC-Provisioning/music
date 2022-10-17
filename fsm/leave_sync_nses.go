@@ -60,15 +60,11 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 
 	log.Printf("%s: Removing NSes originating from leaving signer %s", z.Name, leavingSigner.Name)
 
-	stmt, err := z.MusicDB.Prepare("SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?")
-	if err != nil {
-		log.Printf("%s: Statement prepare failed: %s", z.Name, err)
-		return false
-	}
+	const sqlq = "SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?"
 
-	rows, err := stmt.Query(z.Name, leavingSigner.Name)
+	rows, err := z.MusicDB.Query(sqlq, z.Name, leavingSigner.Name)
 	if err != nil {
-		log.Printf("%s: Statement execute failed: %s", z.Name, err)
+		log.Printf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err)
 		return false
 	}
 

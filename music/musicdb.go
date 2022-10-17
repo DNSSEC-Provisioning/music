@@ -169,6 +169,14 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 	return &mdb, nil
 }
 
+func (mdb *MusicDB) Query(sqlq string, args ...interface{}) (*sql.Rows, error) {
+	return mdb.db.Query(sqlq, args...)
+}
+
+func (mdb *MusicDB) Exec(sqlq string, args ...interface{}) (sql.Result, error) {
+	return mdb.db.Exec(sqlq, args...)
+}
+
 func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
 	return mdb.db.Prepare(sqlq)
 }

@@ -28,7 +28,6 @@ FROM zones WHERE fsmmode='auto' AND fsm != ''`
 
 func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall bool) ([]Zone, error) {
 	var zones []Zone
-	var stmt *sql.Stmt
 	var err error
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -38,18 +37,15 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)
 
+	sqlq := AutoZones
 	if checkall {
-	   stmt, err = tx.Prepare(AllAutoZones)
-	} else {
-	   stmt, err = tx.Prepare(AutoZones)
-	}
-	if err != nil {
-		log.Fatalf("PushZones: Error from tx.Prepare(%s): %v", AutoZones, err)
+		sqlq = AllAutoZones
 	}
 
-	rows, err := stmt.Query()
+	rows, err := tx.Query(sqlq)
 	if err != nil {
-		log.Printf("PushZones: Error from stmt query(%s): %v", AutoZones, err)
+		log.Printf("PushZones: Error from tx.Query(%s): %v", sqlq, err)
+		return zones, err
 	}
 	defer rows.Close()
 
@@ -75,6 +71,7 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 		}
 	}
 
+	var tmperr error
 	if len(zones) > 0 {
 	   	      zonelist := []string{}
 		      for _, z := range zones {
@@ -87,11 +84,14 @@ func (mdb *MusicDB) PushZones(tx *sql.Tx, checkzones map[string]bool, checkall b
 			   log.Printf("PushZones: zone %s is delayed until %v. Leaving for now.",
 			   			  z.Name, "time-when zone-has-waited-long-enough")
 			} else {
-			  mdb.PushZone(tx, z)
+				tmperr = mdb.PushZone(tx, z)
+				if err == nil {
+					err = tmperr // save first error encountered
+				}
 			}
 		}
 	} 
-	return zones, nil
+	return zones, err
 }
 
 func (mdb *MusicDB) PushZone(tx *sql.Tx, z Zone) error {

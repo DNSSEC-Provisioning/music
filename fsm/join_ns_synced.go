@@ -129,6 +129,8 @@ func JoinSyncNs(z *music.Zone) bool {
 
 		nses[signer.Name] = []*dns.NS{}
 
+		const sqlq = "INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)"
+
 		for _, a := range rrs {
 			ns, ok := a.(*dns.NS)
 			if !ok {
@@ -137,15 +139,10 @@ func JoinSyncNs(z *music.Zone) bool {
 
 			nses[signer.Name] = append(nses[signer.Name], ns)
 
-			stmt, err := z.MusicDB.Prepare("INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)")
+			// XXX: Should wrap this in a transaction
+			res, err := z.MusicDB.Exec(sqlq, z.Name, ns.Ns, signer.Name)
 			if err != nil {
-				log.Printf("%s: Statement prepare failed: %s", z.Name, err)
-				return false
-			}
-
-			res, err := stmt.Exec(z.Name, ns.Ns, signer.Name)
-			if err != nil {
-				log.Printf("%s: Statement execute failed: %s", z.Name, err)
+				log.Printf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err)
 				return false
 			}
 			rows, _ := res.RowsAffected()
