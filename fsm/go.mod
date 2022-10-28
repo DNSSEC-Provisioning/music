@@ -4,12 +4,13 @@ go 1.18
 
 require (
 	github.com/DNSSEC-Provisioning/music/music v0.0.0-00010101000000-000000000000
+	github.com/DNSSEC-Provisioning/music/tools/compare v0.0.0-00010101000000-000000000000
 	github.com/miekg/dns v1.1.50
 )
 
 replace github.com/DNSSEC-Provisioning/music/music => ../music
-replace github.com/DNSSEC-Provisioning/music/tools/compare => ../tools/compare
 
+replace github.com/DNSSEC-Provisioning/music/tools/compare => ../tools/compare
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect

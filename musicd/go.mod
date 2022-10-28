@@ -16,6 +16,12 @@ require (
 	github.com/spf13/viper v1.9.0
 )
 
+require (
+	github.com/DNSSEC-Provisioning/music/tools/compare v0.0.0-00010101000000-000000000000 // indirect
+	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+)
 
 require (
 	github.com/DNSSEC-Provisioning/music/fsm v0.0.0-20211206093248-86ccac6a2561

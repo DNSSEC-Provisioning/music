@@ -2,7 +2,7 @@ package fsm
 
 import (
 	"fmt"
-	"github.com/DNSSEC-Provisioning/music/music/tools/compare"
+	"github.com/DNSSEC-Provisioning/music/tools/compare"
 	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
