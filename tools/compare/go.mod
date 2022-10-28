@@ -1,4 +1,4 @@
-module github.com/DNSSEC-Provisioning/music/music/tools/compare
+module github.com/DNSSEC-Provisioning/music/tools/compare
 
 go 1.18
 
