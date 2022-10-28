@@ -2,6 +2,7 @@ package fsm
 
 import (
 	"fmt"
+	"github.com/DNSSEC-Provisioning/music/music/tools/compare"
 	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
@@ -21,90 +22,54 @@ var FsmJoinAddCDS = music.FSMTransition{
 	PostCondition: VerifyCdsPublished,
 }
 
-func JoinAddCdsPreCondition(z *music.Zone) bool {
-	dnskeys := make(map[string][]*dns.DNSKEY)
+// JoinAddCdsPreCondition collects DNSKEYS from all signers and confirms that the RRsets Match
+func JoinAddCdsPreCondition(zone *music.Zone) bool {
+	dnskeyRRsets := make(map[string][]dns.RR)
+	var signerNames []string
+	matches := true
 
 	log.Printf("Add CDS/CDNSKEY:\n")
-	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", z.Name, z.SGroup.Name)
+	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", zone.Name, zone.SGroup.Name)
 
-	if z.ZoneType == "debug" {
-		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
-		return true
-	}
+	// Collect all the DNSKEYS per signer
+	for signerName, signer := range zone.SGroup.SignerMap {
 
-	for _, s := range z.SGroup.SignerMap {
-
-		updater := music.GetUpdater(s.Method)
-		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
+		signerNames = append(signerNames, signerName)
+		updater := music.GetUpdater(signer.Method)
+		err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, dns.TypeDNSKEY)
 		if err != nil {
-			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v", s.Name, err)
+			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v", signer.Name, err)
 		}
-
-		dnskeys[s.Name] = []*dns.DNSKEY{}
-		for _, a := range rrs {
-			dnskey, ok := a.(*dns.DNSKEY)
-			if !ok {
-				continue
-			}
-
-			dnskeys[s.Name] = append(dnskeys[s.Name], dnskey)
-		}
-
-		if len(dnskeys[s.Name]) > 0 {
-			keys := ""
-			for _, k := range dnskeys[s.Name] {
-				if f := k.Flags & 0x101; f == 256 {
-					keys += fmt.Sprintf("%d (ZSK) ", int(k.KeyTag()))
-				} else {
-					keys += fmt.Sprintf("%d (KSK) ", int(k.KeyTag()))
-				}
-			}
-			log.Printf("Fetched %s DNSKEYs from %s: %s", z.Name,
-				s.Name, keys)
-		} else {
-			log.Printf("JoinAddCdsPreCondition: %s: No DNSKEYs found in %s", z.Name, s.Name)
-		}
+		dnskeyRRsets[signer.Name] = rrSet
 	}
 
-	// for each signer, check every other_signer if it's missing signer's DNSKEYs
-	all_found := true
-	for signer, keys := range dnskeys {
-		for _, key := range keys {
-			if f := key.Flags & 0x101; f == 256 { // only process ZSK's
-				for other_signer, other_keys := range dnskeys {
-					if other_signer == signer {
-						continue
-					}
-
-					found := false
-					for _, other_key := range other_keys {
-						if other_key.PublicKey == key.PublicKey {
-							// if other_key.Protocol != key.Protocol {
-							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but mismatch Protocol: %s", other_signer, key.PublicKey))
-							//     break
-							// }
-							// if other_key.Algorithm != key.Algorithm {
-							//     *output = append(*output, fmt.Sprintf("Found DNSKEY in %s but mismatch Protocol: %s", other_signer, key.PublicKey))
-							//     break
-							// }
-							found = true
-							break
-						}
-					}
-
-					if !found {
-						log.Printf("%s: Still missing %s's DNSKEY %d %s in %s", z.Name, signer, key.KeyTag(), key.PublicKey[:30], other_signer)
-						all_found = false
-					}
+	// Check that the RRsets Match between the signers.
+	fmt.Printf("signerNames %v\n", signerNames)
+	numSigners := len(signerNames)
+	if len(signerNames) > 1 {
+		for i := numSigners - 1; i > 0; i-- {
+			match, rrset1Extra, rrset2Extra := compare.CompareRRset(dnskeyRRsets[signerNames[0]], dnskeyRRsets[signerNames[i]])
+			if !match {
+				matches = false
+				if len(rrset1Extra) > 0 {
+					log.Printf("%s: Still missing DNSKEYS: %v\n", signerNames[i], rrset1Extra)
+				}
+				if len(rrset2Extra) > 0 {
+					log.Printf("%s: Still missing DNSKEYS: %v\n", signerNames[0], rrset2Extra)
 				}
 			}
 		}
 	}
-	if !all_found {
-		return false
+	if !matches {
+		err, _ := zone.SetStopReason(fmt.Sprintf("DNSKEYS not synced on signers"))
+		if err != nil {
+			log.Printf("Couldn't set stop reason: DNSKEYS not synced on signers")
+		}
+		return matches
 	}
-	log.Printf("%s: All DNSKEYs synced between all signers", z.Name)
-	return true
+
+	log.Printf("[JoinAddCdsPreCondition] All DNSKEYS synced.")
+	return matches
 }
 
 func JoinAddCdsAction(z *music.Zone) bool {
@@ -151,8 +116,12 @@ func JoinAddCdsAction(z *music.Zone) bool {
 		updater := music.GetUpdater(signer.Method)
 		if err := updater.Update(signer, z.Name, z.Name,
 			&[][]dns.RR{cdses, cdnskeys}, nil); err != nil {
-			z.SetStopReason(fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
+			err, _ := z.SetStopReason(fmt.Sprintf("Unable to update %s with CDS/CDNSKEY record sets: %s",
 				signer.Name, err))
+			if err != nil {
+				log.Printf("Could not set stop reason: Unable to update %s with CDS/CDNSKEY rrset: %s",
+					signer.Name, err)
+			}
 			return false
 		}
 		log.Printf("%s: Update %s successfully with CDS/CDNSKEY record sets",
