@@ -31,7 +31,7 @@ func TestCompareRRsetLength(t *testing.T) {
 	t.Run("Compare matching RRsets", func(t *testing.T) {
 		var reply1Extra []dns.RR
 		var reply2Extra []dns.RR
-		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply1.Answer)
+		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply1.Answer)
 		if !got {
 			t.Errorf("got %t wanted true", got)
 		}
@@ -46,7 +46,7 @@ func TestCompareRRsetLength(t *testing.T) {
 	t.Run("Compare non-matching RRsets", func(t *testing.T) {
 		var reply1Extra []dns.RR
 		var reply2Extra []dns.RR
-		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
+		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}
@@ -86,7 +86,7 @@ func TestCompareRRsetType(t *testing.T) {
 	t.Run("Compare non-matching qtype", func(t *testing.T) {
 		var reply1Extra []dns.RR
 		var reply2Extra []dns.RR
-		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
+		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}
@@ -122,7 +122,7 @@ func TestCompareRRsetOwner(t *testing.T) {
 	t.Run("Compare non-matching owner ", func(t *testing.T) {
 		var reply1Extra []dns.RR
 		var reply2Extra []dns.RR
-		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
+		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}
