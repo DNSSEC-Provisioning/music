@@ -1,4 +1,4 @@
-package compare
+package tools
 
 // https://www.rfc-editor.org/rfc/rfc2181
 
@@ -42,6 +42,5 @@ func CompareRRset(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
 			allEqual = false
 		}
 	}
-
 	return allEqual, rrset1Extra, rrset2Extra
 }

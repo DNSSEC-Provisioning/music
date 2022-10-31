@@ -1,4 +1,4 @@
-package compare
+package tools
 
 import (
 	"fmt"
@@ -29,9 +29,9 @@ func TestCompareRRsetLength(t *testing.T) {
 	reply2.Answer = append(reply2.Answer, ns1rr)
 
 	t.Run("Compare matching RRsets", func(t *testing.T) {
-		reply1Extra := []dns.RR{}
-		reply2Extra := []dns.RR{}
-		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply1.Answer)
+		var reply1Extra []dns.RR
+		var reply2Extra []dns.RR
+		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply1.Answer)
 		if !got {
 			t.Errorf("got %t wanted true", got)
 		}
@@ -44,9 +44,9 @@ func TestCompareRRsetLength(t *testing.T) {
 	})
 
 	t.Run("Compare non-matching RRsets", func(t *testing.T) {
-		reply1Extra := []dns.RR{}
-		reply2Extra := []dns.RR{}
-		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
+		var reply1Extra []dns.RR
+		var reply2Extra []dns.RR
+		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}
@@ -84,9 +84,9 @@ func TestCompareRRsetType(t *testing.T) {
 	reply2.Answer = append(reply2.Answer, dnskey1rr)
 
 	t.Run("Compare non-matching qtype", func(t *testing.T) {
-		reply1Extra := []dns.RR{}
-		reply2Extra := []dns.RR{}
-		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
+		var reply1Extra []dns.RR
+		var reply2Extra []dns.RR
+		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}
@@ -120,9 +120,9 @@ func TestCompareRRsetOwner(t *testing.T) {
 	reply2.Answer = append(reply2.Answer, ns2rr)
 
 	t.Run("Compare non-matching owner ", func(t *testing.T) {
-		reply1Extra := []dns.RR{}
-		reply2Extra := []dns.RR{}
-		got, reply1Extra, reply2Extra := CompareRRset(reply1.Answer, reply2.Answer)
+		var reply1Extra []dns.RR
+		var reply2Extra []dns.RR
+		got, reply1Extra, reply2Extra := tools.CompareRRset(reply1.Answer, reply2.Answer)
 		if got {
 			t.Errorf("got %t wanted false", got)
 		}

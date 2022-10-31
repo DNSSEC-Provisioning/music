@@ -5,7 +5,7 @@ go 1.17
 replace (
 	github.com/DNSSEC-Provisioning/music/fsm => ../fsm
 	github.com/DNSSEC-Provisioning/music/music => ../music
-	github.com/DNSSEC-Provisioning/music/tools/compare => ../tools/compare
+	github.com/DNSSEC-Provisioning/music/tools => ../tools
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	github.com/DNSSEC-Provisioning/music/tools/compare v0.0.0-00010101000000-000000000000 // indirect
+	github.com/DNSSEC-Provisioning/music/tools v0.0.0-00010101000000-000000000000 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
