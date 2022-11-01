@@ -45,7 +45,7 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	if dbzone.FSM != "" {
 		if preempt {
-			msg = fmt.Sprintf("Zone %s was in process '%s', which is now preempted by new process '%'\n", dbzone.Name, dbzone.FSM)
+			msg = fmt.Sprintf("Zone %s was in process '%s', which is now preempted by new process.\n", dbzone.Name, dbzone.FSM)
 		} else {
 			return "", fmt.Errorf(
 				"Zone %s already attached to process %s. Only one process at a time possible.\n",
@@ -86,7 +86,7 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	if dbzone.FSM == "" || dbzone.FSM == "---" {
 		return "", fmt.Errorf("Zone %s is not attached to any process.\n",
-			dbzone.Name, dbzone.FSM)
+			dbzone.Name)
 	}
 
 	if dbzone.FSM != fsm {

@@ -2,7 +2,6 @@ package fsm
 
 import (
 	"fmt"
-	"github.com/DNSSEC-Provisioning/music/tools"
 	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
@@ -48,7 +47,7 @@ func JoinAddCdsPreCondition(zone *music.Zone) bool {
 	numSigners := len(signerNames)
 	if len(signerNames) > 1 {
 		for i := numSigners - 1; i > 0; i-- {
-			match, rrset1Extra, rrset2Extra := tools.CompareRRset(dnskeyRRsets[signerNames[0]], dnskeyRRsets[signerNames[i]])
+			match, rrset1Extra, rrset2Extra := music.RRsetCompare(dnskeyRRsets[signerNames[0]], dnskeyRRsets[signerNames[i]])
 			if !match {
 				matches = false
 				if len(rrset1Extra) > 0 {

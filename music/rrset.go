@@ -1,4 +1,4 @@
-package tools
+package music
 
 // https://www.rfc-editor.org/rfc/rfc2181
 
@@ -8,7 +8,7 @@ import (
 
 // CompareRRset compares two RRsets and returns if they are equal or not,
 //   include the non-matching RRs in a slice per RRset.
-func CompareRRset(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
+func RRsetCompare(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
 	allEqual := true
 	var equal bool
 	var rrset1Extra []dns.RR

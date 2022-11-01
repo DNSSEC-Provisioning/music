@@ -1,4 +1,4 @@
-module common
+module music
 
 go 1.18
 
