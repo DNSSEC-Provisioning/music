@@ -273,7 +273,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 
 	if z.State != from {
 		return fmt.Errorf("StateTransition: Error: zone %s is in state '%s'. Should be '%s'.\n",
-			z.State, from)
+			z.Name, z.State, from)
 	}
 
 	if from == FsmStateStop && to == FsmStateStop {

@@ -61,7 +61,7 @@ func (mdb *MusicDB) ZoneCopyRRset(tx *sql.Tx, dbzone *Zone, owner,
 	}
 
 	if len(rrs) == 0 {
-		return fmt.Errorf("ZoneCopyRRset: No records returned in query to signer %s."),
+		return fmt.Errorf("ZoneCopyRRset: No records returned in query to signer %s.", fs.Name),
 			""
 	}
 

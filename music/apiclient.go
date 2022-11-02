@@ -594,8 +594,8 @@ func (api *Api) NoAuthPost(endpoint string, data []byte) (int, []byte, error) {
 func (api *Api) Delete(endpoint string) (int, []byte, error) {
 
 	if api.Debug {
-		fmt.Printf("api.Put: posting to URL '%s' %d bytes of data: %v\n",
-			api.BaseUrl+endpoint) // , len(data), string(data))
+		fmt.Printf("api.Delete: posting to URL '%s'\n",
+			api.BaseUrl+endpoint)
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, api.BaseUrl+endpoint, nil)

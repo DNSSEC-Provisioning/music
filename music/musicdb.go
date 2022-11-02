@@ -127,7 +127,7 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 	_, err := os.Stat(dbfile)
 	if !os.IsNotExist(err) {
 		if err := os.Chmod(dbfile, 0664); err != nil {
-			log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", err)
+			log.Printf("NewMusicDB: Error trying to ensure that db %s is writable: %v", dbfile, err)
 		}
 	}
 	db, err := sql.Open("sqlite3", dbfile)
