@@ -1,4 +1,4 @@
-## MUSIC
+### MUSIC
 
 MUSIC, Multi-Signer Controller, is a proof of concept software implementation of the 
 [dnsop-dnssec-automation](https://datatracker.ietf.org/doc/draft-ietf-dnsop-dnssec-automation/) 
@@ -10,7 +10,7 @@ Internet Draft. Based on the following RFCs:
 * [RFC7477](https://datatracker.ietf.org/doc/rfc7477/) "Child-to-Parent Synchronization in
   DNS"
 
-### Install MUSIC 
+## Install MUSIC 
 This is just enough to get MUSIC up and running.
 W.I.P
 ```
@@ -30,7 +30,7 @@ make install
 
 ```
 
-### Configure MUSIC
+## Configure MUSIC
 
 * By default MUSIC uses config files located in-tree, in the directory
   music/etc/. If you want to use a more stable location, please change
@@ -41,7 +41,7 @@ make install
   Note that the variable DefaultCfgFile has different values for musicd
   and music-cli, respectively
 
-### Suggestions for a Simple MUSIC Test Lab Setup
+## Suggestions for a Simple MUSIC Test Lab Setup
 
 * Decide on a set of zone names that are easy to remember, like
   music1.example. music2.example., music3.example., etc. Generate
@@ -90,7 +90,7 @@ MUSIC needs to control.
 
 * Everything is now ready for you to set up MUSIC itself.
 
-### Configuring MUSIC and Starting the MUSICD Server
+## Configuring MUSIC and Starting the MUSICD Server
 
 * Once certs, etc, are in order, get the MUSIC server running in a separate terminal window.
   There will be lots of output:
@@ -125,7 +125,7 @@ Pings: 2 Pongs: 1 Message: TLS pong from musicd @ nyx.johani.org
 ```
 If the response is a "pong", then all is good, TLS is working correctly, etc.
 
-### Do a Simple Test
+## Do a Simple Test
 * Add the two signers to MUSIC:
 ```
 bash# music-cli signer add -v -s S1 --method ddns --address 1.2.3.4 --auth hmac-sha256:signer1.key.:YOUR-SIGNER1-KEY 
@@ -144,7 +144,7 @@ S2       ddns    4.3.2.1          53    ---
 Note that the signers do not belong to any signer group (yet).
 Let's create a signer group.
 
-# Create a MUSIC Signer Group
+### Create a MUSIC Signer Group
 ```
 bash# music-cli signergroup add -g GROUP1
 Signergroup GROUP1 created.
@@ -205,7 +205,7 @@ Using config file: ../etc/music-cli.yaml
 Zone music1.example. has joined signer group GROUP1 and started the process 'add-signer'.
 ```
 
-* Moving Zones Through a MUSIC Process Manually
+### Moving Zones Through a MUSIC Process Manually
 
 ```
 ../sbin/music-cli zone step-fsm -z music1.example -v
@@ -216,7 +216,7 @@ Zone                    SignerGroup  Process     State             Timestamp    
 music1.example.  GROUP1       add-signer  signers-unsynced  2022-11-04 13:24:53  [dnskeys-synced]
 ```
 
-* Moving Zones Through a MUSIC Process Automatically
+### Moving Zones Through a MUSIC Process Automatically
 
 ```
 bash# music-cli zone update -z music1.example --fsmmode auto
