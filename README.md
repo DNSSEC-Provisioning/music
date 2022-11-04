@@ -30,6 +30,17 @@ make install
 
 ```
 
+### Configure MUSIC
+
+* By default MUSIC uses config files located in-tree, in the directory
+  music/etc/. If you want to use a more stable location, please change
+  the variable DefaultCfgFile in the two files music/musicd/defaults.go
+  and music/music-cli/cmd/defaults.go to something you like better
+  (eg. like /etc/music/...).
+
+  Noth that the variable DefaultCfgFile has different values for musicd
+  and music-cli, respectively
+
 * [TODO] Add minimal test lab description
 * [TODO] Add explanation of config settings
 * [TODO] Add list of test scenarios
