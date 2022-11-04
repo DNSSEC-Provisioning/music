@@ -144,7 +144,7 @@ S2       ddns    4.3.2.1          53    ---
 Note that the signers do not belong to any signer group (yet).
 Let's create a signer group.
 
-* Create a MUSIC Signer Group
+# Create a MUSIC Signer Group
 ```
 bash# music-cli signergroup add -g GROUP1
 Signergroup GROUP1 created.
