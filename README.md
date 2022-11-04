@@ -41,7 +41,7 @@ make install
   Note that the variable DefaultCfgFile has different values for musicd
   and music-cli, respectively
 
-### Suggestions for a simple MUSIC test lab setup
+### Suggestions for a Simple MUSIC Test Lab Setup
 
 * Decide on a set of zone names that are easy to remember, like
   music1.example. music2.example., music3.example., etc. Generate
@@ -131,8 +131,7 @@ If the response is a "pong", then all is good, TLS is working correctly, etc.
 bash# music-cli signer add -v -s S1 --method ddns --address 1.2.3.4 --auth hmac-sha256:signer1.key.:YOUR-SIGNER1-KEY 
 Using config file: ../etc/music-cli.yaml
 New signer S1 successfully added.
-bash# music-cli signer add -v -s S2 --method ddns --address 4.3.2.1 --auth hmac-sha256:signer2.key.:YOUR-SIGNER2-KEY 
-Using config file: ../etc/music-cli.yaml
+bash# music-cli signer add -s S2 --method ddns --address 4.3.2.1 --auth hmac-sha256:signer2.key.:YOUR-SIGNER2-KEY 
 New signer S2 successfully added.
 ```
 * Verify that MUSIC now knows about your new signers:
@@ -160,14 +159,14 @@ was added to the group, then those zones would have to go through the
 'add-signer' process, as that's the whole point with the Multi-Signer
 design.
 
-### Add a couple of zones to MUSIC
+### Add a Couple of Zones to MUSIC
 
 * It is possible to add zones without attaching them to a signer
 group. Then MUSIC will not do anything with the zone:
 
 ```
-bash# music-cli zone add -z child1.music.axfr.net  
-Zone child1.music.axfr.net. was added but is not yet attached to any signer group.
+bash# music-cli zone add -z music1.example  
+Zone music1.example. was added but is not yet attached to any signer group.
 ```
 
 * It is also possible to add a new zone and immediately attach it to a
@@ -176,10 +175,10 @@ the signers in that signer group (i.e. initiate the 'add-signer'
 process for the new zone):
 
 ```
-bash# music-cli zone add -z child2.music.axfr.net -g GROUP1
-Zone child2.music.axfr.net. was added and immediately attached to signer group GROUP1.
-bash# music-cli zone add -z child3.music.axfr.net -g GROUP1
-Zone child3.music.axfr.net. was added and immediately attached to signer group GROUP1.
+bash# music-cli zone add -z music2.example -g GROUP1
+Zone music2.example. was added and immediately attached to signer group GROUP1.
+bash# music-cli zone add -z music3.example -g GROUP1
+Zone music3.example. was added and immediately attached to signer group GROUP1.
 ```
 
 * If we check the status of the zones we see that the zones attached
@@ -189,9 +188,9 @@ to the signer group GROUP1 started their progress through the
 ```
 bash# music-cli zone list -H                               
 Zone                       SignerGroup  Process     State             Timestamp            Next State(s)
-child1.music.axfr.net.     ---          ---         IN-SYNC           2022-11-04 13:24:53  []
-child2.music.axfr.net.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:05  [dnskeys-synced]
-child3.music.axfr.net.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:19  [dnskeys-synced]
+music1.example.     ---          ---         IN-SYNC           2022-11-04 13:24:53  []
+music2.example.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:05  [dnskeys-synced]
+music3.example.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:19  [dnskeys-synced]
 
 bash# music-cli signergroup list -H
 Group   Locked  Signers   # Zones  # Proc Zones  Current Process  PendingAddition  PendingRemoval
@@ -199,11 +198,40 @@ GROUP1  false   S1        2        2             ---              ---           
 ```
 
 * Let's add the third zone to the signer group:
+
 ```
-bassh# music-cli zone join -z child1.music.axfr.net -g GROUP1 -v
+bassh# music-cli zone join -z music1.example -g GROUP1 -v
 Using config file: ../etc/music-cli.yaml
-Zone child1.music.axfr.net. has joined signer group GROUP1 and started the process 'add-signer'.
+Zone music1.example. has joined signer group GROUP1 and started the process 'add-signer'.
 ```
+
+* Moving Zones Through a MUSIC Process Manually
+
+```
+../sbin/music-cli zone step-fsm -z music1.example -v
+Using config file: ../etc/music-cli.yaml
+Zone music1.example. did not transition from signers-unsynced to dnskeys-synced.
+Latest stop-reason: dns: bad authentication
+Zone                    SignerGroup  Process     State             Timestamp            Next State(s)
+music1.example.  GROUP1       add-signer  signers-unsynced  2022-11-04 13:24:53  [dnskeys-synced]
+```
+
+* Moving Zones Through a MUSIC Process Automatically
+
+```
+bash# music-cli zone update -z music1.example --fsmmode auto
+Zone music1.example. updated.
+
+bash# music-cli zone list -H                                       
+Zone                       SignerGroup  Process     State             Timestamp            Next State(s)
+music1.example.[A]  GROUP1       add-signer  signers-unsynced  2022-11-04 13:24:53  [dnskeys-synced]
+music2.example.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:05  [dnskeys-synced]
+music3.example.     GROUP1       add-signer  signers-unsynced  2022-11-04 13:25:19  [dnskeys-synced]
+```
+
+Note that there is an '[A]' after the name of the zone that we put in
+"automatic" mode. This zone will now work its way through each step
+automatically.
 
 * [todo] Add minimal test lab description
 * [TODO] Add explanation of config settings
