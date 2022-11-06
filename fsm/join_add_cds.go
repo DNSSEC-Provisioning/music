@@ -20,7 +20,7 @@ var FsmJoinAddCDS = music.FSMTransition{
 	PostCondition: VerifyCdsPublished,
 }
 
-// JoinAddCdsPreCondition collects DNSKEYS from all signers and verifys that the RRsets Match
+// JoinAddCdsPreCondition collects DNSKEYS from all signers and verifies that the RRsets Match
 func JoinAddCdsPreCondition(zone *music.Zone) bool {
 	dnskeyRRsets := make(map[string][]dns.RR)
 	var signerNames []string
@@ -165,7 +165,7 @@ func VerifyCdsPublished(zone *music.Zone) bool {
 		}
 	}
 	var keyids []uint16
-	for k := range cdsFromKSK {
+	for k, _ := range cdsFromKSK {
 		keyids = append(keyids, k)
 	}
 	log.Printf("Verify Publication of CDS: there are KSKs at the signers with the following keytags: %v\n", keyids)
