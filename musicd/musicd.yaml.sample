@@ -33,3 +33,5 @@ common:
    tokenfile:	../etc/musicd.tokens.yaml
    command:	/usr/local/sbin/musicd
    rootca:      ../etc/certs/PublicRootCAs.pem
+   debug:	true
+   verbose:	true

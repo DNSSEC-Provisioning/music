@@ -38,7 +38,7 @@ func mainloop(conf *Config, apistopper chan struct{}) {
 	hupper := make(chan os.Signal, 1)
 	signal.Notify(hupper, syscall.SIGHUP)
 
-	fmt.Println("mainloop: entering signal dispatcher")
+	log.Println("mainloop: entering signal dispatcher")
 
 	var wg sync.WaitGroup
 	wg.Add(1)
