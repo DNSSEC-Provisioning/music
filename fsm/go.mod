@@ -1,13 +1,14 @@
 module fsm
 
-go 1.17
+go 1.18
 
 require (
 	github.com/DNSSEC-Provisioning/music/music v0.0.0-00010101000000-000000000000
-	github.com/miekg/dns v1.1.43
+	github.com/miekg/dns v1.1.50
 )
 
 replace github.com/DNSSEC-Provisioning/music/music => ../music
+
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
@@ -27,9 +28,12 @@ require (
 	github.com/spf13/viper v1.9.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
-	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420 // indirect
+	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985 // indirect
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

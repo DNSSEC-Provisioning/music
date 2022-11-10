@@ -112,7 +112,7 @@ func (u *DesecUpdater) FetchRRset(s *Signer, zone, owner string,
 		var dr DesecDomain
 		err = json.Unmarshal(buf, &dr)
 		if err != nil {
-			log.Fatal("FetchRRset: Error from unmarshal: %v\n", err)
+			log.Fatalf("FetchRRset: Error from unmarshal: %v\n", err)
 		}
 		var rrs []dns.RR
 
