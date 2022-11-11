@@ -17,7 +17,7 @@ var FsmLeaveAddCDS = music.FSMTransition{
 
 	PreCondition:  LeaveAddCDSPreCondition,
 	Action:        LeaveAddCDSAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: LeaveCDSVerify,
 }
 
 func LeaveAddCDSPreCondition(z *music.Zone) bool {
@@ -169,4 +169,20 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	}
 
 	return true
+}
+
+func LeaveCDSVerify(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("LeaveCDSVerify: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+	matches := true
+	rrTypes := []uint16{dns.TypeCDS, dns.TypeCDNSKEY}
+	for _, rrType := range rrTypes {
+		synced := music.SignerRRsetCompare(zone, rrType)
+		if !synced {
+			matches = false
+		}
+	}
+	return matches
 }

@@ -13,11 +13,11 @@ var FsmLeaveSyncDnskeys = music.FSMTransition{
 
 	MermaidPreCondDesc:  "todo",
 	MermaidActionDesc:   "Remove DNSKEYs that originated with the leaving signer",
-	MermaidPostCondDesc: "todo",
+	MermaidPostCondDesc: "Verify that DNSKEYs for remaining signers are in sync",
 
 	PreCondition:  LeaveSyncDnskeysPreCondition,
 	Action:        LeaveSyncDnskeysAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: LeaveSyncDnskeysVerify,
 }
 
 func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
@@ -115,4 +115,12 @@ func LeaveSyncDnskeysAction(z *music.Zone) bool {
 	}
 
 	return true
+}
+
+func LeaveSyncDnskeysVerify(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+	return music.SignerRRsetCompare(zone, dns.TypeDNSKEY)
 }

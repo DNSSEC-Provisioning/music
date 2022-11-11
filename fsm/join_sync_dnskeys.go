@@ -28,97 +28,6 @@ var FsmJoinSyncDnskeys = music.FSMTransition{
 //      for the next action? I think so. I.e. this implementation (VerifyDnskeysSynched) is
 //      extremely similar to the JoinAddCdsPreCondition function that is the PreCondition for
 //      the next step (adding CDS/CDNSKEYs).
-func VerifyDnskeysSynched(z *music.Zone) bool {
-	// 1: for each signer:
-	// 1.a. get DNSKEY RRset, extract all ZSKs,
-	// 1.b. store all zsks in a map[keyid]key per signer
-	// 1.c. store all zsks in a map[keyid]key for all signers
-	// 1.d. end
-	// 2: for each signer:
-	// 2.a. if len(pool) > len(zsks for this signer) ==> failure
-	// 2.b. if keyid(zsk) in pool not among keyid(zsks) for signer ==> failure
-	// 2.c. if pubkey(zsk) in pool not among pubkey(zsks) for signer ==> failure
-	// 2. end
-	// return success
-
-	signerzsks := make(map[string]map[uint16]*dns.DNSKEY)
-	allzsks := make(map[uint16]*dns.DNSKEY)
-
-	log.Printf("VerifyDnskeysSynched: Fetching all ZSKs for %s.\n", z.Name)
-
-	if z.ZoneType == "debug" {
-		log.Printf("VerifyDnskeysSynched: zone %s (DEBUG) is automatically ok", z.Name)
-		return true
-	}
-
-	for _, s := range z.SGroup.SignerMap {
-
-		updater := music.GetUpdater(s.Method)
-		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
-		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
-		if err != nil {
-			// stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
-			// err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			// log.Printf("%s\n", stopreason)
-			// err, _ = z.SetStopReason(fmt.Sprintf("Error from updater.FetchRRset: %v\n", err))
-			err, _ = z.SetStopReason(err.Error())
-			return false
-		}
-
-		signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
-
-		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
-		for _, a := range rrs {
-			dnskey, ok := a.(*dns.DNSKEY)
-			if !ok {
-				continue
-			}
-
-			log.Printf("VerifyDnskeysSynched: Received key from %s: keyid=%d flags=%d\n", s.Name, dnskey.KeyTag(), dnskey.Flags)
-			// only store ZSKs in DB
-			//if f := dnskey.Flags & 0x101; f == 256 {
-			signerzsks[s.Name][dnskey.KeyTag()] = dnskey
-			allzsks[dnskey.KeyTag()] = dnskey
-
-			res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
-			if err != nil {
-				log.Printf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err)
-				return false
-			}
-			rows, _ := res.RowsAffected()
-			if rows > 0 {
-				log.Printf("VerifyDnskeysSynched: %s: Origin for %s set to %s", z.Name, dnskey.PublicKey, s.Name)
-			}
-			//}
-		}
-	}
-
-	log.Printf("VerifyDnskeysSynched: Comparing ZSK RRs for %s... ", z.Name)
-	for _, s := range z.SGroup.SignerMap {
-		if len(allzsks) != len(signerzsks[s.Name]) {
-			log.Printf("VerifyDnskeysSynched: %s: Signer %s has %d ZSKs (should be %d)\n",
-				z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks))
-			return false
-		}
-		for id, dnskey := range allzsks {
-			var k *dns.DNSKEY
-			var exist bool
-			if k, exist = signerzsks[s.Name][id]; !exist {
-				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d does not exist in signer %s\n",
-					z.Name, id, s.Name)
-				return false
-			}
-			if k.PublicKey != dnskey.PublicKey {
-				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d in signer %s has inconsistent key material\n",
-					z.Name, id, s.Name)
-				return false
-			}
-
-		}
-	}
-	fmt.Printf("All good.\n")
-	return true
-}
 
 func JoinSyncDnskeys(z *music.Zone) bool {
 	dnskeys := make(map[string][]*dns.DNSKEY)
@@ -241,5 +150,97 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		}
 	}
 
+	return true
+}
+
+func VerifyDnskeysSynched(z *music.Zone) bool {
+	// 1: for each signer:
+	// 1.a. get DNSKEY RRset, extract all ZSKs,
+	// 1.b. store all zsks in a map[keyid]key per signer
+	// 1.c. store all zsks in a map[keyid]key for all signers
+	// 1.d. end
+	// 2: for each signer:
+	// 2.a. if len(pool) > len(zsks for this signer) ==> failure
+	// 2.b. if keyid(zsk) in pool not among keyid(zsks) for signer ==> failure
+	// 2.c. if pubkey(zsk) in pool not among pubkey(zsks) for signer ==> failure
+	// 2. end
+	// return success
+
+	signerzsks := make(map[string]map[uint16]*dns.DNSKEY)
+	allzsks := make(map[uint16]*dns.DNSKEY)
+
+	log.Printf("VerifyDnskeysSynched: Fetching all ZSKs for %s.\n", z.Name)
+
+	if z.ZoneType == "debug" {
+		log.Printf("VerifyDnskeysSynched: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
+	}
+
+	for _, s := range z.SGroup.SignerMap {
+
+		updater := music.GetUpdater(s.Method)
+		log.Printf("VerifyDnskeysSynched: Using FetchRRset interface:\n")
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
+		if err != nil {
+			// stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
+			// err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
+			// log.Printf("%s\n", stopreason)
+			// err, _ = z.SetStopReason(fmt.Sprintf("Error from updater.FetchRRset: %v\n", err))
+			err, _ = z.SetStopReason(err.Error())
+			return false
+		}
+
+		signerzsks[s.Name] = map[uint16]*dns.DNSKEY{}
+
+		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
+		for _, a := range rrs {
+			dnskey, ok := a.(*dns.DNSKEY)
+			if !ok {
+				continue
+			}
+
+			log.Printf("VerifyDnskeysSynched: Received key from %s: keyid=%d flags=%d\n", s.Name, dnskey.KeyTag(), dnskey.Flags)
+			// only store ZSKs in DB
+			//if f := dnskey.Flags & 0x101; f == 256 {
+			signerzsks[s.Name][dnskey.KeyTag()] = dnskey
+			allzsks[dnskey.KeyTag()] = dnskey
+
+			res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
+			if err != nil {
+				log.Printf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err)
+				return false
+			}
+			rows, _ := res.RowsAffected()
+			if rows > 0 {
+				log.Printf("VerifyDnskeysSynched: %s: Origin for %s set to %s", z.Name, dnskey.PublicKey, s.Name)
+			}
+			//}
+		}
+	}
+
+	log.Printf("VerifyDnskeysSynched: Comparing ZSK RRs for %s... ", z.Name)
+	for _, s := range z.SGroup.SignerMap {
+		if len(allzsks) != len(signerzsks[s.Name]) {
+			log.Printf("VerifyDnskeysSynched: %s: Signer %s has %d ZSKs (should be %d)\n",
+				z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks))
+			return false
+		}
+		for id, dnskey := range allzsks {
+			var k *dns.DNSKEY
+			var exist bool
+			if k, exist = signerzsks[s.Name][id]; !exist {
+				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d does not exist in signer %s\n",
+					z.Name, id, s.Name)
+				return false
+			}
+			if k.PublicKey != dnskey.PublicKey {
+				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d in signer %s has inconsistent key material\n",
+					z.Name, id, s.Name)
+				return false
+			}
+
+		}
+	}
+	fmt.Printf("All good.\n")
 	return true
 }

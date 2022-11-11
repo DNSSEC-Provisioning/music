@@ -17,7 +17,7 @@ var FsmLeaveSyncNses = music.FSMTransition{
 
 	PreCondition:  LeaveSyncNsesPreCondition,
 	Action:        LeaveSyncNsesAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: LeaveVerifyNsesSynced,
 }
 
 func LeaveSyncNsesPreCondition(z *music.Zone) bool {
@@ -68,7 +68,7 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 		return false
 	}
 
-	nsrem := []dns.RR{}
+	var nsrem []dns.RR
 
 	var ns string
 	for rows.Next() {
@@ -101,4 +101,12 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	log.Printf("%s: Removed NSes from %s successfully", z.Name, leavingSigner.Name)
 
 	return true
+}
+
+func LeaveVerifyNsesSynced(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+	return music.SignerRRsetCompare(zone, dns.TypeNS)
 }

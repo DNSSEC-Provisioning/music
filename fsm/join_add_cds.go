@@ -23,6 +23,10 @@ var FsmJoinAddCDS = music.FSMTransition{
 
 // JoinAddCdsPreCondition collects DNSKEYS from all signers and confirms that the RRsets Match
 func JoinAddCdsPreCondition(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
 	dnskeyRRsets := make(map[string][]dns.RR)
 	var signerNames []string
 	matches := true

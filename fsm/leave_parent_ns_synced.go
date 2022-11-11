@@ -17,7 +17,7 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 
 	PreCondition:  LeaveParentNsSyncedPreCondition,
 	Action:        LeaveParentNsSyncedAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: LeaveParentNsSyncedConfirmCsyncRemoval,
 }
 
 // Verify that NS records in parent are in synched.
@@ -195,5 +195,29 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	}
 	log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)
 
+	return true
+}
+
+func LeaveParentNsSyncedConfirmCsyncRemoval(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("LeaveParentNsSyncedConfirmCsyncRemoval: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+
+	var signerNames []string
+	for signerName, signer := range zone.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
+		err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, dns.TypeCSYNC)
+		if err != nil {
+			zone.SetStopReason(fmt.Sprintf("Couldn't CSYNC FetchRRset from %s\n", signerName))
+		}
+		if len(rrSet) > 0 {
+			signerNames = append(signerNames, signerName)
+		}
+	}
+	if len(signerNames) > 0 {
+		zone.SetStopReason(fmt.Sprintf("CSYNC records still exist on %v", signerNames))
+		return false
+	}
 	return true
 }
