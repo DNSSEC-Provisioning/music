@@ -32,8 +32,8 @@ var addSignerGroupCmd = &cobra.Command{
 			Command: "add",
 			Name:    sgroupname,
 		})
-		if sgr.Message != "" {
-			fmt.Printf("%s\n", sgr.Message)
+		if sgr.Msg != "" {
+			fmt.Printf("%s\n", sgr.Msg)
 		}
 	},
 }
@@ -48,8 +48,8 @@ var deleteSignerGroupCmd = &cobra.Command{
 		}
 
 		sgr := SendSignerGroupCmd(sgroupname, data)
-		if sgr.Message != "" {
-			fmt.Printf("%s\n", sgr.Message)
+		if sgr.Msg != "" {
+			fmt.Printf("%s\n", sgr.Msg)
 		}
 	},
 }

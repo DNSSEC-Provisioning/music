@@ -71,10 +71,10 @@ type TestPost struct {
 }
 
 type TestResponse struct {
-	Time    time.Time
-	Client  string
-	Message string
-	Error	bool
+	Time      	time.Time
+	Client		string
+	Msg		string
+	Error		bool
 	ErrorMsg	string
 }
 
@@ -102,7 +102,6 @@ type ZoneResponse struct {
 	Client   string
 	Error    bool
 	ErrorMsg string
-	// Message        string
 	Msg    string
 	Zones  map[string]Zone
 	RRsets map[string][]string // map[signer][]DNSRecords
@@ -134,7 +133,9 @@ type SignerGroupResponse struct {
 	Time         time.Time
 	Status       int
 	Client       string
-	Message      string
+	Error	     bool
+	ErrorMsg     string
+	Msg	     string
 	SignerGroups map[string]SignerGroup
 }
 

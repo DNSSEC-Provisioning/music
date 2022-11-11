@@ -103,9 +103,34 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.TestResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APItest: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		decoder := json.NewDecoder(r.Body)
 		var tp music.TestPost
-		err := decoder.Decode(&tp)
+		err = decoder.Decode(&tp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
 		}
@@ -113,16 +138,11 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APItest: received /test request (command: %s) from %s.\n",
 			tp.Command, r.RemoteAddr)
 
-		var resp = music.TestResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 
 		switch tp.Command {
 		case "dnsquery":
-			signer, err := mdb.GetSigner(nil, &music.Signer{Name: tp.Signer}, false)
+			signer, err := mdb.GetSigner(tx, &music.Signer{Name: tp.Signer}, false)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
@@ -160,16 +180,16 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					}
 					fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
 				}
-				resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+				resp.Msg = fmt.Sprintf("All %d fetch requests done\n", i)
 			}
 
 		default:
 		}
 
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 
@@ -186,7 +206,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		tx, err := mdb.StartTransactionNG()  
 		if err != nil {
-		       log.Printf("PushZone: Error from mdb.StartTransactionNG(): %v\n", err)
+		       log.Printf("APIzone: Error from mdb.StartTransactionNG(): %v\n", err)
 		       resp.Msg = "Error from mdb.StartTransactionNG()"
 		       resp.Error = true
 		       resp.ErrorMsg = err.Error()
@@ -444,9 +464,34 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.SignerResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APIsigner: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		decoder := json.NewDecoder(r.Body)
 		var sp music.SignerPost
-		err := decoder.Decode(&sp)
+		err = decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIsigner: error decoding signer post:",
 				err)
@@ -455,57 +500,47 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APIsigner: received /signer request (command: %s) from %s.\n",
 			sp.Command, r.RemoteAddr)
 
-		var resp = music.SignerResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
-		}
-
-		dbsigner, _ := mdb.GetSigner(nil, &sp.Signer, false) // not apisafe
+		dbsigner, _ := mdb.GetSigner(tx, &sp.Signer, false) // not apisafe
 
 		switch sp.Command {
 		case "list":
-			ss, err := mdb.ListSigners(nil)
+			ss, err := mdb.ListSigners(tx)
 			if err != nil {
-				log.Printf("Error from GetSigners: %v", err)
+				log.Printf("Error from ListSigners: %v", err)
 			}
 			resp.Signers = ss
 
 		case "add":
-			resp.Msg, err = mdb.AddSigner(nil, dbsigner, sp.SignerGroup)
+			resp.Msg, err = mdb.AddSigner(tx, dbsigner, sp.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from AddSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "update":
-			resp.Msg, err = mdb.UpdateSigner(nil, dbsigner, sp.Signer)
+			resp.Msg, err = mdb.UpdateSigner(tx, dbsigner, sp.Signer)
 			if err != nil {
-				// log.Printf("Error from UpdateSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "delete":
-			resp.Msg, err = mdb.DeleteSigner(nil, dbsigner)
+			resp.Msg, err = mdb.DeleteSigner(tx, dbsigner)
 			if err != nil {
-				// log.Printf("Error from DeleteSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "join":
-			resp.Msg, err = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerJoinGroup(tx, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from SignerJoinGroup: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "leave":
-			resp.Msg, err = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerLeaveGroup(tx, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from SignerLeaveGroup: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
@@ -527,20 +562,17 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		default:
 		}
 
-		ss, err := mdb.ListSigners(nil)
+		ss, err := mdb.ListSigners(tx)
 		if err != nil {
 			log.Printf("Error from ListSigners: %v", err)
 		}
 		resp.Signers = ss
 
-		// fmt.Printf("APIsigner: resp struct: %v\n", resp)
-		// fmt.Printf("APIsigner: resp struct error field: %v\n", resp.Error)
-
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 
@@ -548,20 +580,40 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.SignerGroupResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APIsignergroup: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		log.Printf("APIsignergroup: received /signergroup request from %s.\n",
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
 		var sgp music.SignerGroupPost
-		err := decoder.Decode(&sgp)
+		err = decoder.Decode(&sgp)
 		if err != nil {
 			log.Println("APIsignergroup: error decoding signergroup post:",
 				err)
-		}
-
-		var resp = music.SignerGroupResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
 		}
 
 		fmt.Printf("apiserver: /signergroup %v\n", sgp)
@@ -571,33 +623,33 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			fmt.Printf("apiserver: AddSignerGroup\n")
-			msg, err := mdb.AddSignerGroup(nil, sgp.Name)
+			msg, err := mdb.AddSignerGroup(tx, sgp.Name)
 			if err != nil {
 				log.Printf("Error from AddSignerGroup: %v", err)
 			}
-			resp.Message = msg
+			resp.Msg = msg
 
 		case "delete":
-			msg, err := mdb.DeleteSignerGroup(nil, sgp.Name)
+			msg, err := mdb.DeleteSignerGroup(tx, sgp.Name)
 			if err != nil {
 				log.Printf("Error from DeleteSignerGroup: %v", err)
 			}
-			resp.Message = msg
+			resp.Msg = msg
 		default:
 
 		}
 
-		ss, err := mdb.ListSignerGroups(nil)
+		ss, err := mdb.ListSignerGroups(tx)
 		if err != nil {
 			log.Printf("Error from ListSignerGroups: %v", err)
 		}
 		resp.SignerGroups = ss
 
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 

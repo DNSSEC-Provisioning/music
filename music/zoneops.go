@@ -23,12 +23,12 @@ func (mdb *MusicDB) AddZone(tx *sql.Tx, z *Zone, group string, enginecheck chan 
 	fmt.Printf("AddZone: Zone: %v group: '%s'", z, group)
 
 	// var tx *sql.Tx
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
-		return "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
+//		return "fail", err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _, err := mdb.GetZone(tx, fqdn)
@@ -72,12 +72,12 @@ func (mdb *MusicDB) UpdateZone(tx *sql.Tx, dbzone, uz *Zone, enginecheck chan En
 	log.Printf("UpdateZone: zone: %v", uz)
 
 	// var tx *sql.Tx
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
-		return "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
+//		return "fail", err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if uz.ZoneType != "" {
 		dbzone.ZoneType = uz.ZoneType
@@ -89,7 +89,7 @@ func (mdb *MusicDB) UpdateZone(tx *sql.Tx, dbzone, uz *Zone, enginecheck chan En
 
 	const sqlq = "UPDATE zones SET zonetype=?, fsmmode=? WHERE name=?"
 
-	_, err = tx.Exec(sqlq, dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
+	_, err := tx.Exec(sqlq, dbzone.ZoneType, dbzone.FSMMode, dbzone.Name)
 	if CheckSQLError("UpdateZone", sqlq, err, false) {
 		return "", err
 	}
@@ -107,12 +107,12 @@ func (mdb *MusicDB) DeleteZone(tx *sql.Tx, z *Zone) (string, error) {
 	}
 
 //	var tx *sql.Tx
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
-		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
+//		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sg := z.SignerGroup()
 	if sg != nil {
@@ -123,7 +123,7 @@ func (mdb *MusicDB) DeleteZone(tx *sql.Tx, z *Zone) (string, error) {
 		}
 	}
 
-	_, err = tx.Exec("DELETE FROM zones WHERE name=?", z.Name)
+	_, err := tx.Exec("DELETE FROM zones WHERE name=?", z.Name)
 	if err != nil {
 		fmt.Printf("DeleteZone: Error from tx.Exec: %v\n", err)
 		return fmt.Sprintf("Failed to delete zone '%s'", z.Name), err
