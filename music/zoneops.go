@@ -18,11 +18,11 @@ func (z *Zone) SignerGroup() *SignerGroup {
 	return z.SGroup
 }
 
-func (mdb *MusicDB) AddZone(z *Zone, group string, enginecheck chan EngineCheck) (string, error) {
+func (mdb *MusicDB) AddZone(tx *sql.Tx, z *Zone, group string, enginecheck chan EngineCheck) (string, error) {
 
 	fmt.Printf("AddZone: Zone: %v group: '%s'", z, group)
 
-	var tx *sql.Tx
+	// var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
@@ -68,10 +68,10 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 		fqdn), nil
 }
 
-func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
+func (mdb *MusicDB) UpdateZone(tx *sql.Tx, dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
 	log.Printf("UpdateZone: zone: %v", uz)
 
-	var tx *sql.Tx
+	// var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
@@ -101,12 +101,12 @@ func (mdb *MusicDB) UpdateZone(dbzone, uz *Zone, enginecheck chan EngineCheck) (
 	return fmt.Sprintf("Zone %s updated.", dbzone.Name), nil
 }
 
-func (mdb *MusicDB) DeleteZone(z *Zone) (string, error) {
+func (mdb *MusicDB) DeleteZone(tx *sql.Tx, z *Zone) (string, error) {
 	if !z.Exists {
 		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
-	var tx *sql.Tx
+//	var tx *sql.Tx
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
 		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)

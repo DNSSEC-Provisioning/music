@@ -196,6 +196,15 @@ func (mdb *MusicDB) StartTransaction(tx *sql.Tx) (bool, *sql.Tx, error) {
 	return true, tx, err
 }
 
+func (mdb *MusicDB) StartTransactionNG() (*sql.Tx, error) {
+	tx, err := mdb.Begin()
+	if err != nil {
+		log.Printf("mdb.StartTransactionNG: Error from mdb.Begin(): %v", err)
+		return nil, err
+	}
+	return tx, nil
+}
+
 func (mdb *MusicDB) Rollback(localtx bool, tx *sql.Tx) {
 	if localtx {
 		err := tx.Rollback()
@@ -227,6 +236,30 @@ func (mdb *MusicDB) CloseTransaction(localtx bool, tx *sql.Tx, err error) {
 		// Perhaps not our problem? err != nil and it's the callers problem?
 		// return err
 	}
+	return
+}
+
+func (mdb *MusicDB) CloseTransactionNG(tx *sql.Tx, err error) {
+//	if localtx {
+		if err != nil {
+			// Rollback path
+			err := tx.Rollback()
+			if err != nil {
+				log.Printf("Error from tx.Rollback(): %v", err)
+			}
+		} else {
+			// Commit path
+			err := tx.Commit()
+			if err != nil {
+				log.Printf("Error from tx.Commit(): %v", err)
+			}
+		}
+//	} else {
+		// not a localtx, so we mustn't txRollback(), nor tx.Commit()
+		// But how to signal back what we *would* have done, had it been a localtx?
+		// Perhaps not our problem? err != nil and it's the callers problem?
+		// return err
+//	}
 	return
 }
 
