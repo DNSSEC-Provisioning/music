@@ -243,7 +243,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		} else {
 			switch zp.Command {
 			case "list":
-				zs, err := mdb.ListZones()
+				zs, err := mdb.ListZones(tx)
 				if err != nil {
 					log.Printf("Error from ListZones: %v", err)
 				}
