@@ -142,8 +142,7 @@ func JoinSyncNs(z *music.Zone) bool {
 			// XXX: Should wrap this in a transaction
 			res, err := z.MusicDB.Exec(sqlq, z.Name, ns.Ns, signer.Name)
 			if err != nil {
-				//log.Printf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err)
-				z.SetStopReason(fmt.Sprintf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err))
+				log.Printf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err)
 				return false
 			}
 			rows, _ := res.RowsAffected()

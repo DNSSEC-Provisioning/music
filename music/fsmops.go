@@ -133,8 +133,7 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		//log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
-		z.SetStopReason(fmt.Sprintf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err))
+		log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
 		return false, "fail", err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)

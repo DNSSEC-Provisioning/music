@@ -82,8 +82,7 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 
 			res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s", dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
 			if err != nil {
-				//log.Printf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err)
-				z.SetStopReason(fmt.Sprintf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err))
+				log.Printf("VerifyDnskeysSynched: %s: Statement execute failed: %s", z.Name, err)
 				return false
 			}
 			rows, _ := res.RowsAffected()
@@ -172,12 +171,8 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 				res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s",
 					dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
 				if err != nil {
-					/*
-						log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s",
-							z.Name, err)
-					*/
-					z.SetStopReason(fmt.Sprintf("JoinSyncDnskeys: %s: Statement execute failed: %s",
-						z.Name, err))
+					log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s",
+						z.Name, err)
 					return false
 				}
 				rows, _ := res.RowsAffected()

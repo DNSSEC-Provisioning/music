@@ -60,8 +60,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 
 	rows, err := z.MusicDB.Query(sqlq, z.Name, leavingSigner.Name)
 	if err != nil {
-		//log.Printf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err)
-		z.SetStopReason(fmt.Sprintf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err))
+		log.Printf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err)
 		return false
 	}
 
@@ -70,8 +69,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	var dnskey string
 	for rows.Next() {
 		if err = rows.Scan(&dnskey); err != nil {
-			//log.Printf("%s: Rows.Scan() failed: %s", z.Name, err)
-			z.SetStopReason(fmt.Sprintf("%s: Rows.Scan() failed: %s", z.Name, err))
+			log.Printf("%s: Rows.Scan() failed: %s", z.Name, err)
 			return false
 		}
 
