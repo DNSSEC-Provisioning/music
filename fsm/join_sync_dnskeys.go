@@ -145,7 +145,8 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		if err := updater.Update(s, z.Name, z.Name,
 			&[][]dns.RR{keys}, nil); err != nil {
 			// TODO: use stringtojoin on keysToSync
-			log.Printf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err)
+			//log.Printf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err)
+			z.SetStopReason(fmt.Sprintf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err))
 			return false
 		}
 	}
