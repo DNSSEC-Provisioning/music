@@ -4,7 +4,7 @@
 package main
 
 const (
-	// DefaultCfgFile = "/etc/nic.se/musicd.yaml"
-	// This is not stable or robust:
+	// DefaultCfgFile = "/etc/music/musicd.yaml"
+	// This is not stable or robust (but good for testing):
 	DefaultCfgFile = "../etc/musicd.yaml"
 )
