@@ -96,21 +96,33 @@ func VerifyDnskeysSynched(z *music.Zone) bool {
 	log.Printf("VerifyDnskeysSynched: Comparing ZSK RRs for %s... ", z.Name)
 	for _, s := range z.SGroup.SignerMap {
 		if len(allzsks) != len(signerzsks[s.Name]) {
-			log.Printf("VerifyDnskeysSynched: %s: Signer %s has %d ZSKs (should be %d)\n",
-				z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks))
+			/*
+				log.Printf("VerifyDnskeysSynched: %s: Signer %s has %d ZSKs (should be %d)\n",
+					z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks))
+			*/
+			z.SetStopReason(fmt.Sprintf("VerifyDnskeysSynched: %s: Signer %s has %d ZSKs (should be %d)\n",
+				z.Name, s.Name, len(signerzsks[s.Name]), len(allzsks)))
 			return false
 		}
 		for id, dnskey := range allzsks {
 			var k *dns.DNSKEY
 			var exist bool
 			if k, exist = signerzsks[s.Name][id]; !exist {
-				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d does not exist in signer %s\n",
-					z.Name, id, s.Name)
+				/*
+					log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d does not exist in signer %s\n",
+						z.Name, id, s.Name)
+				*/
+				z.SetStopReason(fmt.Sprintf("VerifyDnskeysSynched: %s: ZSK with keyid=%d does not exist in signer %s\n",
+					z.Name, id, s.Name))
 				return false
 			}
 			if k.PublicKey != dnskey.PublicKey {
-				log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d in signer %s has inconsistent key material\n",
-					z.Name, id, s.Name)
+				/*
+					log.Printf("VerifyDnskeysSynched: %s: ZSK with keyid=%d in signer %s has inconsistent key material\n",
+						z.Name, id, s.Name)
+				*/
+				z.SetStopReason(fmt.Sprintf("VerifyDnskeysSynched: %s: ZSK with keyid=%d in signer %s has inconsistent key material\n",
+					z.Name, id, s.Name))
 				return false
 			}
 
@@ -236,7 +248,8 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		if err := updater.Update(s, z.Name, z.Name,
 			&[][]dns.RR{keys}, nil); err != nil {
 			// TODO: use stringtojoin on keysToSync
-			log.Printf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err)
+			//log.Printf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err)
+			z.SetStopReason(fmt.Sprintf("%s: Unable to update %s with new DNSKEYs %v: %s", z.Name, signer, keysToSync, err))
 			return false
 		}
 	}
