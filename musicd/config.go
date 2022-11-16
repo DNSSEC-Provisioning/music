@@ -24,6 +24,7 @@ type Config struct {
 	Common    CommonConf
 	Internal  InternalConf
 	FSMEngine FSMEngineConf
+	NotifyEngine NotifyEngineConf
 }
 
 type ApiServerConf struct {
@@ -37,6 +38,14 @@ type ApiServerConf struct {
 type FSMEngineConf struct {
 	Active    bool `validate:"required"`
 	Intervals IntervalsConf
+}
+
+type NotifyEngineConf struct {
+	Active    bool		 `validate:"required"`
+	Delay struct {
+	      Cds    int	 `validate:"required"`
+	      Csync  int	 `validate:"required"`
+	}
 }
 
 type IntervalsConf struct {
@@ -83,6 +92,7 @@ type CommonConf struct {
 type InternalConf struct {
 	APIStopCh   chan struct{}
 	EngineCheck chan music.EngineCheck
+	NotifyQueue chan NotifyItem
 	MusicDB     *music.MusicDB
 	TokViper    *viper.Viper
 	DesecFetch  chan music.SignerOp

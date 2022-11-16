@@ -12,6 +12,12 @@ fsmengine:
       maximum:	900
       complete:	7200	# check ALL zones this often
 
+notifyengine:
+   active:	true
+   delay:
+      cds:	20	# wait 20s before sending NOTIFY(CDS) to parent
+      csync:	20	# wait 20s before sending NOTIFY(CSYNC) to parent
+
 signers:
    ddns:
       limits:
