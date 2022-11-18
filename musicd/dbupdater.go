@@ -24,16 +24,16 @@ func dbUpdater(conf *Config) {
 
 	const ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
 
-	mstmt, err := mdb.Prepare(ZSMsql)
-	if err != nil {
-		log.Fatalf("dbUpdater: Error from mdb.Prepare(%s) 1: %v\n", ZSMsql, err)
-	}
+//	mstmt, err := mdb.Prepare(ZSMsql)
+//	if err != nil {
+//		log.Fatalf("dbUpdater: Error from mdb.Prepare(%s) 1: %v\n", ZSMsql, err)
+//	}
 
 	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
-	blockstmt, err1 := mdb.Prepare(DSsql)
-	if err1 != nil {
-		log.Fatalf("dbUpdater: Error from db.Prepare(%s): %v", DSsql, err)
-	}
+//	blockstmt, err1 := mdb.Prepare(DSsql)
+//	if err1 != nil {
+//		log.Fatalf("dbUpdater: Error from db.Prepare(%s): %v", DSsql, err)
+//	}
 
 	ticker := time.NewTicker(2 * time.Second)
 
@@ -49,14 +49,16 @@ func dbUpdater(conf *Config) {
 			u := queue[0]
 			t := u.Type
 
-			tx, err := mdb.Begin()
+			tx, err := mdb.StartTransactionNG()
 			if err != nil {
 				log.Printf("RunDBQueue: Error from mdb.Begin(): %v", err)
+				log.Printf("RunDBQueue: This may be a fatal error?", err)
 			}
 
 			switch t {
 			case "STOPREASON":
-				_, err := tx.Stmt(mstmt).Exec(u.Zone, u.Key, u.Value)
+				// _, err := tx.Stmt(mstmt).Exec(u.Zone, u.Key, u.Value)
+				_, err := tx.Exec(ZSMsql, u.Zone, u.Key, u.Value)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
 						// database is locked by other connection
@@ -70,7 +72,8 @@ func dbUpdater(conf *Config) {
 						return
 					}
 				}
-				_, err = tx.Stmt(blockstmt).Exec(u.Zone)
+				// _, err = tx.Stmt(blockstmt).Exec(u.Zone)
+				_, err = tx.Exec(DSsql, u.Zone)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
 						// database is locked by other connection
