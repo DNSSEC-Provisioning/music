@@ -58,7 +58,6 @@ method      TEXT NOT NULL DEFAULT '',
 auth        TEXT NOT NULL DEFAULT '',
 addr        TEXT NOT NULL DEFAULT '',
 port        TEXT NOT NULL DEFAULT '',
-status      TEXT NOT NULL DEFAULT '',
 usetcp	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetcp IN (0, 1)),
 usetsig	    BOOLEAN NOT NULL DEFAULT 1 CHECK (usetsig IN (0, 1)),
 UNIQUE (name)
