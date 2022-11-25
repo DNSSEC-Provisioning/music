@@ -100,6 +100,7 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("LeaveParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
 	return true
 }
+
 func LeaveVerifyCDSRemoval(zone *music.Zone) bool {
 	log.Printf("LeaveVerifyCDSRemoval: zone %s : No PostCondtion since we are leaving the CDS records on the signers", zone.Name)
 	return true
