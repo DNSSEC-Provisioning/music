@@ -364,10 +364,9 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 		dbsigner.Name, g, len(zones), SignerLeaveGroupProcess), nil
 }
 
-const ()
-
 // XXX: It should not be possible to delete a signer that is part of a signer group.
-//      Full stop.
+//
+//	Full stop.
 func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
@@ -406,7 +405,7 @@ func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 
 	localtx, tx, err := mdb.StartTransaction(tx)
 	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+		log.Printf("ListSigners: Error from mdb.StartTransaction(): %v\n", err)
 		return nil, err
 	}
 	defer mdb.CloseTransaction(localtx, tx, err)

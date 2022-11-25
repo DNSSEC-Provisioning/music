@@ -17,7 +17,7 @@ var FsmLeaveSyncNses = music.FSMTransition{
 
 	PreCondition:  LeaveSyncNsesPreCondition,
 	Action:        LeaveSyncNsesAction,
-	PostCondition: LeaveVerifyNsesSynced,
+	PostCondition: LeaveSyncNsesVerify,
 }
 
 func LeaveSyncNsesPreCondition(z *music.Zone) bool {
@@ -48,7 +48,17 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
+	/*
+		// Testing difference between signergroup.signermap and zone.signergroup.signermap
+		var testsg *music.SignerGroup
+		if testsg, err = z.MusicDB.GetSignerGroup(nil, sg.Name, false); err != nil { // not apisafe
+			return false
+		}
 
+		log.Printf("signergroup signermap: %v", testsg.SignerMap)
+		log.Printf("zone signergroup signermap: %v", z.SGroup.SignerMap)
+		return false
+	*/
 	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
 	// this may not be obvious to the casual observer
 	log.Printf("leave_sync_nses: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
@@ -103,9 +113,9 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	return true
 }
 
-func LeaveVerifyNsesSynced(zone *music.Zone) bool {
+func LeaveSyncNsesVerify(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
-		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		log.Printf("LeaveSyncNsesVerify: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
 	return music.SignerRRsetCompare(zone, dns.TypeNS)
