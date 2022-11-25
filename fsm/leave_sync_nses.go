@@ -15,9 +15,11 @@ var FsmLeaveSyncNses = music.FSMTransition{
 	MermaidActionDesc:   "Remove NS records that only belong to the leaving signer",
 	MermaidPostCondDesc: "Verify that NS records have been removed from zone",
 
-	PreCondition:  LeaveSyncNsesPreCondition,
-	Action:        LeaveSyncNsesAction,
-	PostCondition: LeaveSyncNsesVerify,
+	PreCondition: LeaveSyncNsesPreCondition,
+	//Action:        LeaveSyncNsesAction,
+	//PostCondition: LeaveSyncNsesVerify,
+	Action:        RemoveNSes,
+	PostCondition: VerifyNSes,
 }
 
 func LeaveSyncNsesPreCondition(z *music.Zone) bool {
@@ -48,17 +50,6 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 		z.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSignerName, err))
 		return false
 	}
-	/*
-		// Testing difference between signergroup.signermap and zone.signergroup.signermap
-		var testsg *music.SignerGroup
-		if testsg, err = z.MusicDB.GetSignerGroup(nil, sg.Name, false); err != nil { // not apisafe
-			return false
-		}
-
-		log.Printf("signergroup signermap: %v", testsg.SignerMap)
-		log.Printf("zone signergroup signermap: %v", z.SGroup.SignerMap)
-		return false
-	*/
 	// https://github.com/DNSSEC-Provisioning/music/issues/130, testing to remove the leaving signer from the signermap. /rog
 	// this may not be obvious to the casual observer
 	log.Printf("leave_sync_nses: %s SignerMap: %v\n", z.Name, z.SGroup.SignerMap)
@@ -71,7 +62,6 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 	log.Printf("%s: Removing NSes originating from leaving signer %s", z.Name, leavingSigner.Name)
 
 	const sqlq = "SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?"
-
 	rows, err := z.MusicDB.Query(sqlq, z.Name, leavingSigner.Name)
 	if err != nil {
 		log.Printf("%s: mdb.Query(%s) failed: %s", z.Name, sqlq, err)
@@ -116,6 +106,78 @@ func LeaveSyncNsesAction(z *music.Zone) bool {
 func LeaveSyncNsesVerify(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
 		log.Printf("LeaveSyncNsesVerify: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+	return music.SignerRRsetCompare(zone, dns.TypeNS)
+}
+
+func RemoveNSes(zone *music.Zone) bool {
+	log.Printf("Removing leaving signer: %s NSes", zone.FSMSigner)
+	leavingSignerName := zone.FSMSigner // TODO: Discuss with Johan naming of FSMSigner
+	if zone.SGroup == nil {
+		log.Fatalf("Zone %s in process %s not attached to any signer group.", zone.Name, zone.FSM)
+	}
+	rogDebug := false
+	if rogDebug { // TODO: Remove Debug code once ready for merge and I know how this works.
+		leavingSignerName := zone.FSMSigner
+		if leavingSignerName == "" {
+			log.Fatalf("Leaving signer name for zone %s unset.", zone.Name)
+		}
+		leavingSigner, err := zone.MusicDB.GetSignerByName(nil, leavingSignerName, false) // not apisafe
+		if err != nil {
+			zone.SetStopReason(fmt.Sprintf("Unable to get leaving signer %s: %s", leavingSigner.Name, err))
+			return false
+		}
+		// Testing difference between signergroup.signermap and zone.signergroup.signermap
+		signerGroup := zone.SignerGroup()
+		var testsg *music.SignerGroup
+		if testsg, err = zone.MusicDB.GetSignerGroup(nil, signerGroup.Name, false); err != nil { // not apisafe
+			return false
+		}
+
+		log.Printf("leaving signer: %v", &leavingSigner)
+		log.Printf("leaving signername: %s", leavingSignerName)
+		log.Printf("signergroup signermap: %v", testsg.SignerMap)
+		log.Printf("zone signergroup signermap: %v", zone.SGroup.SignerMap)
+	}
+
+	const sqlq = "SELECT ns FROM zone_nses WHERE zone = ? AND signer = ?"
+	rows, err := zone.MusicDB.Query(sqlq, zone.Name, leavingSignerName)
+	if err != nil {
+		log.Printf("%s: mdb.Query(%s) failed: %s", zone.Name, sqlq, err)
+		return false
+	}
+	var nsToRemove []dns.RR
+	var ns string
+	for rows.Next() {
+		if err = rows.Scan(&ns); err != nil {
+			log.Printf("%s: Rows.Scan() failed: %s", zone.Name, err)
+			return false
+		}
+
+		rr := new(dns.NS)
+		rr.Hdr = dns.RR_Header{Name: zone.Name, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 0}
+		rr.Ns = ns
+		nsToRemove = append(nsToRemove, rr)
+	}
+	log.Printf("NSes to remove: %v", nsToRemove)
+
+	for _, signer := range zone.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
+		if err := updater.Update(signer, zone.Name, zone.Name, nil, &[][]dns.RR{nsToRemove}); err != nil {
+			zone.SetStopReason(fmt.Sprintf("Unable to remove NSes from %s: %s", signer.Name, err))
+			return false
+		}
+		log.Printf("%s: Removed NSes from %s successfully", zone.Name, signer.Name)
+	}
+
+	return true
+}
+
+func VerifyNSes(zone *music.Zone) bool {
+	log.Printf("Verify NSes verify that NSes are in sync")
+	if zone.ZoneType == "debug" {
+		log.Printf("VerifyNSes: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
 	return music.SignerRRsetCompare(zone, dns.TypeNS)
