@@ -22,12 +22,13 @@ func (mdb *MusicDB) AddSigner(tx *sql.Tx, dbsigner *Signer, group string) (strin
 	var err error
 	msg := fmt.Sprintf("Failed to add new signer %s.", dbsigner.Name)
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
-		return msg, err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx == nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("AddSigner: Error from mdb.StartTransaction(): %v\n", err)
+//		return msg, err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if dbsigner.Exists {
 		return "", fmt.Errorf("Signer %s already present in system.",
@@ -90,12 +91,13 @@ func (mdb *MusicDB) UpdateSigner(tx *sql.Tx, dbsigner *Signer, us Signer) (strin
 			dbsigner.Name)
 	}
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return fmt.Sprintf("UpdateSigner: Error from mdb.StartTransaction(): %v", err), err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx == nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+//		return fmt.Sprintf("UpdateSigner: Error from mdb.StartTransaction(): %v", err), err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	updatermap := ListUpdaters()
 	_, ok := updatermap[dbsigner.Method]
@@ -152,12 +154,13 @@ func (mdb *MusicDB) SignerJoinGroup(tx *sql.Tx, dbsigner *Signer, g string) (str
 	var sg *SignerGroup
 	var err error
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return "SignerJoinGroup: Error starting transaction", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx == nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+//		return "SignerJoinGroup: Error starting transaction", err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if !dbsigner.Exists {
 		return "", fmt.Errorf("Signer %s is unknown.", dbsigner.Name)
@@ -266,12 +269,13 @@ func (mdb *MusicDB) SignerLeaveGroup(tx *sql.Tx, dbsigner *Signer, g string) (st
 	var sg *SignerGroup
 	var err error
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return "Error starting transaction", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx==nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+//		return "Error starting transaction", err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if !dbsigner.Exists {
 		return "", fmt.Errorf("Signer %s is unknown.", dbsigner.Name)
@@ -370,12 +374,13 @@ const ()
 //      Full stop.
 func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+     	if tx == nil { panic("tx==nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+//		return "fail", err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sgs := dbsigner.SignerGroups
 	if len(sgs) != 0 {
@@ -385,7 +390,7 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 	}
 
 	const dsql = "DELETE FROM signers WHERE name=?"
-	_, err = tx.Exec(dsql, dbsigner.Name)
+	_, err := tx.Exec(dsql, dbsigner.Name)
 	if CheckSQLError("DeleteSigner", dsql, err, false) {
 		return "", err
 	}
@@ -404,12 +409,13 @@ func (mdb *MusicDB) DeleteSigner(tx *sql.Tx, dbsigner *Signer) (string, error) {
 func (mdb *MusicDB) ListSigners(tx *sql.Tx) (map[string]Signer, error) {
 	var sl = make(map[string]Signer, 2)
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-		return nil, err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx==nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+//	if err != nil {
+//		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+//		return nil, err
+//	}
+//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = "SELECT name, method, addr, auth, port FROM signers"
 	rows, err := tx.Query(sqlq)

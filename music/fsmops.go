@@ -18,12 +18,13 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	var msg string
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneAttachFsm: Error from mdb.StartTransaction(): %v\n", err)
-		return "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil { panic("tx=nil") }
+//	localtx, tx, err := mdb.StartTransaction(tx)
+// 	if err != nil {
+// 		log.Printf("ZoneAttachFsm: Error from mdb.StartTransaction(): %v\n", err)
+// 		return "fail", err
+// 	}
+// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	log.Printf("ZoneAttachFsm: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
 	if !dbzone.Exists {
@@ -58,7 +59,7 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 	log.Printf("ZAF: Updating zone %s to fsm=%s, fsmsigner=%s", dbzone.Name, fsm, fsmsigner)
 
 	const sqlq = "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
-	_, err = tx.Exec(sqlq, fsm, fsmsigner, initialstate, dbzone.Name)
+	_, err := tx.Exec(sqlq, fsm, fsmsigner, initialstate, dbzone.Name)
 	if CheckSQLError("JoinGroup", sqlq, err, false) {
 		return msg, err
 	}
@@ -68,6 +69,7 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner string) (string, error) {
 
+	if tx == nil { panic("tx=nil") }
 	if !dbzone.Exists {
 		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
@@ -95,16 +97,16 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 			dbzone.Name, fsm, dbzone.FSM)
 	}
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneDetachFsm: Error from mdb.StartTransaction(): %v\n", err)
-		return "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+// 	localtx, tx, err := mdb.StartTransaction(tx)
+// 	if err != nil {
+// 		log.Printf("ZoneDetachFsm: Error from mdb.StartTransaction(): %v\n", err)
+// 		return "fail", err
+// 	}
+// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 
-	_, err = tx.Exec(sqlq, "", "", "", dbzone.Name)
+	_, err := tx.Exec(sqlq, "", "", "", dbzone.Name)
 	if CheckSQLError("DetachFsm", sqlq, err, false) {
 		return "", err
 	}
@@ -117,6 +119,7 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (bool, string, error) {
 
+	if tx == nil { panic("tx=nil") }
 	if !dbzone.Exists {
 		return false, "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
@@ -131,12 +134,12 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 
 	state := dbzone.State
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
-		return false, "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+// 	localtx, tx, err := mdb.StartTransaction(tx)
+// 	if err != nil {
+// 		log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
+// 		return false, "fail", err
+// 	}
+// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if state == FsmStateStop {
 		// 1. Zone leaves process
@@ -225,18 +228,19 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	t FSMTransition) (bool, string, error) {
 
-	mdb := z.MusicDB
+	if tx == nil { panic("tx=nil") }
+	// mdb := z.MusicDB
 	currentstate := z.State
 
 	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
 
-	localtx, tx, err := mdb.StartTransaction(tx)
-	if err != nil {
-		log.Printf("AttemptStateTransition: Error from mdb.StartTransaction(): %v\n", err)
-		// XXX: What is the correct thing to return here?
-		return false, "fail", err
-	}
-	defer mdb.CloseTransaction(localtx, tx, err)
+// 	localtx, tx, err := mdb.StartTransaction(tx)
+// 	if err != nil {
+// 		log.Printf("AttemptStateTransition: Error from mdb.StartTransaction(): %v\n", err)
+// 		// XXX: What is the correct thing to return here?
+// 		return false, "fail", err
+// 	}
+// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.

@@ -103,9 +103,34 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.TestResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APItest: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		decoder := json.NewDecoder(r.Body)
 		var tp music.TestPost
-		err := decoder.Decode(&tp)
+		err = decoder.Decode(&tp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
 		}
@@ -113,16 +138,11 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APItest: received /test request (command: %s) from %s.\n",
 			tp.Command, r.RemoteAddr)
 
-		var resp = music.TestResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 
 		switch tp.Command {
 		case "dnsquery":
-			signer, err := mdb.GetSigner(nil, &music.Signer{Name: tp.Signer}, false)
+			signer, err := mdb.GetSigner(tx, &music.Signer{Name: tp.Signer}, false)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
@@ -160,16 +180,16 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					}
 					fmt.Printf("Test DNS Query: query %d (of %d) done.\n", i, tp.Count)
 				}
-				resp.Message = fmt.Sprintf("All %d fetch requests done\n", i)
+				resp.Msg = fmt.Sprintf("All %d fetch requests done\n", i)
 			}
 
 		default:
 		}
 
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 
@@ -179,9 +199,34 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.ZoneResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APIzone: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		decoder := json.NewDecoder(r.Body)
 		var zp music.ZonePost
-		err := decoder.Decode(&zp)
+		err = decoder.Decode(&zp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
 		}
@@ -189,20 +234,16 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APIzone: received /zone request (command: %s) from %s.\n",
 			zp.Command, r.RemoteAddr)
 
-		var resp = music.ZoneResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
-		}
 		w.Header().Set("Content-Type", "application/json")
 
-		dbzone, _, err := mdb.GetZone(nil, zp.Zone.Name) // Get a more complete Zone structure
+		dbzone, _, err := mdb.GetZone(tx, zp.Zone.Name) // Get a more complete Zone structure
 		if err != nil {
 			resp.Error = true
 			resp.ErrorMsg = err.Error()
 		} else {
 			switch zp.Command {
 			case "list":
-				zs, err := mdb.ListZones()
+				zs, err := mdb.ListZones(tx)
 				if err != nil {
 					log.Printf("Error from ListZones: %v", err)
 				}
@@ -211,7 +252,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			case "status":
 				var zl = make(map[string]music.Zone, 1)
 				if dbzone.Exists {
-					sg, err := mdb.GetSignerGroup(nil, dbzone.SGname, true)
+					sg, err := mdb.GetSignerGroup(tx, dbzone.SGname, true)
 					if err != nil {
 						resp.Error = true
 						resp.ErrorMsg = err.Error()
@@ -237,7 +278,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 			case "add":
 				fmt.Printf("apiserver:/zone: zone: %v group: '%s'", zp.Zone, zp.SignerGroup)
-				resp.Msg, err = mdb.AddZone(&zp.Zone, zp.SignerGroup, enginecheck)
+				resp.Msg, err = mdb.AddZone(tx, &zp.Zone, zp.SignerGroup, enginecheck)
 				if err != nil {
 					// log.Printf("Error from AddZone: %v", err)
 					resp.Error = true
@@ -245,8 +286,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "update":
-				// err, resp.Msg = mdb.AddZone(dbzone, zp.SignerGroup, enginecheck)
-				resp.Msg, err = mdb.UpdateZone(dbzone, &zp.Zone, enginecheck)
+				resp.Msg, err = mdb.UpdateZone(tx, dbzone, &zp.Zone, enginecheck)
 				if err != nil {
 					// log.Printf("Error from UpdateZone: %v", err)
 					resp.Error = true
@@ -254,7 +294,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "delete":
-				resp.Msg, err = mdb.DeleteZone(dbzone)
+				resp.Msg, err = mdb.DeleteZone(tx, dbzone)  // XXX: shouldn't there be a tx here?
 				if err != nil {
 					// log.Printf("Error from DeleteZone: %v", err)
 					resp.Error = true
@@ -262,7 +302,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "join":
-				resp.Msg, err = mdb.ZoneJoinGroup(nil, dbzone, zp.SignerGroup, enginecheck)
+				resp.Msg, err = mdb.ZoneJoinGroup(tx, dbzone, zp.SignerGroup, enginecheck)
 				if err != nil {
 					// log.Printf("Error from ZoneJoinGroup: %v", err)
 					resp.Error = true
@@ -270,7 +310,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "leave":
-				resp.Msg, err = mdb.ZoneLeaveGroup(nil, dbzone, zp.SignerGroup)
+				resp.Msg, err = mdb.ZoneLeaveGroup(tx, dbzone, zp.SignerGroup)
 				if err != nil {
 					// log.Printf("Error from ZoneLeaveGroup: %v", err)
 					resp.Error = true
@@ -280,7 +320,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			// XXX: A single zone cannot "choose" to join an FSM, it's the Group that does that.
 			//      This endpoint is only here for development and debugging reasons.
 			case "fsm":
-				resp.Msg, err = mdb.ZoneAttachFsm(nil, dbzone, zp.FSM, zp.FSMSigner, false)
+				resp.Msg, err = mdb.ZoneAttachFsm(tx, dbzone, zp.FSM, zp.FSMSigner, false)
 				if err != nil {
 					// log.Printf("Error from ZoneAttachFsm: %v", err)
 					resp.Error = true
@@ -293,7 +333,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
 				// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
 				var success bool
-				success, resp.Msg, err = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
+				success, resp.Msg, err = mdb.ZoneStepFsm(tx, dbzone, zp.FsmNextState)
 				if err != nil {
 					log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
 					resp.Error = true
@@ -309,7 +349,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					resp.ErrorMsg = err.Error()
 				} else {
 					if !success {
-						dbzone.StopReason, _, err = mdb.GetStopReason(nil, dbzone)
+						dbzone.StopReason, _, err = mdb.GetStopReason(tx, dbzone)
 						if err != nil {
 							resp.Error = true
 							resp.ErrorMsg = err.Error()
@@ -317,10 +357,10 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					}
 					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
 				}
-				err = json.NewEncoder(w).Encode(resp)
-				if err != nil {
-					log.Printf("Error from Encoder: %v\n", err)
-				}
+				// err = json.NewEncoder(w).Encode(resp)
+				//if err != nil {
+				//	log.Printf("Error from Encoder: %v\n", err)
+				//}
 				return
 
 			case "get-rrsets":
@@ -332,14 +372,14 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					resp.Error = true
 					resp.ErrorMsg = err.Error()
 				} else {
-					// dbzone, _ := mdb.GetZone(nil, zp.Zone.Name)
+					// dbzone, _ := mdb.GetZone(tx, zp.Zone.Name)
 					sg := dbzone.SignerGroup()
 					// fmt.Printf("APIzone: get-rrsets: zone: %v sg: %v\n", zp.Zone, sg)
 
 					var result = map[string][]string{}
 					var rrset []string
 					for k, _ := range sg.Signers() {
-						err, resp.Msg, rrset = mdb.ListRRset(nil, dbzone, k, zp.Owner,
+						err, resp.Msg, rrset = mdb.ListRRset(tx, dbzone, k, zp.Owner,
 							zp.RRtype)
 						if err != nil {
 							log.Fatalf("APIzone: get-rrsets: Error from ListRRset: %v\n", err)
@@ -350,17 +390,17 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					resp.RRsets = result
 					// fmt.Printf("get:rrsets: len: %d\n", len(rrsets))
 				}
-				err = json.NewEncoder(w).Encode(resp)
-				if err != nil {
-					log.Printf("Error from Encoder: %v\n", err)
-				}
+				//err = json.NewEncoder(w).Encode(resp)
+				//if err != nil {
+				//	log.Printf("Error from Encoder: %v\n", err)
+				//}
 				return
 
 			case "copy-rrset":
 				fmt.Printf("APIzone: copy-rrset: %s %s %s\n", dbzone.Name,
 					zp.Owner, zp.RRtype)
 				// var rrset []dns.RR
-				err, resp.Msg = mdb.ZoneCopyRRset(nil, dbzone, zp.Owner, zp.RRtype,
+				err, resp.Msg = mdb.ZoneCopyRRset(tx, dbzone, zp.Owner, zp.RRtype,
 					zp.FromSigner, zp.ToSigner)
 				if err != nil {
 					log.Printf("Error from ZoneCopyRRset: %v", err)
@@ -370,15 +410,15 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					// resp.RRset = rrset
 					// fmt.Printf("copy:rrset: len: %d\n", len(rrset))
 				}
-				err = json.NewEncoder(w).Encode(resp)
-				if err != nil {
-					log.Printf("Error from Encoder: %v\n", err)
-				}
+				//err = json.NewEncoder(w).Encode(resp)
+				//if err != nil {
+				//	log.Printf("Error from Encoder: %v\n", err)
+				//}
 				return
 
 			case "list-rrset":
 				var rrset []string
-				err, resp.Msg, rrset = mdb.ListRRset(nil, dbzone, zp.Signer,
+				err, resp.Msg, rrset = mdb.ListRRset(tx, dbzone, zp.Signer,
 					zp.Owner, zp.RRtype)
 				if err != nil {
 					log.Printf("Error from ListRRset: %v", err)
@@ -387,15 +427,15 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				} else {
 					resp.RRset = rrset
 				}
-				err = json.NewEncoder(w).Encode(resp)
-				if err != nil {
-					log.Printf("Error from Encoder: %v\n", err)
-				}
+				//err = json.NewEncoder(w).Encode(resp)
+				//if err != nil {
+				//	log.Printf("Error from Encoder: %v\n", err)
+				//}
 				return
 
 			case "meta":
 				dbzone.ZoneType = zp.Zone.ZoneType
-				resp.Msg, err = mdb.ZoneSetMeta(nil, dbzone, zp.Metakey, zp.Metavalue)
+				resp.Msg, err = mdb.ZoneSetMeta(tx, dbzone, zp.Metakey, zp.Metavalue)
 				if err != nil {
 					// log.Printf("Error from ZoneSetMeta: %v", err)
 					resp.Error = true
@@ -413,10 +453,10 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			resp.Zones = zs
 			// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 		*/
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+		// err = json.NewEncoder(w).Encode(resp)
+		//if err != nil {
+		//   log.Printf("Error from Encoder: %v\n", err)
+		//}
 	}
 }
 
@@ -424,9 +464,34 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.SignerResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APIsigner: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		decoder := json.NewDecoder(r.Body)
 		var sp music.SignerPost
-		err := decoder.Decode(&sp)
+		err = decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIsigner: error decoding signer post:",
 				err)
@@ -435,57 +500,47 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("APIsigner: received /signer request (command: %s) from %s.\n",
 			sp.Command, r.RemoteAddr)
 
-		var resp = music.SignerResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
-		}
-
-		dbsigner, _ := mdb.GetSigner(nil, &sp.Signer, false) // not apisafe
+		dbsigner, _ := mdb.GetSigner(tx, &sp.Signer, false) // not apisafe
 
 		switch sp.Command {
 		case "list":
-			ss, err := mdb.ListSigners(nil)
+			ss, err := mdb.ListSigners(tx)
 			if err != nil {
-				log.Printf("Error from GetSigners: %v", err)
+				log.Printf("Error from ListSigners: %v", err)
 			}
 			resp.Signers = ss
 
 		case "add":
-			resp.Msg, err = mdb.AddSigner(nil, dbsigner, sp.SignerGroup)
+			resp.Msg, err = mdb.AddSigner(tx, dbsigner, sp.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from AddSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "update":
-			resp.Msg, err = mdb.UpdateSigner(nil, dbsigner, sp.Signer)
+			resp.Msg, err = mdb.UpdateSigner(tx, dbsigner, sp.Signer)
 			if err != nil {
-				// log.Printf("Error from UpdateSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "delete":
-			resp.Msg, err = mdb.DeleteSigner(nil, dbsigner)
+			resp.Msg, err = mdb.DeleteSigner(tx, dbsigner)
 			if err != nil {
-				// log.Printf("Error from DeleteSigner: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "join":
-			resp.Msg, err = mdb.SignerJoinGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerJoinGroup(tx, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from SignerJoinGroup: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "leave":
-			resp.Msg, err = mdb.SignerLeaveGroup(nil, dbsigner, sp.Signer.SignerGroup)
+			resp.Msg, err = mdb.SignerLeaveGroup(tx, dbsigner, sp.Signer.SignerGroup)
 			if err != nil {
-				// log.Printf("Error from SignerLeaveGroup: %v", err)
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
@@ -507,20 +562,17 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		default:
 		}
 
-		ss, err := mdb.ListSigners(nil)
+		ss, err := mdb.ListSigners(tx)
 		if err != nil {
 			log.Printf("Error from ListSigners: %v", err)
 		}
 		resp.Signers = ss
 
-		// fmt.Printf("APIsigner: resp struct: %v\n", resp)
-		// fmt.Printf("APIsigner: resp struct error field: %v\n", resp.Error)
-
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 
@@ -528,20 +580,40 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		var resp = music.SignerGroupResponse{
+			Time:   time.Now(),
+			Client: r.RemoteAddr,
+		}
+
+		tx, err := mdb.StartTransactionNG()  
+		if err != nil {
+		       log.Printf("APIsignergroup: Error from mdb.StartTransactionNG(): %v\n", err)
+		       resp.Msg = "Error from mdb.StartTransactionNG()"
+		       resp.Error = true
+		       resp.ErrorMsg = err.Error()
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		       return 
+		}
+		defer func() {
+		      mdb.CloseTransactionNG(tx, err)
+		      err = json.NewEncoder(w).Encode(resp)
+		      if err != nil {
+		      	     log.Printf("Error from Encoder: %v\n", err)
+		      }
+		}()
+
 		log.Printf("APIsignergroup: received /signergroup request from %s.\n",
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
 		var sgp music.SignerGroupPost
-		err := decoder.Decode(&sgp)
+		err = decoder.Decode(&sgp)
 		if err != nil {
 			log.Println("APIsignergroup: error decoding signergroup post:",
 				err)
-		}
-
-		var resp = music.SignerGroupResponse{
-			Time:   time.Now(),
-			Client: r.RemoteAddr,
 		}
 
 		fmt.Printf("apiserver: /signergroup %v\n", sgp)
@@ -551,33 +623,33 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 
 		case "add":
 			fmt.Printf("apiserver: AddSignerGroup\n")
-			msg, err := mdb.AddSignerGroup(nil, sgp.Name)
+			msg, err := mdb.AddSignerGroup(tx, sgp.Name)
 			if err != nil {
 				log.Printf("Error from AddSignerGroup: %v", err)
 			}
-			resp.Message = msg
+			resp.Msg = msg
 
 		case "delete":
-			msg, err := mdb.DeleteSignerGroup(nil, sgp.Name)
+			msg, err := mdb.DeleteSignerGroup(tx, sgp.Name)
 			if err != nil {
 				log.Printf("Error from DeleteSignerGroup: %v", err)
 			}
-			resp.Message = msg
+			resp.Msg = msg
 		default:
 
 		}
 
-		ss, err := mdb.ListSignerGroups(nil)
+		ss, err := mdb.ListSignerGroups(tx)
 		if err != nil {
 			log.Printf("Error from ListSignerGroups: %v", err)
 		}
 		resp.SignerGroups = ss
 
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
-			log.Printf("Error from Encoder: %v\n", err)
-		}
+//		err = json.NewEncoder(w).Encode(resp)
+//		if err != nil {
+//			log.Printf("Error from Encoder: %v\n", err)
+//		}
 	}
 }
 
