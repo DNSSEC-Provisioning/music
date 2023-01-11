@@ -20,6 +20,7 @@ var FsmLeaveAddCDS = music.FSMTransition{
 	PostCondition: LeaveCDSVerify,
 }
 
+// LeaveAddCDSPreCondition calculate the relevant DNSKEYS for the signergroup and verify that the signers are correct.
 func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveAddCdsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -103,6 +104,7 @@ func LeaveAddCDSPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// LeaveAddCDSAction creates the CDS/CDNSKEY RRs and adds them to the remaining signers in the signergroup.
 func LeaveAddCDSAction(z *music.Zone) bool {
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", z.Name)
 
@@ -171,6 +173,7 @@ func LeaveAddCDSAction(z *music.Zone) bool {
 	return true
 }
 
+// LeaveCDSVerify Verifies that the CDS/CDNSKEY RRs are published and in sync on the remaining signers in the signergroup.
 func LeaveCDSVerify(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
 		log.Printf("LeaveCDSVerify: zone %s (DEBUG) is automatically ok", zone.Name)

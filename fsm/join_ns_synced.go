@@ -22,15 +22,12 @@ var FsmJoinNsSynced = music.FSMTransition{
 	MermaidActionDesc:   "Sync NS RRsets between all signers",
 	MermaidPostCondDesc: "Verify that NS RRsets are in sync",
 
-	PreCondition: JoinWaitDsPreCondition,
-	Action:       JoinSyncNs,
-	PostCondition: func(z *music.Zone) bool {
-		// verify that the NS RRset is in sync for all signers
-		return true
-		//return false
-	},
+	PreCondition:  JoinWaitDsPreCondition,
+	Action:        JoinSyncNs,
+	PostCondition: JoinSyncNSPostCondition,
 }
 
+// JoinWaitDsPreCondition calculates a waiting period for DS propegation and then waits.
 func JoinWaitDsPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("JoinWaitDsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -108,6 +105,7 @@ func JoinWaitDsPreCondition(z *music.Zone) bool {
 	return false
 }
 
+// JoinSyncNs synchronizes all NS RRs between the signers in the signergroup.
 func JoinSyncNs(z *music.Zone) bool {
 	log.Printf("JoinSyncNs: %s: Fetch all NS records from all signers", z.Name)
 
@@ -197,5 +195,73 @@ func JoinSyncNs(z *music.Zone) bool {
 	// z.StateTransition(FsmStateParentDsSynced, FsmStateDsPropagated)
 	// The delete has moved to the true-branch of the PreCondition.
 	// delete(zoneWaitDs, z.Name)
+	return true
+}
+
+// JoinSyncNSPostCondition confirms that the Namservers are synced across all the signers in the signergroup.
+func JoinSyncNSPostCondition(z *music.Zone) bool {
+	nses := make(map[string][]*dns.NS)
+
+	log.Printf("%s: Verifying that NSes are in sync in group %s", z.Name, z.SGroup.Name)
+
+	if z.ZoneType == "debug" {
+		log.Printf("JoinAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		return true
+	}
+
+	for _, s := range z.SGroup.SignerMap {
+		updater := music.GetUpdater(s.Method)
+		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeNS)
+		if err != nil {
+			log.Printf("Error from updater.FetchRRset: %v\n", err)
+			// XXX: johani: is it meaningful to continue here? why not just return false?
+		}
+
+		nses[s.Name] = []*dns.NS{}
+
+		for _, a := range rrs {
+			ns, ok := a.(*dns.NS)
+			if !ok {
+				continue
+			}
+
+			nses[s.Name] = append(nses[s.Name], ns)
+		}
+	}
+
+	// Map all known NSes
+	nsmap := make(map[string]*dns.NS)
+	for _, rrs := range nses {
+		for _, rr := range rrs {
+			nsmap[rr.Ns] = rr
+		}
+	}
+	nsset := []*dns.NS{}
+	for _, rr := range nsmap {
+		nsset = append(nsset, rr)
+	}
+
+	group_nses_synced := true
+	for signer, keys := range nses {
+		for _, ns := range nsset {
+			found := false
+			for _, key := range keys {
+				if ns.Ns == key.Ns {
+					found = true
+					break
+				}
+			}
+			if !found {
+				z.SetStopReason(fmt.Sprintf("NS %s is missing in signer %s", ns.Ns, signer))
+				group_nses_synced = false
+			}
+		}
+	}
+
+	if !group_nses_synced {
+		return false // stop-reason defined above
+	}
+
+	log.Printf("%s: All NSes synced between all signers", z.Name)
 	return true
 }

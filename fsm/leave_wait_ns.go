@@ -27,6 +27,7 @@ var FsmLeaveWaitNs = music.FSMTransition{
 	PostCondition: func(z *music.Zone) bool { return true },
 }
 
+// LeaveWaitNsPreCondition calculates a waiting period for NS propegation and then waits.
 func LeaveWaitNsPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)

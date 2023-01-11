@@ -26,54 +26,17 @@ func JoinAddCdsPreCondition(zone *music.Zone) bool {
 		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
-	dnskeyRRsets := make(map[string][]dns.RR)
-	var signerNames []string
-	matches := true
 
-	log.Printf("Add CDS/CDNSKEY:\n")
-	log.Printf("%s: Verifying that DNSKEYs are in sync in group %s", zone.Name, zone.SGroup.Name)
-
-	// Collect all the DNSKEYS per signer
-	for signerName, signer := range zone.SGroup.SignerMap {
-
-		signerNames = append(signerNames, signerName)
-		updater := music.GetUpdater(signer.Method)
-		err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, dns.TypeDNSKEY)
-		if err != nil {
-			log.Printf("JoinAddCdsPreCondition: Error from updater.FetchRRset (signer %s): %v", signer.Name, err)
-		}
-		dnskeyRRsets[signer.Name] = rrSet
+	if music.SignerRRsetCompare(zone, dns.TypeDNSKEY) {
+		log.Printf("[JoinAddCdsPreCondition] All DNSKEYS synced.")
+		return true
+	} else {
+		log.Printf("[JoinAddCdsPreCondition] All DNSKEYS not synced.")
+		return false
 	}
-
-	// Check that the RRsets Match between the signers.
-	fmt.Printf("signerNames %v\n", signerNames)
-	numSigners := len(signerNames)
-	if len(signerNames) > 1 {
-		for i := numSigners - 1; i > 0; i-- {
-			match, rrset1Extra, rrset2Extra := music.RRsetCompare(dnskeyRRsets[signerNames[0]], dnskeyRRsets[signerNames[i]])
-			if !match {
-				matches = false
-				if len(rrset1Extra) > 0 {
-					log.Printf("%s: Still missing DNSKEYS: %v\n", signerNames[i], rrset1Extra)
-				}
-				if len(rrset2Extra) > 0 {
-					log.Printf("%s: Still missing DNSKEYS: %v\n", signerNames[0], rrset2Extra)
-				}
-			}
-		}
-	}
-	if !matches {
-		err, _ := zone.SetStopReason(fmt.Sprintf("DNSKEYS not synced on signers"))
-		if err != nil {
-			log.Printf("Couldn't set stop reason: DNSKEYS not synced on signers")
-		}
-		return matches
-	}
-
-	log.Printf("[JoinAddCdsPreCondition] All DNSKEYS synced.")
-	return matches
 }
 
+// JoinAddCdsAction creates the CDS/CDNSKEY RRs and adds them to all the signers in the signergroup.
 func JoinAddCdsAction(zone *music.Zone) bool {
 	log.Printf("[JoinAddCDSAction] zone struct: \n %v \n", zone)
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", zone.Name)
@@ -132,6 +95,7 @@ func JoinAddCdsAction(zone *music.Zone) bool {
 	return true
 }
 
+// VerifyCdsPublished Verifies taht the CDS/CDNSKEY RRs are published and in sync on all the signers in the signergroup.
 func VerifyCdsPublished(zone *music.Zone) bool {
 	log.Printf("Verifying Publication of CDS/CDNSKEY record sets for %s", zone.Name)
 

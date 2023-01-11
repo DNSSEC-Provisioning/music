@@ -17,10 +17,10 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 
 	PreCondition:  LeaveParentNsSyncedPreCondition,
 	Action:        LeaveParentNsSyncedAction,
-	PostCondition: LeaveParentNsSyncedConfirmCsyncRemoval,
+	PostCondition: LeaveParentNsSyncedPostCondition,
 }
 
-// Verify that NS records in parent are in synched.
+// LeaveParentNsSyncedPreCondition verifies that NS records in parent are in synched with the remaining signers in the signergroup.
 func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -137,6 +137,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// LeaveParentNsSyncedAction removes the CSYNC RRs from the remaining signers in the signergroup.
 func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedAction: zone %s (DEBUG) is automatically ok", z.Name)
@@ -198,7 +199,8 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	return true
 }
 
-func LeaveParentNsSyncedConfirmCsyncRemoval(zone *music.Zone) bool {
+// LeaveParentNsSyncedPostCondition confirms there are no CSYNC records on the remaining signers in the signergroup.
+func LeaveParentNsSyncedPostCondition(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedConfirmCsyncRemoval: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
