@@ -20,7 +20,7 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 	PostCondition: LeaveParentNsSyncedPostCondition,
 }
 
-// LeaveParentNsSyncedPreCondition verifies that NS records in parent are in synched with the remaining signers in the signergroup.
+// LeaveParentNsSyncedPreCondition verifies that NS records in parent are in synced with the remaining signers in the signergroup.
 func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)

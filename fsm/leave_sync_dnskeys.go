@@ -21,7 +21,7 @@ var FsmLeaveSyncDnskeys = music.FSMTransition{
 	PostCondition: LeaveSyncDnskeysVerify,
 }
 
-// LeaveSyncDnskeysPreCondition calculates a waiting period for NS propegation and then waits.
+// LeaveSyncDnskeysPreCondition calculates a waiting period for NS propagation and then waits.
 func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -138,7 +138,7 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 	return false
 }
 
-// LeaveSyncDnskeysAction  synchronizes all DNSKEY RRs between the remaining signers in the signergroup.
+// LeaveSyncDnskeysAction synchronizes all DNSKEY RRs between the remaining signers in the signergroup.
 func LeaveSyncDnskeysAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveSyncDnskeysAction: zone %s (DEBUG) is automatically ok", z.Name)

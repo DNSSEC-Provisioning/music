@@ -20,7 +20,7 @@ var FsmJoinParentNsSynced = music.FSMTransition{
 	PostCondition: JoinParentNsSyncedPostCondition,
 }
 
-// JoinParentNsSyncedPreCondition confirms that the NS RRs for the signergroup has been synced to the parent.
+// JoinParentNsSyncedPreCondition confirms that the NS RRs for the signergroup have been synced to the parent.
 func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 

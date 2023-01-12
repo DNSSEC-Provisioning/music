@@ -115,7 +115,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
-// JoinParentDsSyncedAction removes the CDS/CDSNSKEY records from the signers in the signergroup
+// JoinParentDsSyncedAction removes the CDS/CDSNSKEY records from the signers in the signergroup.
 func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
@@ -143,7 +143,7 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 	return true
 }
 
-// VerifyCdsRemoved Confirms that the CDS/CDNSKEY RRs have been removed from the signers in the signergroup
+// VerifyCdsRemoved confirms that the CDS/CDNSKEY RRs have been removed from the signers in the signergroup.
 func VerifyCdsRemoved(z *music.Zone) bool {
 	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been removed", z.Name)
 

@@ -20,6 +20,7 @@ var FsmLeaveParentDsSynced = music.FSMTransition{
 	PostCondition: LeaveVerifyCDSRemoval,
 }
 
+// LeaveParentDsSyncedPreCondition verifies that the DS records on the parent match the CDS RRs on the remaining signers in the signergroup
 func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 
@@ -96,11 +97,13 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// LeaveParentDsSyncedAction takes no action since we are leaving the CDS/CDNSKEY RRs in place. XXX TODO: We need to look at this
 func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("LeaveParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
 	return true
 }
 
+// LeaveVerifyCDSRemoval takes no action since we are leaving the CDS/CDNSKEY RRs in place. XXX TODO: We need to look at this
 func LeaveVerifyCDSRemoval(zone *music.Zone) bool {
 	log.Printf("LeaveVerifyCDSRemoval: zone %s : No PostCondtion since we are leaving the CDS records on the signers", zone.Name)
 	return true

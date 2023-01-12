@@ -27,7 +27,7 @@ var FsmJoinNsSynced = music.FSMTransition{
 	PostCondition: JoinSyncNSPostCondition,
 }
 
-// JoinWaitDsPreCondition calculates a waiting period for DS propegation and then waits.
+// JoinWaitDsPreCondition calculates a waiting period for DS propagation and then waits.
 func JoinWaitDsPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("JoinWaitDsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -198,7 +198,7 @@ func JoinSyncNs(z *music.Zone) bool {
 	return true
 }
 
-// JoinSyncNSPostCondition confirms that the Namservers are synced across all the signers in the signergroup.
+// JoinSyncNSPostCondition confirms that the namservers are synced across all the signers in the signergroup.
 func JoinSyncNSPostCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 

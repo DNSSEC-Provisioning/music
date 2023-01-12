@@ -20,7 +20,7 @@ var FsmJoinAddCDS = music.FSMTransition{
 	PostCondition: VerifyCdsPublished,
 }
 
-// JoinAddCdsPreCondition collects DNSKEYS from all signers and verifies that the RRsets Match
+// JoinAddCdsPreCondition collects DNSKEYS from all signers and verifies that the RRsets match.
 func JoinAddCdsPreCondition(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
 		log.Printf("JoinAddCdsPreCondition: zone %s (DEBUG) is automatically ok", zone.Name)
@@ -36,7 +36,7 @@ func JoinAddCdsPreCondition(zone *music.Zone) bool {
 	}
 }
 
-// JoinAddCdsAction creates the CDS/CDNSKEY RRs and adds them to all the signers in the signergroup.
+// JoinAddCdsAction creates the CDS/CDNSKEY RRs and adds them to all signers in the signergroup.
 func JoinAddCdsAction(zone *music.Zone) bool {
 	log.Printf("[JoinAddCDSAction] zone struct: \n %v \n", zone)
 	log.Printf("%s: Creating CDS/CDNSKEY record sets", zone.Name)
@@ -95,7 +95,7 @@ func JoinAddCdsAction(zone *music.Zone) bool {
 	return true
 }
 
-// VerifyCdsPublished Verifies taht the CDS/CDNSKEY RRs are published and in sync on all the signers in the signergroup.
+// VerifyCdsPublished verifies that the CDS/CDNSKEY RRs are published and in sync across all signers in the signergroup.
 func VerifyCdsPublished(zone *music.Zone) bool {
 	log.Printf("Verifying Publication of CDS/CDNSKEY record sets for %s", zone.Name)
 
