@@ -56,10 +56,10 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 		viper.Set("fsmengine.mininterval", 15)
 	}
 	maxinterval := viper.GetInt("fsmengine.intervals.maximum")
-	//if maxinterval > 3600 {
-	//	maxinterval = 3600
-	//	viper.Set("fsmengine.maxinterval", 3600)
-	//}
+	if maxinterval > 3600 {
+		maxinterval = 3600
+		viper.Set("fsmengine.maxinterval", 3600)
+	}
 
 	target := viper.GetInt("fsmengine.intervals.target")
 	if target < mininterval || target > maxinterval {
@@ -71,7 +71,7 @@ func FSMEngine(conf *Config, stopch chan struct{}) {
 
 	if completeinterval < 3600 || completeinterval > 24*3600 {
 		completeinterval = 7200
-		if viper.GetBool("common.debug") {
+		if !viper.GetBool("common.debug") {
 			completeinterval = 30
 			log.Printf("Debug mode on, complete check of all zones every %d seconds", completeinterval)
 		}

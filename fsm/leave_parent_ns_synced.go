@@ -202,7 +202,7 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 // LeaveParentNsSyncedPostCondition confirms there are no CSYNC records on the remaining signers in the signergroup.
 func LeaveParentNsSyncedPostCondition(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
-		log.Printf("LeaveParentNsSyncedConfirmCsyncRemoval: zone %s (DEBUG) is automatically ok", zone.Name)
+		log.Printf("LeaveParentNsSyncedPostCondition: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
 

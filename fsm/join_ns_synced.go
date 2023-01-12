@@ -24,7 +24,7 @@ var FsmJoinNsSynced = music.FSMTransition{
 
 	PreCondition:  JoinWaitDsPreCondition,
 	Action:        JoinSyncNs,
-	PostCondition: JoinSyncNSPostCondition,
+	PostCondition: JoinSyncNSPostCondition, // XXX TODO: This is also the precondition for the next state. Consolidate
 }
 
 // JoinWaitDsPreCondition calculates a waiting period for DS propagation and then waits.
@@ -198,7 +198,7 @@ func JoinSyncNs(z *music.Zone) bool {
 	return true
 }
 
-// JoinSyncNSPostCondition confirms that the namservers are synced across all the signers in the signergroup.
+// JoinSyncNSPostCondition confirms that the NS RRs are synced across all the signers in the signergroup.
 func JoinSyncNSPostCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 

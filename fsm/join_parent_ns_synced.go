@@ -17,7 +17,7 @@ var FsmJoinParentNsSynced = music.FSMTransition{
 
 	PreCondition:  JoinParentNsSyncedPreCondition,
 	Action:        JoinParentNsSyncedAction,
-	PostCondition: JoinParentNsSyncedPostCondition,
+	PostCondition: JoinParentNsSyncedPostCondition, // XXX TODO: is the same as LeaveParentNsSyncedConfirmCsyncRemoval. Consolidate
 }
 
 // JoinParentNsSyncedPreCondition confirms that the NS RRs for the signergroup have been synced to the parent.
@@ -127,7 +127,7 @@ func JoinParentNsSyncedAction(z *music.Zone) bool {
 // JoinParentNsSyncedPostCondition confirms that the CSYNC records have been removed from the signers in the signergroup.
 func JoinParentNsSyncedPostCondition(zone *music.Zone) bool {
 	if zone.ZoneType == "debug" {
-		log.Printf("LeaveParentNsSyncedConfirmCsyncRemoval: zone %s (DEBUG) is automatically ok", zone.Name)
+		log.Printf("JoinParentNsSyncedPostCondition: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
 
