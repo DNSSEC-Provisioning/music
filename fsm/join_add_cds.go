@@ -27,7 +27,7 @@ func JoinAddCdsPreCondition(zone *music.Zone) bool {
 		return true
 	}
 
-	if music.SignerRRsetCompare(zone, dns.TypeDNSKEY) {
+	if music.SignerRRsetEqual(zone, dns.TypeDNSKEY) {
 		log.Printf("[JoinAddCdsPreCondition] All DNSKEYS synced.")
 		return true
 	} else {

@@ -8,9 +8,9 @@ import (
 	"log"
 )
 
-// RRsetCompare compares two RRsets and returns if they are equal or not,
+// RRsetEqual compares two RRsets and returns if they are equal or not,
 // include the non-matching RRs in a slice per RRset.
-func RRsetCompare(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
+func RRsetEqual(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
 	allEqual := true
 	var equal bool
 	var rrset1Extra []dns.RR
@@ -47,8 +47,8 @@ func RRsetCompare(rrset1, rrset2 []dns.RR) (bool, []dns.RR, []dns.RR) {
 	return allEqual, rrset1Extra, rrset2Extra
 }
 
-// SignerRRsetCompare compares a RRset across all signers and returns if they are equal or not
-func SignerRRsetCompare(zone *Zone, rrType uint16) bool {
+// SignerRRsetEqual compares a RRset across all signers and returns if they are equal or not
+func SignerRRsetEqual(zone *Zone, rrType uint16) bool {
 	log.Printf("Comparing %s RRset for %s\n", dns.TypeToString[rrType], zone.Name)
 	rrSets := make(map[string][]dns.RR)
 	var signerNames []string
@@ -69,7 +69,7 @@ func SignerRRsetCompare(zone *Zone, rrType uint16) bool {
 	numSigners := len(signerNames)
 	if numSigners > 1 {
 		for i := numSigners - 1; i > 0; i-- {
-			match, rrSet1Extra, rrSet2Extra := RRsetCompare(rrSets[signerNames[0]], rrSets[signerNames[i]])
+			match, rrSet1Extra, rrSet2Extra := RRsetEqual(rrSets[signerNames[0]], rrSets[signerNames[i]])
 			if !match {
 				matches = false
 				if len(rrSet1Extra) > 0 {

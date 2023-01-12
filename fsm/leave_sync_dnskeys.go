@@ -239,7 +239,7 @@ func LeaveSyncDnskeysVerify(zone *music.Zone) bool {
 		return true
 	}
 
-	if music.SignerRRsetCompare(zone, dns.TypeDNSKEY) {
+	if music.SignerRRsetEqual(zone, dns.TypeDNSKEY) {
 		log.Printf("[LeaveSyncDnskeysPostCondition] DNSKEYS synced")
 		return true
 	} else {

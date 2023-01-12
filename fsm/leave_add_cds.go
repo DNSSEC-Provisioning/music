@@ -182,7 +182,7 @@ func LeaveCDSVerify(zone *music.Zone) bool {
 	matches := true
 	rrTypes := []uint16{dns.TypeCDS, dns.TypeCDNSKEY}
 	for _, rrType := range rrTypes {
-		synced := music.SignerRRsetCompare(zone, rrType)
+		synced := music.SignerRRsetEqual(zone, rrType)
 		if !synced {
 			matches = false
 		}

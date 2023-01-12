@@ -97,5 +97,5 @@ func LeaveSyncNsesPostCondition(zone *music.Zone) bool {
 		log.Printf("LeaveSyncNsesPostCondition: zone %s (DEBUG) is automatically ok", zone.Name)
 		return true
 	}
-	return music.SignerRRsetCompare(zone, dns.TypeNS)
+	return music.SignerRRsetEqual(zone, dns.TypeNS)
 }
