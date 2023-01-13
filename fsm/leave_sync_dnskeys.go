@@ -24,13 +24,14 @@ var FsmLeaveSyncDnskeys = music.FSMTransition{
 // LeaveSyncDnskeysPreCondition calculates a waiting period for NS propagation and then waits.
 func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
-		log.Printf("LeaveWaitNsPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
+		log.Printf("LeaveSyncDnskeysPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
 		return true
 	}
 
 	if until, ok := zoneWaitNs[z.Name]; ok {
 		if time.Now().Before(until) {
 			// XXX: Here we need z.SetDelayReason(reason, duration)
+			z.SetStopReason(fmt.Sprintf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String()))
 			log.Printf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String())
 			return false
 		}
@@ -135,6 +136,7 @@ func LeaveSyncDnskeysPreCondition(z *music.Zone) bool {
 
 	// XXX: Here we need the z.SetDelayReason()
 	zoneWaitNs[z.Name] = until
+	z.SetStopReason(fmt.Sprintf("%s: Waiting until %s (%s)", z.Name, until.String(), time.Until(until).String()))
 	return false
 }
 
