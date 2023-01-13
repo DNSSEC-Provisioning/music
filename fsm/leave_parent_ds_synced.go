@@ -17,9 +17,10 @@ var FsmLeaveParentDsSynced = music.FSMTransition{
 
 	PreCondition:  LeaveParentDsSyncedPreCondition,
 	Action:        LeaveParentDsSyncedAction,
-	PostCondition: func(z *music.Zone) bool { return true }, // XXX: TODO
+	PostCondition: LeaveVerifyCDSRemoval,
 }
 
+// LeaveParentDsSyncedPreCondition verifies that the DS records on the parent match the CDS RRs on the remaining signers in the signergroup
 func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	cdsmap := make(map[string]*dns.CDS)
 
@@ -96,8 +97,15 @@ func LeaveParentDsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// LeaveParentDsSyncedAction takes no action since we are leaving the CDS/CDNSKEY RRs in place. XXX TODO: We need to look at this
 func LeaveParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("LeaveParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
+	return true
+}
+
+// LeaveVerifyCDSRemoval takes no action since we are leaving the CDS/CDNSKEY RRs in place. XXX TODO: We need to look at this
+func LeaveVerifyCDSRemoval(zone *music.Zone) bool {
+	log.Printf("LeaveVerifyCDSRemoval: zone %s : No PostCondtion since we are leaving the CDS records on the signers", zone.Name)
 	return true
 }
 
@@ -132,5 +140,33 @@ func LeaveParentDsSyncedAction(z *music.Zone) bool {
 
 	// TODO: remove state/metadata around leaving signer
 	//       tables: zone_dnskeys, zone_nses
+}
+
+// LeaveVerifyCDSRemoval Verifies that the CDS/CDNSKEY Records have been removed
+func LeaveVerifyCDSRemoval(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("LeaveVerifyCDSRemoval: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+
+	var signerNames []string
+	rrTypes := []uint16{dns.TypeCDS, dns.TypeCDNSKEY}
+	for _, rrType := range rrTypes {
+		for signerName, signer := range zone.SGroup.SignerMap {
+			updater := music.GetUpdater(signer.Method)
+			err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, rrType)
+			if err != nil {
+				zone.SetStopReason(fmt.Sprintf("Couldn't Fetch %s RRset from %s\n", dns.TypeToString[rrType], signerName))
+			}
+			if len(rrSet) > 0 {
+				signerNames = append(signerNames, signerName)
+			}
+		}
+		if len(signerNames) > 0 {
+			zone.SetStopReason(fmt.Sprintf("%s records still exist on %v", dns.TypeToString[rrType], signerNames))
+			return false
+		}
+	}
+	return true
 }
 */

@@ -17,9 +17,10 @@ var FsmJoinParentNsSynced = music.FSMTransition{
 
 	PreCondition:  JoinParentNsSyncedPreCondition,
 	Action:        JoinParentNsSyncedAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: JoinParentNsSyncedPostCondition, // XXX TODO: is the same as LeaveParentNsSyncedConfirmCsyncRemoval. Consolidate
 }
 
+// JoinParentNsSyncedPreCondition confirms that the NS RRs for the signergroup have been synced to the parent.
 func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
@@ -97,6 +98,7 @@ func JoinParentNsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// JoinParentNsSyncedAction removes the CSYNC RRs from the signers in the signergroup.
 func JoinParentNsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CSYNC record sets", z.Name)
 
@@ -119,5 +121,30 @@ func JoinParentNsSyncedAction(z *music.Zone) bool {
 		log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, signer.Name)
 	}
 
+	return true
+}
+
+// JoinParentNsSyncedPostCondition confirms that the CSYNC records have been removed from the signers in the signergroup.
+func JoinParentNsSyncedPostCondition(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("JoinParentNsSyncedPostCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+
+	var signerNames []string
+	for signerName, signer := range zone.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
+		err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, dns.TypeCSYNC)
+		if err != nil {
+			zone.SetStopReason(fmt.Sprintf("Couldn't CSYNC FetchRRset from %s\n", signerName))
+		}
+		if len(rrSet) > 0 {
+			signerNames = append(signerNames, signerName)
+		}
+	}
+	if len(signerNames) > 0 {
+		zone.SetStopReason(fmt.Sprintf("CSYNC records still exist on %v", signerNames))
+		return false
+	}
 	return true
 }

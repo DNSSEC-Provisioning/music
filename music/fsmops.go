@@ -243,8 +243,8 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	// If post-condition==false ==> bump hold time
 	if t.PreCondition(z) {
 		log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
-		t.Action(z)
-		if t.PostCondition != nil {
+		t.Action(z)                 //TODO XXX: catch return value
+		if t.PostCondition != nil { //TODO XXX: remove once we have post conditions everywhere.
 			postcond := t.PostCondition(z)
 			if postcond {
 				z.StateTransition(tx, currentstate, nextstate) // success
