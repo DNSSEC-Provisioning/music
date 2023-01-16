@@ -66,7 +66,8 @@ var addSignerCmd = &cobra.Command{
 }
 
 // XXX: Note that this new version of signer update will just send parameters that are specified
-//      without checking if they are or not. So the reciever end (api server) must do the checking.
+//
+//	without checking if they are or not. So the reciever end (api server) must do the checking.
 var updateSignerCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update existing signer",
@@ -203,7 +204,7 @@ func init() {
 		joinGroupCmd, leaveGroupCmd, loginSignerCmd, logoutSignerCmd)
 
 	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
-		"update method (ddns|desec)")
+		"update method (ddns|rlddns|desec-api|rldesec-api...)")
 	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
 		fmt.Sprintf("authdata for signer:\nDDNS: algname:key.name:secret\ndeSEC: ?"))
 	signerCmd.PersistentFlags().StringVarP(&signeraddress, "address", "", "",

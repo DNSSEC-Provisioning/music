@@ -12,11 +12,9 @@ const (
 	FsmStateDnskeysSynced  = "dnskeys-synced"
 	FsmStateCDSAdded       = "cds-added"
 	FsmStateParentDsSynced = "parent-ds-synced"
-	FsmStateDsPropagated   = "ds-propagated"
 	FsmStateCsyncAdded     = "csync-added"
 	FsmStateParentNsSynced = "parent-ns-synced"
 	FsmStateNsesSynced     = "nses-synced"
-	FsmStateNsPropagated   = "ns-propagated"
 	//	FsmStateStop             = "stop"		// XXX: This state is defined in music package
 
 	FsmStateSignersUnknown = "signers-unknown" // Only used in the VERIFY-ZONE-SYNC proc
@@ -136,9 +134,6 @@ as that would cause the attached zones to have to go unsigned.`,
 				Next: map[string]music.FSMTransition{FsmStateParentNsSynced: FsmLeaveParentNsSynced},
 			},
 			FsmStateParentNsSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{FsmStateNsPropagated: FsmLeaveWaitNs},
-			},
-			FsmStateNsPropagated: music.FSMState{
 				Next: map[string]music.FSMTransition{FsmStateDnskeysSynced: FsmLeaveSyncDnskeys},
 			},
 			FsmStateDnskeysSynced: music.FSMState{

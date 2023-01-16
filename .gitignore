@@ -9,3 +9,4 @@ sbin/*
 musicd/musicd
 *~
 music.db
+notes.txt

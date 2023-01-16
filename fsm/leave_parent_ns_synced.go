@@ -17,10 +17,10 @@ var FsmLeaveParentNsSynced = music.FSMTransition{
 
 	PreCondition:  LeaveParentNsSyncedPreCondition,
 	Action:        LeaveParentNsSyncedAction,
-	PostCondition: func(z *music.Zone) bool { return true },
+	PostCondition: LeaveParentNsSyncedPostCondition,
 }
 
-// Verify that NS records in parent are in synched.
+// LeaveParentNsSyncedPreCondition verifies that NS records in parent are in synced with the remaining signers in the signergroup.
 func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -137,6 +137,7 @@ func LeaveParentNsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// LeaveParentNsSyncedAction removes the CSYNC RRs from the remaining signers in the signergroup.
 func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveParentNsSyncedAction: zone %s (DEBUG) is automatically ok", z.Name)
@@ -195,5 +196,30 @@ func LeaveParentNsSyncedAction(z *music.Zone) bool {
 	}
 	log.Printf("%s: Removed CSYNC record sets from %s successfully", z.Name, leavingSigner.Name)
 
+	return true
+}
+
+// LeaveParentNsSyncedPostCondition confirms there are no CSYNC records on the remaining signers in the signergroup.
+func LeaveParentNsSyncedPostCondition(zone *music.Zone) bool {
+	if zone.ZoneType == "debug" {
+		log.Printf("LeaveParentNsSyncedPostCondition: zone %s (DEBUG) is automatically ok", zone.Name)
+		return true
+	}
+
+	var signerNames []string
+	for signerName, signer := range zone.SGroup.SignerMap {
+		updater := music.GetUpdater(signer.Method)
+		err, rrSet := updater.FetchRRset(signer, zone.Name, zone.Name, dns.TypeCSYNC)
+		if err != nil {
+			zone.SetStopReason(fmt.Sprintf("Couldn't CSYNC FetchRRset from %s\n", signerName))
+		}
+		if len(rrSet) > 0 {
+			signerNames = append(signerNames, signerName)
+		}
+	}
+	if len(signerNames) > 0 {
+		zone.SetStopReason(fmt.Sprintf("CSYNC records still exist on %v", signerNames))
+		return false
+	}
 	return true
 }

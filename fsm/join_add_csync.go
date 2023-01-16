@@ -20,6 +20,7 @@ var FsmJoinAddCsync = music.FSMTransition{
 	PostCondition: VerifyCsyncPublished,
 }
 
+// JoinAddCsyncPreCondition confirms that the NS RRs is in sync across all the signers in the signergroup.
 func JoinAddCsyncPreCondition(z *music.Zone) bool {
 	nses := make(map[string][]*dns.NS)
 
@@ -87,6 +88,7 @@ func JoinAddCsyncPreCondition(z *music.Zone) bool {
 	return true
 }
 
+// JoinAddCsyncAction creates CSYNC RR and adds it to the signers in the signergroup.
 func JoinAddCsyncAction(z *music.Zone) bool {
 	log.Printf("JoinAddCSYNC: Using FetchRRset interface:\n")
 	if z.ZoneType == "debug" {
@@ -132,6 +134,7 @@ func JoinAddCsyncAction(z *music.Zone) bool {
 	return true
 }
 
+// VerifyCsyncPublished verifies that CSYNC records exist and are equal across all the signers in the signergroup.
 func VerifyCsyncPublished(z *music.Zone) bool {
 	log.Printf("Verifying Publication of CSYNC record sets for %s", z.Name)
 

@@ -20,6 +20,7 @@ var FsmJoinParentDsSynced = music.FSMTransition{
 	PostCondition: VerifyCdsRemoved,
 }
 
+// JoinParentDsSyncedPreCondition compares the DS RRs in the parent zone to the signers CDS RRs.
 func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	cdses := make(map[string][]*dns.CDS)
 
@@ -114,15 +115,7 @@ func JoinParentDsSyncedPreCondition(z *music.Zone) bool {
 	return true
 }
 
-/*
-func JoinParentDsSyncedAction(z *music.Zone) bool {
-	log.Printf("JoinParentDsSyncedAction: zone %s : No action since we are leaving the CDS records on the signers", z.Name)
-	return true
-}
-*/
-// The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
-// unpaused the code, I think we might have to have a prereq that Music is the only controller over CDS/CDSNSKEY RRSET
-///*
+// JoinParentDsSyncedAction removes the CDS/CDSNSKEY records from the signers in the signergroup.
 func JoinParentDsSyncedAction(z *music.Zone) bool {
 	log.Printf("%s: Removing CDS/CDNSKEY record sets", z.Name)
 
@@ -147,22 +140,12 @@ func JoinParentDsSyncedAction(z *music.Zone) bool {
 		}
 		log.Printf("%s: Removed CDS/CDNSKEY record sets from %s successfully", z.Name, signer.Name)
 	}
-
 	return true
 }
 
-/*
-
+// VerifyCdsRemoved confirms that the CDS/CDNSKEY RRs have been removed from the signers in the signergroup.
 func VerifyCdsRemoved(z *music.Zone) bool {
-	return true
-}
-*/
-
-// The code below is on "Paus" until we figure out what we want to do with https://github.com/DNSSEC-Provisioning/music/issues/96
-// unpaused the code, I think we might have to have a prereq that Music is the only controller over CDS/CDSNSKEY RRSET
-///*
-func VerifyCdsRemoved(z *music.Zone) bool {
-	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been remved", z.Name)
+	log.Printf("%s: Verify that CDS/CDNSKEY RRsets have been removed", z.Name)
 
 	if z.ZoneType == "debug" {
 		log.Printf("VerifyCdsRemoved: zone %s (DEBUG) is automatically ok", z.Name)
@@ -193,8 +176,5 @@ func VerifyCdsRemoved(z *music.Zone) bool {
 			return false
 		}
 	}
-
 	return true
 }
-
-//*/

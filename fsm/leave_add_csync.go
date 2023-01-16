@@ -20,6 +20,7 @@ var FsmLeaveAddCsync = music.FSMTransition{
 	PostCondition: LeaveVerifyCsyncPublished,
 }
 
+// LeaveAddCsyncPreCondition confirms that the leaving signer NS RRs is not configured on the remaining signers in the signergroup.
 func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveAddCsyncPreCondition: zone %s (DEBUG) is automatically ok", z.Name)
@@ -126,12 +127,7 @@ func LeaveAddCsyncPreCondition(z *music.Zone) bool {
 	return true
 }
 
-// Semantics:
-// 1. Lookup zone signergroup (can only be one)
-// 2. Lookup FSMSigner for the zone (can only be one)
-// 3. Go through the steps below.
-// 4. Celebrate Christmas
-
+// LeaveAddCsyncAction creates and adds the CSYNC record to the remaining signers in the signergroup.
 func LeaveAddCsyncAction(z *music.Zone) bool {
 	if z.ZoneType == "debug" {
 		log.Printf("LeaveAddCsyncAction: zone %s (DEBUG) is automatically ok", z.Name)
@@ -226,6 +222,8 @@ func LeaveAddCsyncAction(z *music.Zone) bool {
 
 	return true
 }
+
+// LeaveVerifyCsyncPublished confirms that the CSYNC records are published on the remaining signers in the singergroup.
 func LeaveVerifyCsyncPublished(z *music.Zone) bool {
 	log.Printf("Verifying Publication of CSYNC record sets for %s", z.Name)
 
