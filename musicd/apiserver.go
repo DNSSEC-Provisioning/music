@@ -108,24 +108,24 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		tx, err := mdb.StartTransactionNG()  
+		tx, err := mdb.StartTransactionNG()
 		if err != nil {
-		       log.Printf("APItest: Error from mdb.StartTransactionNG(): %v\n", err)
-		       resp.Msg = "Error from mdb.StartTransactionNG()"
-		       resp.Error = true
-		       resp.ErrorMsg = err.Error()
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
-		       return 
+			log.Printf("APItest: Error from mdb.StartTransactionNG(): %v\n", err)
+			resp.Msg = "Error from mdb.StartTransactionNG()"
+			resp.Error = true
+			resp.ErrorMsg = err.Error()
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
+			return
 		}
 		defer func() {
-		      mdb.CloseTransactionNG(tx, err)
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
+			mdb.CloseTransactionNG(tx, err)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
 		}()
 
 		decoder := json.NewDecoder(r.Body)
@@ -186,10 +186,10 @@ func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		default:
 		}
 
-//		err = json.NewEncoder(w).Encode(resp)
-//		if err != nil {
-//			log.Printf("Error from Encoder: %v\n", err)
-//		}
+		//		err = json.NewEncoder(w).Encode(resp)
+		//		if err != nil {
+		//			log.Printf("Error from Encoder: %v\n", err)
+		//		}
 	}
 }
 
@@ -204,24 +204,24 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		tx, err := mdb.StartTransactionNG()  
+		tx, err := mdb.StartTransactionNG()
 		if err != nil {
-		       log.Printf("APIzone: Error from mdb.StartTransactionNG(): %v\n", err)
-		       resp.Msg = "Error from mdb.StartTransactionNG()"
-		       resp.Error = true
-		       resp.ErrorMsg = err.Error()
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
-		       return 
+			log.Printf("APIzone: Error from mdb.StartTransactionNG(): %v\n", err)
+			resp.Msg = "Error from mdb.StartTransactionNG()"
+			resp.Error = true
+			resp.ErrorMsg = err.Error()
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
+			return
 		}
 		defer func() {
-		      mdb.CloseTransactionNG(tx, err)
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
+			mdb.CloseTransactionNG(tx, err)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
 		}()
 
 		decoder := json.NewDecoder(r.Body)
@@ -294,7 +294,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				}
 
 			case "delete":
-				resp.Msg, err = mdb.DeleteZone(tx, dbzone)  // XXX: shouldn't there be a tx here?
+				resp.Msg, err = mdb.DeleteZone(tx, dbzone) // XXX: shouldn't there be a tx here?
 				if err != nil {
 					// log.Printf("Error from DeleteZone: %v", err)
 					resp.Error = true
@@ -343,7 +343,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 					// w.Header().Set("Content-Type", "application/json")
 				}
 				log.Printf("APISERVER: STEP-FSM: pre GetZone\n")
-				dbzone, _, err = mdb.ApiGetZone(dbzone.Name) // apisafe
+				dbzone, _, err = mdb.ApiGetZone(tx, dbzone.Name) // apisafe
 				if err != nil {
 					resp.Error = true
 					resp.ErrorMsg = err.Error()
@@ -469,24 +469,24 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		tx, err := mdb.StartTransactionNG()  
+		tx, err := mdb.StartTransactionNG()
 		if err != nil {
-		       log.Printf("APIsigner: Error from mdb.StartTransactionNG(): %v\n", err)
-		       resp.Msg = "Error from mdb.StartTransactionNG()"
-		       resp.Error = true
-		       resp.ErrorMsg = err.Error()
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
-		       return 
+			log.Printf("APIsigner: Error from mdb.StartTransactionNG(): %v\n", err)
+			resp.Msg = "Error from mdb.StartTransactionNG()"
+			resp.Error = true
+			resp.ErrorMsg = err.Error()
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
+			return
 		}
 		defer func() {
-		      mdb.CloseTransactionNG(tx, err)
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
+			mdb.CloseTransactionNG(tx, err)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
 		}()
 
 		decoder := json.NewDecoder(r.Body)
@@ -569,10 +569,10 @@ func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		resp.Signers = ss
 
 		w.Header().Set("Content-Type", "application/json")
-//		err = json.NewEncoder(w).Encode(resp)
-//		if err != nil {
-//			log.Printf("Error from Encoder: %v\n", err)
-//		}
+		//		err = json.NewEncoder(w).Encode(resp)
+		//		if err != nil {
+		//			log.Printf("Error from Encoder: %v\n", err)
+		//		}
 	}
 }
 
@@ -585,24 +585,24 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 			Client: r.RemoteAddr,
 		}
 
-		tx, err := mdb.StartTransactionNG()  
+		tx, err := mdb.StartTransactionNG()
 		if err != nil {
-		       log.Printf("APIsignergroup: Error from mdb.StartTransactionNG(): %v\n", err)
-		       resp.Msg = "Error from mdb.StartTransactionNG()"
-		       resp.Error = true
-		       resp.ErrorMsg = err.Error()
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
-		       return 
+			log.Printf("APIsignergroup: Error from mdb.StartTransactionNG(): %v\n", err)
+			resp.Msg = "Error from mdb.StartTransactionNG()"
+			resp.Error = true
+			resp.ErrorMsg = err.Error()
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
+			return
 		}
 		defer func() {
-		      mdb.CloseTransactionNG(tx, err)
-		      err = json.NewEncoder(w).Encode(resp)
-		      if err != nil {
-		      	     log.Printf("Error from Encoder: %v\n", err)
-		      }
+			mdb.CloseTransactionNG(tx, err)
+			err = json.NewEncoder(w).Encode(resp)
+			if err != nil {
+				log.Printf("Error from Encoder: %v\n", err)
+			}
 		}()
 
 		log.Printf("APIsignergroup: received /signergroup request from %s.\n",
@@ -646,10 +646,10 @@ func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 		resp.SignerGroups = ss
 
 		w.Header().Set("Content-Type", "application/json")
-//		err = json.NewEncoder(w).Encode(resp)
-//		if err != nil {
-//			log.Printf("Error from Encoder: %v\n", err)
-//		}
+		//		err = json.NewEncoder(w).Encode(resp)
+		//		if err != nil {
+		//			log.Printf("Error from Encoder: %v\n", err)
+		//		}
 	}
 }
 

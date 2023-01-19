@@ -22,14 +22,16 @@ func (mdb *MusicDB) AddZone(tx *sql.Tx, z *Zone, group string, enginecheck chan 
 
 	fmt.Printf("AddZone: Zone: %v group: '%s'", z, group)
 
-	if tx == nil { panic("tx=nil") }
-//	var tx *sql.Tx
-//	localtx, tx, err := mdb.StartTransaction(tx)
-//	if err != nil {
-//		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
-//		return "fail", err
-//	}
-//	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	//	var tx *sql.Tx
+	//	localtx, tx, err := mdb.StartTransaction(tx)
+	//	if err != nil {
+	//		log.Printf("AddZone: Error from mdb.StartTransaction(): %v\n", err)
+	//		return "fail", err
+	//	}
+	//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	fqdn := dns.Fqdn(z.Name)
 	dbzone, _, err := mdb.GetZone(tx, fqdn)
@@ -72,14 +74,16 @@ VALUES (?, ?, ?, datetime('now'), ?, ?)`
 func (mdb *MusicDB) UpdateZone(tx *sql.Tx, dbzone, uz *Zone, enginecheck chan EngineCheck) (string, error) {
 	log.Printf("UpdateZone: zone: %v", uz)
 
-	if tx == nil { panic("tx=nil") }
-//	var tx *sql.Tx
-//	localtx, tx, err := mdb.StartTransaction(tx)
-//	if err != nil {
-//		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
-//		return "fail", err
-//	}
-//	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	//	var tx *sql.Tx
+	//	localtx, tx, err := mdb.StartTransaction(tx)
+	//	if err != nil {
+	//		log.Printf("UpdateZone: Error from mdb.StartTransaction(): %v\n", err)
+	//		return "fail", err
+	//	}
+	//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if uz.ZoneType != "" {
 		dbzone.ZoneType = uz.ZoneType
@@ -108,14 +112,16 @@ func (mdb *MusicDB) DeleteZone(tx *sql.Tx, z *Zone) (string, error) {
 		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
-	if tx == nil { panic("tx=nil") }
-//	var tx *sql.Tx
-//	localtx, tx, err := mdb.StartTransaction(tx)
-//	if err != nil {
-//		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
-//		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
-//	}
-//	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	//	var tx *sql.Tx
+	//	localtx, tx, err := mdb.StartTransaction(tx)
+	//	if err != nil {
+	//		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
+	//		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
+	//	}
+	//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	sg := z.SignerGroup()
 	if sg != nil {
@@ -175,13 +181,15 @@ func (z *Zone) SetStopReason(value string) (error, string) {
 func (z *Zone) SetDelayReason(tx *sql.Tx, value string, delay time.Duration) (string, error) {
 	mdb := z.MusicDB
 
-	if tx == nil { panic("tx=nil") }
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("SetDelayReason: Error from mdb.StartTransaction(): %v\n", err)
-// 		return "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("SetDelayReason: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return "fail", err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	msg, err := mdb.ZoneSetMeta(tx, z, "delay-reason", value)
 	if err != nil {
@@ -203,13 +211,15 @@ func (mdb *MusicDB) ZoneSetMeta(tx *sql.Tx, z *Zone, key, value string) (string,
 		return "", fmt.Errorf("Zone %s not present in MuSiC system.", z.Name)
 	}
 
-	if tx == nil { panic("tx=nil") }
-//	localtx, tx, err := mdb.StartTransaction(tx)
-//	if err != nil {
-//		log.Printf("ZoneSetMeta: Error from mdb.StartTransaction(): %v\n", err)
-//		return "fail", err
-//	}
-//	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	//	localtx, tx, err := mdb.StartTransaction(tx)
+	//	if err != nil {
+	//		log.Printf("ZoneSetMeta: Error from mdb.StartTransaction(): %v\n", err)
+	//		return "fail", err
+	//	}
+	//	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
 	_, err := tx.Exec(sqlq, z.Name, key, value)
@@ -265,13 +275,15 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	mdb := z.MusicDB
 	fsm := z.FSM
 
-	if tx == nil { panic("tx=nil") }
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("StateTransition: Error from mdb.StartTransaction(): %v\n", err)
-// 		return err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("StateTransition: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	fmt.Printf("This is %s StateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
 	if fsm == "" {
@@ -304,8 +316,8 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	return nil
 }
 
-func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool, error) {
-	zone, exists, err := mdb.GetZone(nil, zonename)
+func (mdb *MusicDB) ApiGetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {
+	zone, exists, err := mdb.GetZone(tx, zonename)
 	if err != nil {
 		return nil, false, err
 	}
@@ -316,14 +328,16 @@ func (mdb *MusicDB) ApiGetZone(zonename string) (*Zone, bool, error) {
 
 func (mdb *MusicDB) GetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {
 
-	if tx == nil { panic("tx=nil") }
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("GetZone: Error from mdb.StartTransaction(): %v\n", err)
-// 		// return err, "fail"
-// 		return nil, false, err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("GetZone: Error from mdb.StartTransaction(): %v\n", err)
+	// 		// return err, "fail"
+	// 		return nil, false, err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const qsql = `
 SELECT name, zonetype, state, fsmmode, COALESCE(statestamp, datetime('now')) AS timestamp,
@@ -387,13 +401,15 @@ FROM zones WHERE name=?`
 func (mdb *MusicDB) GetSignerGroupZones(tx *sql.Tx, sg *SignerGroup) ([]*Zone, error) {
 	var zones = []*Zone{}
 
-	if tx == nil { panic("tx=nil") }
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("GetSignerGroup: Error from mdb.StartTransaction(): %v\n", err)
-// 		return zones, err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("GetSignerGroup: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return zones, err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = `
 SELECT name, state, COALESCE(statestamp, datetime('now')) AS timestamp, fsm FROM zones WHERE sgroup=?`
@@ -458,7 +474,9 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 	var group *SignerGroup
 	var err error
 
-	if tx == nil { panic("tx=nil") }
+	if tx == nil {
+		panic("tx=nil")
+	}
 
 	if !dbzone.Exists {
 		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
@@ -484,12 +502,12 @@ func (mdb *MusicDB) ZoneJoinGroup(tx *sql.Tx, dbzone *Zone, g string,
 
 	}
 
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-// 		return "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return "fail", err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = "UPDATE zones SET sgroup=? WHERE name=?"
 
@@ -541,13 +559,15 @@ func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (string, 
 		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
 
-	if tx == nil { panic("tx=nil") }
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-// 		return "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return "fail", err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if _, err := mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
 		return "", err
@@ -578,14 +598,16 @@ const (
 func (mdb *MusicDB) ListZones(tx *sql.Tx) (map[string]Zone, error) {
 	var zl = make(map[string]Zone, 10)
 
-	if tx == nil { panic("tx=nil") }
-// 	var tx *sql.Tx
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-// 		return zl, err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	// 	var tx *sql.Tx
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return zl, err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = `
 SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
