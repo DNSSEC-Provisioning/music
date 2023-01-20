@@ -15,13 +15,28 @@ const (
 	FsmStateCsyncAdded     = "csync-added"
 	FsmStateParentNsSynced = "parent-ns-synced"
 	FsmStateNsesSynced     = "nses-synced"
-	//	FsmStateStop             = "stop"		// XXX: This state is defined in music package
+	// FsmStateStop             = "stop"		// XXX: This state is defined in music package
 
 	FsmStateSignersUnknown = "signers-unknown" // Only used in the VERIFY-ZONE-SYNC proc
 
 )
 
-var FsmGenericStop = music.FsmTransitionStopFactory(music.FsmStateStop)
+// Generic stop transition
+func FsmTransitionStopFactory(from string) music.FSMTransition {
+	return music.FSMTransition{
+		Description:  "Generic stop transition without criteria",
+		Criteria:     func(z *music.Zone) bool { return true },
+		PreCondition: func(z *music.Zone) bool { return true },
+		Action: func(z *music.Zone) bool {
+			// XXX: Cannot have a StateTransation() here w/o a tx
+			// z.StateTransition(nil, from, music.FsmStateStop)
+			return true
+		},
+		PostCondition: func(z *music.Zone) bool { return true },
+	}
+}
+
+var FsmGenericStop = FsmTransitionStopFactory(music.FsmStateStop)
 
 func NewFSMlist() map[string]music.FSM {
 	return FSMlist
@@ -97,14 +112,14 @@ DS and NS RRsets in the parent.`,
 			},
 			FsmStateParentNsSynced: music.FSMState{
 				Next: map[string]music.FSMTransition{
-					music.FsmStateStop: music.FsmTransitionStopFactory(FsmStateParentNsSynced),
+					music.FsmStateStop: FsmTransitionStopFactory(FsmStateParentNsSynced),
 				},
 			},
-			music.FsmStateStop: music.FSMState{
-				Next: map[string]music.FSMTransition{
-					music.FsmStateStop: FsmGenericStop,
-				},
-			},
+//			music.FsmStateStop: music.FSMState{
+// 				Next: map[string]music.FSMTransition{
+// 					music.FsmStateStop: FsmGenericStop,
+// 				},
+// 			},
 		},
 	},
 
@@ -143,11 +158,13 @@ as that would cause the attached zones to have to go unsigned.`,
 				Next: map[string]music.FSMTransition{FsmStateParentDsSynced: FsmLeaveParentDsSynced},
 			},
 			FsmStateParentDsSynced: music.FSMState{
-				Next: map[string]music.FSMTransition{music.FsmStateStop: music.FsmTransitionStopFactory(FsmStateParentDsSynced)},
+				Next: map[string]music.FSMTransition{
+				      music.FsmStateStop: FsmTransitionStopFactory(FsmStateParentDsSynced),
+				      },
 			},
-			music.FsmStateStop: music.FSMState{
-				Next: map[string]music.FSMTransition{music.FsmStateStop: FsmGenericStop},
-			},
+// 			music.FsmStateStop: music.FSMState{
+// 				Next: map[string]music.FSMTransition{music.FsmStateStop: FsmGenericStop},
+// 			},
 		},
 	},
 

@@ -229,36 +229,40 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	t FSMTransition) (bool, string, error) {
 
 	if tx == nil { panic("tx=nil") }
-	// mdb := z.MusicDB
+
 	currentstate := z.State
 
 	log.Printf("AttemptStateTransition: zone '%s' to state '%s'\n", z.Name, nextstate)
 
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("AttemptStateTransition: Error from mdb.StartTransaction(): %v\n", err)
-// 		// XXX: What is the correct thing to return here?
-// 		return false, "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
-
 	// If pre-condition(aka criteria)==true ==> execute action
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
+	log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PreCondition",
+                        z.Name, currentstate, nextstate)
 	if t.PreCondition(z) {
-		log.Printf("AttemptStateTransition: zone '%s'--> '%s': PreCondition: true\n", z.Name, nextstate)
+		log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PreCondition: true\n",
+				z.Name, currentstate, nextstate)
+		log.Printf("*** AttemptStateTransition(%s): '%s--->%s': ACTION",
+                                z.Name, currentstate, nextstate)
 		t.Action(z)                 //TODO XXX: catch return value
 		if t.PostCondition != nil { //TODO XXX: remove once we have post conditions everywhere.
+                       log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition",
+                                        z.Name, currentstate, nextstate)
 			postcond := t.PostCondition(z)
 			if postcond {
+			   	log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition: true",
+                                		z.Name, currentstate, nextstate)
 				z.StateTransition(tx, currentstate, nextstate) // success
+				log.Printf("*** AttemptStateTransition(%s): '%s--->%s': Transition complete",
+                                		z.Name, currentstate, nextstate)
 				return true,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate), nil
 			} else {
 				stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
 				if err != nil {
-					return false, fmt.Sprintf("Error retrieving metadata for zone %s", z.Name), err
+					return false, fmt.Sprintf("Error retrieving metadata for zone %s",
+					       z.Name), err
 				}
 				if exist {
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)

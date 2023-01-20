@@ -295,6 +295,7 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 			z.Name, z.State, from)
 	}
 
+	// XXX: This should not be needed anymore, but leaving it until we know new stop is robust.
 	if from == FsmStateStop && to == FsmStateStop {
 		log.Printf("StateTransition: terminal state reached. Exiting process.\n")
 		to = "---"

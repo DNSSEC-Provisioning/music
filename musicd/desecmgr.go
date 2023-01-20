@@ -54,7 +54,7 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 				fetchOpQueue = append(fetchOpQueue, op)
 
 			case <-fetch_ticker.C:
-				if cliconf.Debug {
+				if cliconf.Debug && len(fetchOpQueue) > 0 {
 					fmt.Printf("%v: deSEC fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
 						time.Now(), fetch_ops, len(fetchOpQueue))
 				}
@@ -107,7 +107,7 @@ func deSECmgr(conf *Config, done <-chan struct{}) {
 				// fmt.Printf("deSEC Mgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
-				if cliconf.Debug {
+				if cliconf.Debug && len(updateOpQueue) > 0 {
 					fmt.Printf("%v: deSEC update_ticker: Total ops last period: %d. Ops in queue: %d\n",
 						time.Now(), update_ops, len(updateOpQueue))
 				}

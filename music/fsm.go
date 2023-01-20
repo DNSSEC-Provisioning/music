@@ -3,13 +3,9 @@
  */
 package music
 
-import (
-	// "fmt"
-)
-
 const (
- 	FsmStateStop             = "stop"		// XXX: Yes, we need to keep this in the music package
-)
+ 	FsmStateStop             = "stop"	// XXX: Yes, we need to keep this in the music package
+)				   		//      because it is referred to from zoneops.go et al
 
 type FSMState struct {
 	Next map[string]FSMTransition
@@ -38,16 +34,3 @@ type FSM struct {
 	States       map[string]FSMState
 }
 
-// Generic stop transistion
-func FsmTransitionStopFactory(from string) FSMTransition {
-	return FSMTransition{
-		Description:  "Generic stop transition without criteria",
-		Criteria:     func(z *Zone) bool { return true },
-		PreCondition: func(z *Zone) bool { return true },
-		Action: func(z *Zone) bool {
-			z.StateTransition(nil, from, FsmStateStop)
-			return true
-		},
-		PostCondition: func(z *Zone) bool { return true },
-	}
-}

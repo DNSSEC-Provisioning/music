@@ -59,7 +59,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 				// fmt.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-fetch_ticker.C:
-				if cliconf.Debug {
+				if cliconf.Debug && len(fetchOpQueue) > 0 {
 					log.Printf("DDNS fetch_ticker: Total ops last period: %d. Ops in queue: %d\n",
 						fetch_ops, len(fetchOpQueue))
 				}
@@ -121,7 +121,7 @@ func ddnsmgr(conf *Config, done <-chan struct{}) {
 				// log.Printf("ddnsmgr: request for '%s %s'\n", op.Owner, dns.TypeToString[op.RRtype])
 
 			case <-update_ticker.C:
-				if cliconf.Debug {
+				if cliconf.Debug && len(updateOpQueue) > 0 {
 					log.Printf("DDNS update_ticker: Total ops last period: %d. Ops in queue: %d\n",
 						update_ops, len(updateOpQueue))
 				}
