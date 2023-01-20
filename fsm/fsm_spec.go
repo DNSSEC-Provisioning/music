@@ -24,15 +24,11 @@ const (
 // Generic stop transition
 func FsmTransitionStopFactory(from string) music.FSMTransition {
 	return music.FSMTransition{
-		Description:  "Generic stop transition without criteria",
-		Criteria:     func(z *music.Zone) bool { return true },
-		PreCondition: func(z *music.Zone) bool { return true },
-		Action: func(z *music.Zone) bool {
-			// XXX: Cannot have a StateTransation() here w/o a tx
-			// z.StateTransition(nil, from, music.FsmStateStop)
-			return true
-		},
-		PostCondition: func(z *music.Zone) bool { return true },
+		Description:    "Generic stop transition without criteria",
+		Criteria:     	func(z *music.Zone) bool { return true },
+		PreCondition: 	func(z *music.Zone) bool { return true },
+		Action:       	func(z *music.Zone) bool { return true },
+		PostCondition: 	func(z *music.Zone) bool { return true },
 	}
 }
 

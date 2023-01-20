@@ -115,14 +115,6 @@ func (mdb *MusicDB) DeleteZone(tx *sql.Tx, z *Zone) (string, error) {
 	if tx == nil {
 		panic("tx=nil")
 	}
-	//	var tx *sql.Tx
-	//	localtx, tx, err := mdb.StartTransaction(tx)
-	//	if err != nil {
-	//		log.Printf("DeleteZone: Error from mdb.StartTransaction(): %v\n", err)
-	//		return fmt.Sprintf("DeleteZone: Error creating transaction"), err
-	//	}
-	//	defer mdb.CloseTransaction(localtx, tx, err)
-
 	sg := z.SignerGroup()
 	if sg != nil {
 		_, err := mdb.ZoneLeaveGroup(tx, z, sg.Name)
@@ -278,13 +270,6 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	if tx == nil {
 		panic("tx=nil")
 	}
-	// 	localtx, tx, err := mdb.StartTransaction(tx)
-	// 	if err != nil {
-	// 		log.Printf("StateTransition: Error from mdb.StartTransaction(): %v\n", err)
-	// 		return err
-	// 	}
-	// 	defer mdb.CloseTransaction(localtx, tx, err)
-
 	fmt.Printf("This is %s StateTransition(%s-->%s) in process %s\n", z.Name, from, to, fsm)
 	if fsm == "" {
 		return fmt.Errorf("Zone %s is not currently in any ongoing process.", z.Name)
@@ -563,12 +548,6 @@ func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (string, 
 	if tx == nil {
 		panic("tx=nil")
 	}
-	// 	localtx, tx, err := mdb.StartTransaction(tx)
-	// 	if err != nil {
-	// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-	// 		return "fail", err
-	// 	}
-	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if _, err := mdb.GetSignerGroup(tx, g, false); err != nil { // not apisafe
 		return "", err
@@ -581,15 +560,23 @@ func (mdb *MusicDB) ZoneLeaveGroup(tx *sql.Tx, dbzone *Zone, g string) (string, 
 			dbzone.Name, g)
 	}
 
-	const sqlq = "UPDATE zones SET sgroup='' WHERE name=?"
+	const sqlq = "UPDATE zones SET sgroup='', state='', fsm='' WHERE name=?"
 
 	_, err := tx.Exec(sqlq, dbzone.Name)
 	if CheckSQLError("ZoneLeaveGroup", sqlq, err, false) {
 		return "", err
 	}
 
-	return fmt.Sprintf("Zone %s has left the signer group %s.",
-		dbzone.Name, sg.Name), nil
+	// -------
+	leavemsg := fmt.Sprintf("Zone %s has left the signer group %s.", dbzone.Name, sg.Name)
+	processcomplete, msg, err := mdb.CheckIfProcessComplete(tx, sg)
+	if err != nil {
+		return fmt.Sprintf("Error from CheckIfProcessComplete(): %v", err), err
+	}
+	if processcomplete {
+		return leavemsg + "\n" + msg, nil
+	}
+	return leavemsg, nil
 }
 
 const (
@@ -602,13 +589,6 @@ func (mdb *MusicDB) ListZones(tx *sql.Tx) (map[string]Zone, error) {
 	if tx == nil {
 		panic("tx=nil")
 	}
-	// 	var tx *sql.Tx
-	// 	localtx, tx, err := mdb.StartTransaction(tx)
-	// 	if err != nil {
-	// 		log.Printf("ZoneJoinGroup: Error from mdb.StartTransaction(): %v\n", err)
-	// 		return zl, err
-	// 	}
-	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = `
 SELECT name, zonetype, state, fsm, fsmmode, fsmstatus,
