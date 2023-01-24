@@ -100,6 +100,28 @@ func dbUpdater(conf *Config) {
 					}
 				}
 
+			case "INSERT-ZONE-DNSKEY":
+				for s, sl := range u.SignerNsNames {
+					for _, ns := range sl {
+						_, err := tx.Exec(IZNS, u.Zone, ns, s)
+						if err != nil {
+							if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+								// database is locked by other connection
+								log.Printf("RunDBQueue: INSERT-ZONE-NS db locked. will try again. queue: %d",
+									len(queue))
+								tx.Rollback()
+								return // let's try again later
+							} else {
+								log.Printf("RunDBQueue: INSERT-ZONE-NS Error from tx.Exec(%s): %v",
+									IZNS, err)
+								return
+							}
+						} else {
+							log.Printf("RunDBQueue: INSERT-ZONE-NS successful")
+						}
+					}
+				}
+
 			default:
 				log.Printf("RunDBQueue: Unknown update type: '%s'. Ignoring.", t)
 				// queue = queue[1:] // drop this item
