@@ -18,13 +18,15 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 	var msg string
 
-	if tx == nil { panic("tx=nil") }
-//	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneAttachFsm: Error from mdb.StartTransaction(): %v\n", err)
-// 		return "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	if tx == nil {
+		panic("tx=nil")
+	}
+	//	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("ZoneAttachFsm: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return "fail", err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	log.Printf("ZoneAttachFsm: zone: %s fsm: %s fsmsigner: '%s'", dbzone.Name, fsm, fsmsigner)
 	if !dbzone.Exists {
@@ -69,7 +71,9 @@ func (mdb *MusicDB) ZoneAttachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner string) (string, error) {
 
-	if tx == nil { panic("tx=nil") }
+	if tx == nil {
+		panic("tx=nil")
+	}
 	if !dbzone.Exists {
 		return "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
@@ -97,12 +101,12 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 			dbzone.Name, fsm, dbzone.FSM)
 	}
 
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneDetachFsm: Error from mdb.StartTransaction(): %v\n", err)
-// 		return "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
+	// 	localtx, tx, err := mdb.StartTransaction(tx)
+	// 	if err != nil {
+	// 		log.Printf("ZoneDetachFsm: Error from mdb.StartTransaction(): %v\n", err)
+	// 		return "fail", err
+	// 	}
+	// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	const sqlq = "UPDATE zones SET fsm=?, fsmsigner=?, state=? WHERE name=?"
 
@@ -119,7 +123,10 @@ func (mdb *MusicDB) ZoneDetachFsm(tx *sql.Tx, dbzone *Zone, fsm, fsmsigner strin
 
 func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (bool, string, error) {
 
-	if tx == nil { panic("tx=nil") }
+	log.Printf("$$$ ROG -> starting ZoneStepFsm with %v as tx", tx)
+	if tx == nil {
+		panic("tx=nil")
+	}
 	if !dbzone.Exists {
 		return false, "", fmt.Errorf("Zone %s unknown", dbzone.Name)
 	}
@@ -133,13 +140,6 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 	CurrentFsm := mdb.FSMlist[fsmname]
 
 	state := dbzone.State
-
-// 	localtx, tx, err := mdb.StartTransaction(tx)
-// 	if err != nil {
-// 		log.Printf("ZoneStepFsm: Error from mdb.StartTransaction(): %v\n", err)
-// 		return false, "fail", err
-// 	}
-// 	defer mdb.CloseTransaction(localtx, tx, err)
 
 	if state == FsmStateStop {
 		// 1. Zone leaves process
@@ -184,6 +184,7 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 	if len(CurrentState.Next) == 1 {
 		nextname := transitions[0]
 		t := CurrentState.Next[nextname]
+		log.Printf("$$$ ROG -> Heading into AttempStateTransition with %v as tx", tx)
 		success, msg, err := dbzone.AttemptStateTransition(tx, nextname, t)
 		// return dbzone.AttemptStateTransition(nextname, t)
 		log.Printf("ZoneStepFsm debug: result from AttemptStateTransition: success: %v, err: %v, msg: '%s'\n", success, err, msg)
@@ -228,7 +229,11 @@ func (mdb *MusicDB) ZoneStepFsm(tx *sql.Tx, dbzone *Zone, nextstate string) (boo
 func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	t FSMTransition) (bool, string, error) {
 
-	if tx == nil { panic("tx=nil") }
+	log.Printf("$$$ ROG -> Starting AttempStateTransition with %v as tx", tx)
+
+	if tx == nil {
+		panic("tx=nil")
+	}
 
 	currentstate := z.State
 
@@ -238,23 +243,24 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 	// If post-condition==true ==> change state.
 	// If post-condition==false ==> bump hold time
 	log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PreCondition",
-                        z.Name, currentstate, nextstate)
+		z.Name, currentstate, nextstate)
 	if t.PreCondition(z) {
 		log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PreCondition: true\n",
-				z.Name, currentstate, nextstate)
+			z.Name, currentstate, nextstate)
 		log.Printf("*** AttemptStateTransition(%s): '%s--->%s': ACTION",
-                                z.Name, currentstate, nextstate)
+			z.Name, currentstate, nextstate)
 		t.Action(z)                 //TODO XXX: catch return value
 		if t.PostCondition != nil { //TODO XXX: remove once we have post conditions everywhere.
-                       log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition",
-                                        z.Name, currentstate, nextstate)
+			log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition",
+				z.Name, currentstate, nextstate)
 			postcond := t.PostCondition(z)
 			if postcond {
-			   	log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition: true",
-                                		z.Name, currentstate, nextstate)
+				log.Printf("*** AttemptStateTransition(%s): '%s--->%s': PostCondition: true",
+					z.Name, currentstate, nextstate)
+				log.Printf("$$$ ROG -> running StateTransition with %v as tx", tx)
 				z.StateTransition(tx, currentstate, nextstate) // success
 				log.Printf("*** AttemptStateTransition(%s): '%s--->%s': Transition complete",
-                                		z.Name, currentstate, nextstate)
+					z.Name, currentstate, nextstate)
 				return true,
 					fmt.Sprintf("Zone %s transitioned from '%s' to '%s'",
 						z.Name, currentstate, nextstate), nil
@@ -262,7 +268,7 @@ func (z *Zone) AttemptStateTransition(tx *sql.Tx, nextstate string,
 				stopreason, exist, err := z.MusicDB.GetMeta(tx, z, "stop-reason")
 				if err != nil {
 					return false, fmt.Sprintf("Error retrieving metadata for zone %s",
-					       z.Name), err
+						z.Name), err
 				}
 				if exist {
 					stopreason = fmt.Sprintf(" Current stop reason: %s", stopreason)

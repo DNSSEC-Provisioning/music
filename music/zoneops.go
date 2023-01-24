@@ -267,6 +267,8 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 	mdb := z.MusicDB
 	fsm := z.FSM
 
+	log.Printf("$$$ ROG -> Starting StateTransition with %v as tx", tx)
+
 	if tx == nil {
 		panic("tx=nil")
 	}
@@ -287,9 +289,10 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 		fsm = "---"
 	}
 
+	log.Printf("$$$ ROG -> updating DB  with %v as tx, to status: %s, fsm: %s, zone: %s", tx, to, fsm, z.Name)
 	_, err := tx.Exec("UPDATE zones SET state=?, fsm=?, fsmstatus=? WHERE name=?", to, fsm, "", z.Name)
 	if err != nil {
-		log.Printf("StateTransition: Error from tx.Exec(): %v\n", err)
+		log.Printf("$$$ StateTransition: Error from tx.Exec(): %v\n", err)
 		return err
 	}
 	_, err = mdb.ZoneSetMeta(tx, z, "stop-reason", "") // remove old stop-reason if there
@@ -297,9 +300,10 @@ func (z *Zone) StateTransition(tx *sql.Tx, from, to string) error {
 		log.Printf("StateTransition: Error from ZoneSetMeta: %v\n", err)
 		return err
 	}
+	// XXX TODO: this is not correct it should only trigger if we have no error
 	log.Printf("Zone %s transitioned from %s to %s in process %s", z.Name, from, to, fsm)
-
 	return nil
+	//}
 }
 
 func (mdb *MusicDB) ApiGetZone(tx *sql.Tx, zonename string) (*Zone, bool, error) {

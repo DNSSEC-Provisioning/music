@@ -169,14 +169,17 @@ func NewDB(dbfile, dbmode string, force bool) (*MusicDB, error) {
 }
 
 func (mdb *MusicDB) Query(sqlq string, args ...interface{}) (*sql.Rows, error) {
+	log.Printf("~~~~~$$$ ROG Query ->  %s", sqlq)
 	return mdb.db.Query(sqlq, args...)
 }
 
 func (mdb *MusicDB) Exec(sqlq string, args ...interface{}) (sql.Result, error) {
+	log.Printf("$~~~~~$$ ROG Exec ->  %s", sqlq)
 	return mdb.db.Exec(sqlq, args...)
 }
 
 func (mdb *MusicDB) Prepare(sqlq string) (*sql.Stmt, error) {
+	log.Printf("$~~~~~$$ ROG Prepare ->  %s", sqlq)
 	return mdb.db.Prepare(sqlq)
 }
 
@@ -239,26 +242,26 @@ func (mdb *MusicDB) CloseTransaction(localtx bool, tx *sql.Tx, err error) {
 }
 
 func (mdb *MusicDB) CloseTransactionNG(tx *sql.Tx, err error) {
-//	if localtx {
+	//	if localtx {
+	if err != nil {
+		// Rollback path
+		err := tx.Rollback()
 		if err != nil {
-			// Rollback path
-			err := tx.Rollback()
-			if err != nil {
-				log.Printf("Error from tx.Rollback(): %v", err)
-			}
-		} else {
-			// Commit path
-			err := tx.Commit()
-			if err != nil {
-				log.Printf("Error from tx.Commit(): %v", err)
-			}
+			log.Printf("Error from tx.Rollback(): %v", err)
 		}
-//	} else {
-		// not a localtx, so we mustn't txRollback(), nor tx.Commit()
-		// But how to signal back what we *would* have done, had it been a localtx?
-		// Perhaps not our problem? err != nil and it's the callers problem?
-		// return err
-//	}
+	} else {
+		// Commit path
+		err := tx.Commit()
+		if err != nil {
+			log.Printf("Error from tx.Commit(): %v", err)
+		}
+	}
+	//	} else {
+	// not a localtx, so we mustn't txRollback(), nor tx.Commit()
+	// But how to signal back what we *would* have done, had it been a localtx?
+	// Perhaps not our problem? err != nil and it's the callers problem?
+	// return err
+	//	}
 	return
 }
 

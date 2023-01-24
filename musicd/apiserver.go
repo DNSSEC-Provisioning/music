@@ -333,6 +333,7 @@ func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 				// err, resp.Msg, zones = mdb.ZoneStepFsm(nil, dbzone, zp.FsmNextState)
 				// log.Printf("APISERVER: STEP-FSM: Calling ZoneStepFsm for zone %s and %v\n", dbzone.Name, zp.FsmNextState)
 				var success bool
+				log.Printf("$$$ ROG-> calling mdb.ZoneStepFsm with %v as tx", tx)
 				success, resp.Msg, err = mdb.ZoneStepFsm(tx, dbzone, zp.FsmNextState)
 				if err != nil {
 					log.Printf("APISERVER: Error from ZoneStepFsm: %v", err)
