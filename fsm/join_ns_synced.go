@@ -115,6 +115,7 @@ func JoinSyncNs(z *music.Zone) bool {
 	}
 
 	nses := make(map[string][]*dns.NS)
+	signer_nsnames := make(map[string][]string)
 
 	for _, signer := range z.SGroup.SignerMap {
 		updater := music.GetUpdater(signer.Method)
@@ -126,8 +127,9 @@ func JoinSyncNs(z *music.Zone) bool {
 		}
 
 		nses[signer.Name] = []*dns.NS{}
+		signer_nsnames[signer.Name] = []string{}
 
-		const sqlq = "INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)"
+//		const sqlq = "INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)"
 
 		for _, a := range rrs {
 			ns, ok := a.(*dns.NS)
@@ -136,19 +138,21 @@ func JoinSyncNs(z *music.Zone) bool {
 			}
 
 			nses[signer.Name] = append(nses[signer.Name], ns)
+			signer_nsnames[signer.Name] = append(signer_nsnames[signer.Name], ns.Ns)
 
 			// XXX: Should wrap this in a transaction
-			res, err := z.MusicDB.Exec(sqlq, z.Name, ns.Ns, signer.Name)
-			if err != nil {
-				log.Printf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err)
-				return false
-			}
-			rows, _ := res.RowsAffected()
-			if rows > 0 {
-				log.Printf("%s: Origin for %s set to %s", z.Name, ns.Ns, signer.Name)
-			}
+//			res, err := z.MusicDB.Exec(sqlq, z.Name, ns.Ns, signer.Name)
+//			if err != nil {
+//				log.Printf("%s: db.Exec (%s) failed: %s", z.Name, sqlq, err)
+//				return false
+//			}
+//			rows, _ := res.RowsAffected()
+//			if rows > 0 {
+//				log.Printf("%s: Origin for %s set to %s", z.Name, ns.Ns, signer.Name)
+//			}
 		}
 	}
+	z.SetSignerNsNames(signer_nsnames) // replaces the SQL stuff above
 
 	log.Printf("%s: Creating NS record sets", z.Name)
 

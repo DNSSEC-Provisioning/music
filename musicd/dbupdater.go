@@ -22,18 +22,10 @@ func dbUpdater(conf *Config) {
 	dbupdateC := make(chan music.DBUpdate, 5)
 	mdb.UpdateC = dbupdateC
 
-	const ZSMsql = "INSERT OR REPLACE INTO metadata (zone, key, time, value) VALUES (?, ?, datetime('now'), ?)"
-
-//	mstmt, err := mdb.Prepare(ZSMsql)
-//	if err != nil {
-//		log.Fatalf("dbUpdater: Error from mdb.Prepare(%s) 1: %v\n", ZSMsql, err)
-//	}
-
+	const ZSMsql = `INSERT OR REPLACE INTO metadata (zone, key, time, value)
+	      	        VALUES (?, ?, datetime('now'), ?)`
 	const DSsql = "UPDATE zones SET fsmstatus='blocked' WHERE name=?"
-//	blockstmt, err1 := mdb.Prepare(DSsql)
-//	if err1 != nil {
-//		log.Fatalf("dbUpdater: Error from db.Prepare(%s): %v", DSsql, err)
-//	}
+	const IZNS = `INSERT OR IGNORE INTO zone_nses (zone, ns, signer) VALUES (?, ?, ?)`
 
 	ticker := time.NewTicker(2 * time.Second)
 
@@ -57,7 +49,6 @@ func dbUpdater(conf *Config) {
 
 			switch t {
 			case "STOPREASON":
-				// _, err := tx.Stmt(mstmt).Exec(u.Zone, u.Key, u.Value)
 				_, err := tx.Exec(ZSMsql, u.Zone, u.Key, u.Value)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
@@ -72,7 +63,6 @@ func dbUpdater(conf *Config) {
 						return
 					}
 				}
-				// _, err = tx.Stmt(blockstmt).Exec(u.Zone)
 				_, err = tx.Exec(DSsql, u.Zone)
 				if err != nil {
 					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
@@ -87,13 +77,39 @@ func dbUpdater(conf *Config) {
 						return
 					}
 				}
+
+			case "INSERT-ZONE-NS":
+				for s, sl := range u.SignerNsNames {
+					for _, ns := range sl {
+						_, err := tx.Exec(IZNS, u.Zone, ns, s)
+						if err != nil {
+							if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+								// database is locked by other connection
+								log.Printf("RunDBQueue: INSERT-ZONE-NS db locked. will try again. queue: %d",
+									len(queue))
+								tx.Rollback()
+								return // let's try again later
+							} else {
+								log.Printf("RunDBQueue: INSERT-ZONE-NS Error from tx.Exec(%s): %v",
+									IZNS, err)
+								return
+							}
+						} else {
+							log.Printf("RunDBQueue: INSERT-ZONE-NS successful")
+						}
+					}
+				}
+
+			default:
+				log.Printf("RunDBQueue: Unknown update type: '%s'. Ignoring.", t)
+				// queue = queue[1:] // drop this item
 			}
 
 			err = tx.Commit()
 			if err != nil {
 				log.Printf("dbUpdater: RunQueue: Error from tx.Commit: %v", err)
 			} else {
-				log.Printf("dbUpdater: Updated zone %s stop-reason to '%s'", u.Zone, u.Value)
+				log.Printf("dbUpdater: Update %s committed", t)
 				queue = queue[1:] // only drop item after successful commit
 			}
 		}

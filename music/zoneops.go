@@ -169,6 +169,32 @@ func (z *Zone) SetStopReason(value string) (error, string) {
 	return nil, fmt.Sprintf("Zone %s stop-reason documented as '%s'", z.Name, value)
 }
 
+func (z *Zone) SetSignerNsNames(ns_names map[string][]string) (error, string) {
+	mdb := z.MusicDB
+
+	mdb.UpdateC <- DBUpdate{
+		Type:  "INSERT-ZONE-NS",
+		Zone:  z.Name,
+		SignerNsNames:	ns_names,
+	}
+
+	log.Printf("%s: Inserted new NS names for %d signers", z.Name, len(ns_names))
+	return nil, fmt.Sprintf("Zone %s signer NS names updated", z.Name)
+}
+
+func (z *Zone) SetSignerDnskeys(signer_dnskeys map[string][]string) (error, string) {
+	mdb := z.MusicDB
+
+	mdb.UpdateC <- DBUpdate{
+		Type:  "INSERT-ZONE-DNSKEYS",
+		Zone:  z.Name,
+		SignerDNSKEYs:	signer_dnskeys,
+	}
+
+	log.Printf("%s: Inserted new DNSKEYs for %d signers", z.Name, len(signer_dnskeys))
+	return nil, fmt.Sprintf("Zone %s signer DNSKEYs updated", z.Name)
+}
+
 // XXX: SetDelayReason is not yet in use, but is needed for the wait-for-parent-ds stuff
 func (z *Zone) SetDelayReason(tx *sql.Tx, value string, delay time.Duration) (string, error) {
 	mdb := z.MusicDB

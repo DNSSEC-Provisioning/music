@@ -40,23 +40,22 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 		return true
 	}
 
+	signer_dnskeys := make(map[string][]string)
+
 	for _, s := range z.SGroup.SignerMap {
 		log.Printf("JoinSyncDnskeys: signer: %s\n", s.Name)
 		updater := music.GetUpdater(s.Method)
 		log.Printf("JoinSyncDnskeys: Using FetchRRset interface:\n")
 		err, rrs := updater.FetchRRset(s, z.Name, z.Name, dns.TypeDNSKEY)
 		if err != nil {
-			// stopreason := fmt.Sprintf("Error from updater.FetchRRset: %v\n", err)
-			// err, _ = z.MusicDB.ZoneSetMeta(z, "stop-reason", stopreason)
-			// log.Printf("%s\n", stopreason)
-			// err, _ = z.SetStopReason(fmt.Sprintf("Error from updater.FetchRRset: %v\n", err))
 			err, _ = z.SetStopReason(err.Error())
 			return false
 		}
 
 		dnskeys[s.Name] = []*dns.DNSKEY{}
+		signer_dnskeys[s.Name] = []string{}
 
-		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
+//		const sqlq = "INSERT OR IGNORE INTO zone_dnskeys (zone, dnskey, signer) VALUES (?, ?, ?)"
 		for _, a := range rrs {
 			dnskey, ok := a.(*dns.DNSKEY)
 			if !ok {
@@ -66,18 +65,20 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 			dnskeys[s.Name] = append(dnskeys[s.Name], dnskey)
 
 			if f := dnskey.Flags & 0x101; f == 256 || f == 257 {
-				res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s",
-					dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
-				if err != nil {
-					log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s",
-						z.Name, err)
-					return false
-				}
-				rows, _ := res.RowsAffected()
-				if rows > 0 {
-					log.Printf("JoinSyncDnskeys: %s: Origin for %s set to %s",
-						z.Name, dnskey.PublicKey, s.Name)
-				}
+//				res, err := z.MusicDB.Exec(sqlq, z.Name, fmt.Sprintf("%d-%d-%s",
+//					dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey), s.Name)
+				signer_dnskeys[s.Name] = append(signer_dnskeys[s.Name], fmt.Sprintf("%d-%d-%s",
+					dnskey.Protocol, dnskey.Algorithm, dnskey.PublicKey))
+//				if err != nil {
+//					log.Printf("JoinSyncDnskeys: %s: Statement execute failed: %s",
+//						z.Name, err)
+//					return false
+//				}
+//				rows, _ := res.RowsAffected()
+//				if rows > 0 {
+//					log.Printf("JoinSyncDnskeys: %s: Origin for %s set to %s",
+//						z.Name, dnskey.PublicKey, s.Name)
+//				}
 			}
 		}
 
@@ -99,6 +100,8 @@ func JoinSyncDnskeys(z *music.Zone) bool {
 			log.Printf("JoinSyncDnskeys: %s: No DNSKEYs found in %s", z.Name, s.Name)
 		}
 	}
+
+	z.SetSignerDnskeys(signer_dnskeys) // replaces the sql stuff above
 
 	// for each signer, check every other_signer if it's missing signer's DNSKEYs
 	keysToSync := map[string][]dns.RR{}
