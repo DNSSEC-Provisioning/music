@@ -152,24 +152,27 @@ func main() {
 	conf.Internal.Processes = fsml
 	conf.Internal.MusicDB.FSMlist = fsml
 
-	// deSEC stuff
-	conf.Internal.DesecFetch = make(chan music.SignerOp, 100)
-	conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
 	conf.Internal.DdnsFetch = make(chan music.SignerOp, 100)
 	conf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
 
-	rootcafile := viper.GetString("common.rootCA")
-	desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
-	if err != nil {
-		log.Fatalf("Error from DesecSetupClient: %v\n", err)
-	}
-	desecapi.TokViper = tokvip
+	// deSEC stuff
+	if viper.GetBool("signers.desec.enabled") {
+		conf.Internal.DesecFetch = make(chan music.SignerOp, 100)
+		conf.Internal.DesecUpdate = make(chan music.SignerOp, 100)
 
-	rldu := music.Updaters["rldesec-api"]
-	rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
-	rldu.SetApi(*desecapi)
-	du := music.Updaters["desec-api"]
-	du.SetApi(*desecapi) // it is ok to reuse the same object here
+		rootcafile := viper.GetString("common.rootCA")
+		desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
+		if err != nil {
+			log.Fatalf("Error from DesecSetupClient: %v\n", err)
+		}
+		desecapi.TokViper = tokvip
+
+		rldu := music.Updaters["rldesec-api"]
+		rldu.SetChannels(conf.Internal.DesecFetch, conf.Internal.DesecUpdate)
+		rldu.SetApi(*desecapi)
+		du := music.Updaters["desec-api"]
+		du.SetApi(*desecapi) // it is ok to reuse the same object here
+	}
 
 	rlddu := music.Updaters["rlddns"]
 	rlddu.SetChannels(conf.Internal.DdnsFetch, conf.Internal.DdnsUpdate)
@@ -178,7 +181,9 @@ func main() {
 
 	go dbUpdater(&conf)
 	go APIdispatcher(&conf)
-	go deSECmgr(&conf, done)
+	if viper.GetBool("signers.desec.enabled") {
+		go deSECmgr(&conf, done)
+	}
 	go ddnsmgr(&conf, done)
 	go FSMEngine(&conf, done)
 
