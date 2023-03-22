@@ -18,6 +18,7 @@ signers:
          fetch:	   5
          update:   2
    desec:
+      enabled:     true # Set to false disable desec plugin.
       email:       johan.stenstam@internetstiftelsen.se
       password:    Blurg99,123
       baseurl:     https://desec.io/api/v1
