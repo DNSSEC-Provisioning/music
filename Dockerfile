@@ -24,5 +24,5 @@ WORKDIR /src/music/musicd/
 RUN make && make install
 
 
-CMD ["/sbin/musicd"]
+CMD ["/usr/local/bin/musicd"]
 #CMD ["/bin/bash", "--login"]

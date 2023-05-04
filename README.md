@@ -14,28 +14,80 @@ Internet Draft. Based on the following RFCs:
 ## W.I.P
 ### Requirements:
 * Working golang installation
+* Working docker if you want to run musicd in a container
 
-### Download and Install MUSIC 
+### Download and Install musicd and music-cli locally
 
 This is just enough to get MUSIC up and running.
 
-```
+#### Clone the repository
+``` bash
 
 git clone git@github.com:DNSSEC-Provisioning/music.git
 cd music
-
-make all
-
-cd musicd
-make
-make install
-
-cd ../music-cli 
-make
-make install
-
 ```
 
+#### Create and install the certificates for client and server
+``` bash
+sudo make install
+```
+
+#### Build and install the server and standard config files
+``` bash
+cd musicd
+make
+sudo make install
+```
+
+#### Build and install the music cli client and config files for a local musicd server
+``` bash
+cd ../music-cli 
+make
+sudo make install-local
+```
+
+### Download and Install musicd in a container and music-cli locally
+
+This is just enough to get MUSIC up and running.
+
+#### Clone the repository
+``` bash
+
+git clone git@github.com:DNSSEC-Provisioning/music.git
+cd music
+```
+
+#### Create and install the certificates for client and server and the config files for the server
+``` bash
+cd musictest
+make certs
+make musicd.conf
+```
+
+#### Build the musicd container 
+``` bash
+cd ..
+docker build -t dockermusic .
+```
+
+#### Build and install the music cli client and config files for a containerized musicd server
+``` bash
+cd music-cli 
+make
+sudo make install-docker
+```
+
+
+#### Run the server
+``` bash
+cd ..
+docker compose up
+```
+
+#### Use the music cli to check that it works from another terminal window
+``` bash
+music-cli ping
+```
 ## Configure MUSIC
 
 * By default MUSIC uses config files located in-tree, in the directory
