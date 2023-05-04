@@ -1,4 +1,4 @@
-PROG:=../sbin/music-cli
+PROG:=music-cli
 CONFIG:=music-cli.yaml
 COMMIT:=$(shell git describe --dirty=+WiP --always)
 VERSION=$(shell cat ./VERSION)
@@ -28,10 +28,15 @@ arm64:
 build:
 	GOARCH=amd64 $(GO) build $(GOFLAGS) -o ${PROG}
 
-install:
-	@mkdir -p ../etc ../sbin
-#	install -s -b ${PROG} ../sbin/
-	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
+install-local:
+	@mkdir -p /etc/music/conf /usr/local/bin
+	install ${PROG} /usr/local/bin/
+	if [ ! -e /etc/music/conf/${CONFIG} ] ; then install -c ${CONFIG}.local /etc/music/conf/${CONFIG}; fi
+
+install-docker:
+	@mkdir -p /etc/music/conf /usr/local/bin
+	install ${PROG} /usr/local/bin
+	if [ ! -e /etc/music/conf/${CONFIG} ] ; then install -c ${CONFIG}.docker /etc/music/conf/${CONFIG}; fi
 
 test:
 	$(GO) test -v -cover
