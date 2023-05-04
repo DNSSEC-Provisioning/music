@@ -1,0 +1,12 @@
+---
+version: '3'
+services:
+  dockermusic:
+    hostname: dockermusic
+    container_name: dockermusic
+    image: "dockermusic"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./musictest/etc:/etc/music"
+    tty: true

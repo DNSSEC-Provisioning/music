@@ -1,4 +1,4 @@
-PROG:=../sbin/scanner
+PROG:=/sbin/scanner
 CONFIG:=scanner.yaml
 
 VERSION:=$(shell git describe --dirty=+WiP --always)

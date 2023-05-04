@@ -4,7 +4,5 @@
 package main
 
 const (
-	// DefaultCfgFile = "/etc/music/musicd.yaml"
-	// This is not stable or robust (but good for testing):
-	DefaultCfgFile = "../etc/musicd.yaml"
+	DefaultCfgFile = "/etc/music/conf/musicd.yaml"
 )

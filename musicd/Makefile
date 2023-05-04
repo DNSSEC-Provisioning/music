@@ -1,4 +1,4 @@
-PROG:=../sbin/musicd
+PROG:=musicd
 CONFIG:=musicd.yaml
 DB:=/var/tmp/music.db
 
@@ -16,14 +16,15 @@ default: ${PROG}
 ${PROG}: build
 
 build:	
-	$(GO) build $(GOFLAGS) -o ${PROG}
+	$(GO) build $(GOFLAGS) -o ${PROG} 
 
 install: ${PROG}
-	@mkdir -p ../etc ../sbin
-	@touch ../etc/musicd.tokens.yaml
+	@mkdir -p /etc/music/conf /etc/music/certs  /usr/local/bin
+	@touch /etc/music/conf/musicd.tokens.yaml
 	@touch ${DB}
-	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
-	if [ ! -e ../etc/certs/PublicRootCAs.pem ] ; then install -c PublicRootCAs.pem ../etc/certs/; fi
+	install ${PROG} /usr/local/bin
+	if [ ! -e /etc/music/conf/${CONFIG} ] ; then install -c ${CONFIG}.sample /etc/music/conf/${CONFIG}; fi
+	if [ ! -e /etc/music/certs/PublicRootCAs.pem ] ; then install -c PublicRootCAs.pem /etc/music/certs/; fi
 
 test:
 	$(GO) test -v -cover
