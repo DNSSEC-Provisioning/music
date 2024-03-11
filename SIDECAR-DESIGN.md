@@ -50,25 +50,25 @@ signers in a signer group is a local and typically static configuration. Therefo
   a deadlock (if the signer is being removed because it is no 
   longer functioning properly).
 
-### REQUEST-TRANSITION <protocol, transition-id, zone, details>
+### REQUEST-TRANSITION <process, transition-id, zone, details>
 	
 	A signer issues a REQUEST-TRANSITION when something has 
 	happened locally (either config change or signer change) that 
 	requires the state transition.
 	
-### APPROVE-TRANSITION <protocol, transition-id, zone>
+### APPROVE-TRANSITION <process, transition-id, zone>
 
 	A signer issues an APPROVE-TRANSITION when the requested 
 	transition has been evaluated and verified not to conflict 
 	with the FSM for the zone.
 	
-### EXECUTE-TRANSITION <protocol, transition-id, zone>
+### EXECUTE-TRANSITION <process, transition-id, zone>
 
 	The initiating signer issues an EXECUTE-TRANSITION after all 
 	other signers in the signer group have sent an 
 	APPROVE-TRANSITION.
 	
-### TRANSITION-DONE <protocol, transition-id, zone>
+### TRANSITION-DONE <process, transition-id, zone>
 
 	Each signer confirms having executed the specified transition 
 	in the state machine for the zone.
