@@ -9,7 +9,7 @@ draft-wisser-dnssec-automation-02 and different to the first
 implementation done (multi-signer-controller). There are several
 observations to be made regarding the adaptions:
 
-1. The draft is writter from the POV of a zone being under the control
+1. The draft is written from the POV of a zone being under the control
    of a "multi signer group" and then a signer typically joins the
    group or leaves the group. Once the changes needed to deal with the
    new set of signers is complete the process is done and an end state
@@ -74,11 +74,11 @@ observations to be made regarding the adaptions:
    is the "Next" field which is a map[string]FSMTransition{} with each
    possible "next" state as keys in the map.
 
-   The FSMTransistion has two func (z *Zone) bool, called "criteria"
-   and "action" as the most important parts. Criteria is executed when
-   stepping the FSM (automatically or manually). If "criteria" returns
-   true then the zone transitions to the next state and the "action"
-   is executed.
+   An FSMTransition has three func (z *Zone) bool, called "PreCondition",
+   "Action" and "PostCondition" as the most important parts. PreCondition is
+   executed when stepping the FSM (automatically or manually). If "PreCondtion"
+   returns true then the zone transitions to the next state and "Action" is
+   executed. After that PostCondition is evaluated.
 
    At present it would be possible to more or less collapse the
    FSMState{} struct to nothing and only keep the FSMTransition{} as
@@ -86,7 +86,7 @@ observations to be made regarding the adaptions:
    moment until we know if we need to associate "actions" also to
    "states" and not only to "transitions".
 
-5. In multi-signer-controller a few steps were swapped.
+6. In multi-signer-controller a few steps were swapped.
 
    In joining a signer the first for multi-signer-controller were to
    add ZSK for each signer to all signers, then proceed with the CDS/
