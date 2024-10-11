@@ -449,7 +449,7 @@ func NewClient(name, baseurl, apikey, authmethod,
 	} else {
 		rootCAPool := x509.NewCertPool()
 		// rootCA, err := ioutil.ReadFile(viper.GetString("musicd.rootCApem"))
-		rootCA, err := ioutil.ReadFile(rootcafile)
+		rootCA, err := os.ReadFile(rootcafile)
 		if err != nil {
 			log.Fatalf("reading cert failed : %v", err)
 		}

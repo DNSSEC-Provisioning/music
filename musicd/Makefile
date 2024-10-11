@@ -1,22 +1,24 @@
-PROG:=../sbin/musicd
+PROG:=musicd
+
 CONFIG:=musicd.yaml
 DB:=/var/tmp/music.db
 
-VERSION:=$(shell git describe --dirty=+WiP --always)
-GOFLAGS:=-v -ldflags "-X app.version=$(VERSION) -v"
+# VERSION:=$(shell git describe --dirty=+WiP --always)
+# GOFLAGS:=-ldflags "-X app.version=$(VERSION) -v"
 
-GOOS ?= $(shell uname -s | tr A-Z a-z)
-GOARCH:=amd64
+# GOOS ?= $(shell uname -s | tr A-Z a-z)
 
 # GO:=GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 go
-GO:=GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=1 go
+GO:=CGO_ENABLED=1 go
 
-default: ${PROG}
+include ../utils/Makefile.common
 
-${PROG}: build
+# default: ${PROG}
 
-build:	
-	$(GO) build $(GOFLAGS) -o ${PROG}
+# ${PROG}: build
+
+# build:	
+# 	$(GO) build $(GOFLAGS) -o ${PROG}
 
 install: ${PROG}
 	@mkdir -p ../etc ../sbin
@@ -25,11 +27,11 @@ install: ${PROG}
 	if [ ! -e ../etc/${CONFIG} ] ; then install -c ${CONFIG}.sample ../etc/${CONFIG}; fi
 	if [ ! -e ../etc/certs/PublicRootCAs.pem ] ; then install -c PublicRootCAs.pem ../etc/certs/; fi
 
-test:
-	$(GO) test -v -cover
+# test:
+#	$(GO) test -v -cover
 
-clean:
-	@rm -f $(PROG)
+# clean:
+# 	@rm -f $(PROG)
 
-.PHONY: build clean generate
+# .PHONY: build clean generate
 

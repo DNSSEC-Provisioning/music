@@ -2,6 +2,8 @@ CERTDIR:=etc/certs
 
 all:
 	@if [ ! -e ${CERTDIR}/RootCA.crt ] ; then make certs; fi
+	$(MAKE) -C sidecar
+	$(MAKE) -C sidecar-cli
 	$(MAKE) -C musicd
 	$(MAKE) -C music-cli
 	$(MAKE) -C scanner

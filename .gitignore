@@ -1,3 +1,5 @@
+sidecar/music-sidecar
+sidecar-cli/sidecar-cli
 music-cli/music-cli
 music-cli/.music-cli.yaml
 music-cli/.desectokens.yaml
@@ -10,3 +12,5 @@ musicd/musicd
 *~
 music.db
 notes.txt
+version.go
+sidecar/music-sidecar
