@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"github.com/go-playground/validator/v10"
+	tdns "github.com/johanix/tdns/tdns"
 	"github.com/spf13/viper"
 	// "github.com/DNSSEC-Provisioning/music/music"
 	// "github.com/DNSSEC-Provisioning/music/signer"
@@ -24,6 +25,11 @@ type Config struct {
 	Common    CommonConf
 	Internal  InternalConf
 	FSMEngine FSMEngineConf
+	Zones     ZonesConf
+}
+
+type ZonesConf struct {
+	Config string `validate:"file"` // not required
 }
 
 type ApiServerConf struct {
@@ -81,15 +87,16 @@ type CommonConf struct {
 // Internal stuff that we want to be able to reach via the Config struct, but are not
 // represented in the yaml config file.
 type InternalConf struct {
-	APIStopCh   chan struct{}
-	EngineCheck chan EngineCheck
-	MusicDB     *MusicDB
-	TokViper    *viper.Viper
-	DesecFetch  chan SignerOp
-	DesecUpdate chan SignerOp
-	DdnsFetch   chan SignerOp
-	DdnsUpdate  chan SignerOp
-	Processes   map[string]FSM
+	APIStopCh        chan struct{}
+	EngineCheck      chan EngineCheck
+	MusicDB          *MusicDB
+	TokViper         *viper.Viper
+	DesecFetch       chan SignerOp
+	DesecUpdate      chan SignerOp
+	DdnsFetch        chan SignerOp
+	DdnsUpdate       chan SignerOp
+	Processes        map[string]FSM
+	MultiSignerSyncQ chan tdns.MultiSignerSyncRequest
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile, appMode string, safemode bool) error {
