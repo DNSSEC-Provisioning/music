@@ -25,8 +25,9 @@ import (
 )
 
 // yes, this must be global
-var tokvip *viper.Viper
-var cliconf = music.CliConfig{}
+// var tokvip *viper.Viper
+
+// var cliconf = music.CliConfig{}
 
 // var appVersion string
 var appMode string
@@ -133,24 +134,24 @@ func LoadMusicConfig(mconf *music.Config, appMode string, safemode bool) error {
 		return err
 	}
 
-	tokvip = viper.New()
+	music.TokVip = viper.New()
 	var tokenfile string
 	if viper.GetString("common.tokenfile") != "" {
 		tokenfile = viper.GetString("common.tokenfile")
 	}
 
-	tokvip.SetConfigFile(tokenfile)
-	err = tokvip.ReadInConfig()
+	music.TokVip.SetConfigFile(tokenfile)
+	err = music.TokVip.ReadInConfig()
 	if err != nil {
 		log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
 	} else {
-		if cliconf.Verbose {
-			fmt.Println("Using token store file:", tokvip.ConfigFileUsed())
+		if music.CliConf.Verbose {
+			fmt.Println("Using token store file:", music.TokVip.ConfigFileUsed())
 		}
 	}
 
-	cliconf.Verbose = viper.GetBool("common.verbose")
-	cliconf.Debug = viper.GetBool("common.debug")
+	music.CliConf.Verbose = viper.GetBool("common.verbose")
+	music.CliConf.Debug = viper.GetBool("common.debug")
 
 	return nil
 }
@@ -226,6 +227,7 @@ func main() {
 	tconf.Internal.NotifyQ = make(chan tdns.NotifyRequest, 10)
 	go tdns.Notifier(tconf.Internal.NotifyQ)
 
+	mconf.Internal.HeartbeatQ = make(chan music.Heartbeat, 10)
 	mconf.Internal.MultiSignerSyncQ = tconf.Internal.MultiSignerSyncQ
 	// The MusicSyncEngine is started here to ensure that it is running before we start parsing zones.
 	go music.MusicSyncEngine(&mconf, stopch)
@@ -238,7 +240,11 @@ func main() {
 
 	apistopper := make(chan struct{}) //
 	tconf.Internal.APIStopCh = apistopper
+	// sidecar mgmt API:
 	go APIdispatcher(&tconf, &mconf, apistopper)
+
+	// sidecar-to-sidecar sync API:
+	go MusicAPIdispatcher(&tconf, &mconf, apistopper)
 
 	tconf.Internal.ScannerQ = make(chan tdns.ScanRequest, 5)
 	tconf.Internal.UpdateQ = kdb.UpdateQ
@@ -265,8 +271,8 @@ func main() {
 		log.Fatalf("Error from NewDB(%s): %v", viper.GetString("db.file"), err)
 	}
 
-	mconf.Internal.TokViper = tokvip
-	mconf.Internal.MusicDB.Tokvip = tokvip
+	mconf.Internal.TokViper = music.TokVip
+	mconf.Internal.MusicDB.Tokvip = music.TokVip
 	fsml := fsm.NewFSMlist()
 	mconf.Internal.Processes = fsml
 	mconf.Internal.MusicDB.FSMlist = fsml
@@ -278,11 +284,11 @@ func main() {
 	mconf.Internal.DdnsUpdate = make(chan music.SignerOp, 100)
 
 	rootcafile := viper.GetString("common.rootCA")
-	desecapi, err := music.DesecSetupClient(rootcafile, cliconf.Verbose, cliconf.Debug)
+	desecapi, err := music.DesecSetupClient(rootcafile, music.CliConf.Verbose, music.CliConf.Debug)
 	if err != nil {
 		log.Fatalf("Error from DesecSetupClient: %v\n", err)
 	}
-	desecapi.TokViper = tokvip
+	desecapi.TokViper = music.TokVip
 
 	rldu := music.Updaters["rldesec-api"]
 	rldu.SetChannels(mconf.Internal.DesecFetch, mconf.Internal.DesecUpdate)
@@ -298,8 +304,8 @@ func main() {
 	// XXX: From musicd.
 	go dbUpdater(&mconf)
 	// go MusicAPIdispatcher(&mconf)
-	go deSECmgr(&mconf, done)
-	go ddnsmgr(&mconf, done)
+	go music.DeSECmgr(&mconf, done)
+	go music.DdnsMgr(&mconf, done)
 	//go FSMEngine(&mconf, done)
 	go music.FSMEngine(&mconf, done)
 

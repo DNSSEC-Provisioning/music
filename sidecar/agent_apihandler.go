@@ -67,32 +67,32 @@ func APIcommand(conf *tdns.Config) func(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func SetupRouter(conf *tdns.Config, mconf *music.Config) *mux.Router {
-	kdb := conf.Internal.KeyDB
+func SetupRouter(tconf *tdns.Config, mconf *music.Config) *mux.Router {
+	kdb := tconf.Internal.KeyDB
 	r := mux.NewRouter().StrictSlash(true)
 
 	sr := r.PathPrefix("/api/v1").Headers("X-API-Key", viper.GetString("apiserver.key")).Subrouter()
 
 	// TDNS stuff
-	sr.HandleFunc("/ping", tdns.APIping(conf, conf.AppName, conf.AppVersion, conf.ServerBootTime)).Methods("POST")
+	sr.HandleFunc("/ping", tdns.APIping(tconf, tconf.AppName, tconf.AppVersion, tconf.ServerBootTime)).Methods("POST")
 	sr.HandleFunc("/keystore", kdb.APIkeystore()).Methods("POST")
 	sr.HandleFunc("/truststore", kdb.APItruststore()).Methods("POST")
-	sr.HandleFunc("/zone", tdns.APIzone(conf.Internal.RefreshZoneCh, kdb)).Methods("POST")
-	sr.HandleFunc("/delegation", tdns.APIdelegation(conf.Internal.DelegationSyncQ)).Methods("POST")
+	sr.HandleFunc("/zone", tdns.APIzone(tconf.Internal.RefreshZoneCh, kdb)).Methods("POST")
+	sr.HandleFunc("/delegation", tdns.APIdelegation(tconf.Internal.DelegationSyncQ)).Methods("POST")
 	sr.HandleFunc("/debug", tdns.APIdebug()).Methods("POST")
 
 	// The /command endpoint is the only one not in the tdns lib
-	sr.HandleFunc("/command", APIcommand(conf)).Methods("POST")
+	sr.HandleFunc("/command", APIcommand(tconf)).Methods("POST")
 	// sr.HandleFunc("/show/api", tdns.APIshowAPI(r)).Methods("GET")
 
 	// MUSIC stuff
 	// sr.HandleFunc("/ping", APIping(conf)).Methods("POST")
-	sr.HandleFunc("/signer", APIsigner(mconf)).Methods("POST")
-	sr.HandleFunc("/zone", APIzone(mconf)).Methods("POST")
-	sr.HandleFunc("/signergroup", APIsignergroup(mconf)).Methods("POST")
-	sr.HandleFunc("/test", APItest(mconf)).Methods("POST")
-	sr.HandleFunc("/process", APIprocess(mconf)).Methods("POST")
-	sr.HandleFunc("/show", APIshow(mconf, r)).Methods("POST")
+	sr.HandleFunc("/signer", music.APIsigner(mconf)).Methods("POST")
+	sr.HandleFunc("/zone", music.APIzone(mconf)).Methods("POST")
+	sr.HandleFunc("/signergroup", music.APIsignergroup(mconf)).Methods("POST")
+	sr.HandleFunc("/test", music.APItest(mconf)).Methods("POST")
+	sr.HandleFunc("/process", music.APIprocess(mconf)).Methods("POST")
+	sr.HandleFunc("/show", music.APIshow(mconf, r)).Methods("POST")
 
 	return r
 }
@@ -114,10 +114,9 @@ func walkRoutes(router *mux.Router, address string) {
 	//	return nil
 }
 
-// In practice APIdispatcher doesn't need a termination signal, as it will
-// just sit inside http.ListenAndServe, but we keep it for symmetry.
-func APIdispatcher(conf *tdns.Config, mconf *music.Config, done <-chan struct{}) {
-	router := SetupRouter(conf, mconf)
+// This is the sidecar mgmt API dispatcher.
+func APIdispatcher(tconf *tdns.Config, mconf *music.Config, done <-chan struct{}) {
+	router := SetupRouter(tconf, mconf)
 
 	walkRoutes(router, viper.GetString("apiserver.address"))
 	log.Println("")

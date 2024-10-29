@@ -3,7 +3,7 @@
  *
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package main
+package music
 
 import (
 	"encoding/json"
@@ -13,27 +13,26 @@ import (
 	"os"
 	"time"
 
-	tdns "github.com/johanix/tdns/tdns"
 	"github.com/miekg/dns"
 
-	"github.com/DNSSEC-Provisioning/music/music"
+	// "github.com/DNSSEC-Provisioning/music/music"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
-func xxxhomeLink(w http.ResponseWriter, r *http.Request) {
+func HomeLink(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome home!")
 }
 
-func xxxAPI_NYI(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func API_NYI(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "NYI")
 
 		status := 101
 		resp := "NYI"
 
-		apistatus := music.APIstatus{Status: status, Message: resp}
+		apistatus := APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
@@ -42,12 +41,12 @@ func xxxAPI_NYI(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func xxxAPIGoAway(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APIGoAway(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := 404
 		resp := "These are not the droids you're looking for"
 
-		apistatus := music.APIstatus{Status: status, Message: resp}
+		apistatus := APIstatus{Status: status, Message: resp}
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(apistatus)
 		if err != nil {
@@ -58,7 +57,7 @@ func xxxAPIGoAway(conf *music.Config) func(w http.ResponseWriter, r *http.Reques
 
 var pongs int = 0
 
-func xxxAPIping(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func xxxAPIping(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("APIping: received /ping request from %s.\n", r.RemoteAddr)
@@ -69,7 +68,7 @@ func xxxAPIping(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 		}
 
 		decoder := json.NewDecoder(r.Body)
-		var pp music.PingPost
+		var pp PingPost
 		err := decoder.Decode(&pp)
 		if err != nil {
 			log.Println("APIping: error decoding ping post:", err)
@@ -78,14 +77,14 @@ func xxxAPIping(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 		pongs += 1
 
 		for i := 1; i < pp.Fetches; i++ {
-			conf.Internal.DesecFetch <- music.SignerOp{}
+			conf.Internal.DesecFetch <- SignerOp{}
 		}
 		for i := 1; i < pp.Updates; i++ {
-			conf.Internal.DesecUpdate <- music.SignerOp{}
+			conf.Internal.DesecUpdate <- SignerOp{}
 		}
 
 		host, _ := os.Hostname()
-		response := music.PingResponse{
+		response := PingResponse{
 			Time:    time.Now(),
 			Client:  r.RemoteAddr,
 			Message: fmt.Sprintf("%spong from musicd @ %s", tls, host),
@@ -100,11 +99,11 @@ func xxxAPIping(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func xxxAPItest(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APItest(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var resp = music.TestResponse{
+		var resp = TestResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -130,7 +129,7 @@ func xxxAPItest(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 		}()
 
 		decoder := json.NewDecoder(r.Body)
-		var tp music.TestPost
+		var tp TestPost
 		err = decoder.Decode(&tp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
@@ -143,12 +142,12 @@ func xxxAPItest(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 
 		switch tp.Command {
 		case "dnsquery":
-			signer, err := mdb.GetSigner(tx, &music.Signer{Name: tp.Signer}, false)
+			signer, err := mdb.GetSigner(tx, &Signer{Name: tp.Signer}, false)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
-			updater := music.GetUpdater(signer.Method)
+			updater := GetUpdater(signer.Method)
 			if updater == nil {
 				resp.Error = true
 				resp.ErrorMsg = fmt.Sprintf("Error: Unknown updater: '%s'.", tp.Updater)
@@ -194,13 +193,13 @@ func xxxAPItest(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APIzone(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	enginecheck := conf.Internal.EngineCheck // need to be able to send this to Zone{Add,...}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var resp = music.ZoneResponse{
+		var resp = ZoneResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -226,7 +225,7 @@ func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 		}()
 
 		decoder := json.NewDecoder(r.Body)
-		var zp music.ZonePost
+		var zp ZonePost
 		err = decoder.Decode(&zp)
 		if err != nil {
 			log.Println("APIzone: error decoding zone post:", err)
@@ -251,7 +250,7 @@ func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 				resp.Zones = zs
 			// fmt.Printf("\n\nAPIzone: resp: %v\n\n", resp)
 			case "status":
-				var zl = make(map[string]music.Zone, 1)
+				var zl = make(map[string]Zone, 1)
 				if dbzone.Exists {
 					sg, err := mdb.GetSignerGroup(tx, dbzone.SGname, true)
 					if err != nil {
@@ -259,7 +258,7 @@ func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 						resp.ErrorMsg = err.Error()
 					} else {
 
-						zl[dbzone.Name] = music.Zone{
+						zl[dbzone.Name] = Zone{
 							Name:       dbzone.Name,
 							State:      dbzone.State,
 							Statestamp: dbzone.Statestamp,
@@ -357,7 +356,7 @@ func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 							resp.ErrorMsg = err.Error()
 						}
 					}
-					resp.Zones = map[string]music.Zone{dbzone.Name: *dbzone}
+					resp.Zones = map[string]Zone{dbzone.Name: *dbzone}
 				}
 				// err = json.NewEncoder(w).Encode(resp)
 				//if err != nil {
@@ -462,11 +461,11 @@ func xxxAPIzone(conf *music.Config) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func xxxAPIsigner(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APIsigner(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var resp = music.SignerResponse{
+		var resp = SignerResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -492,7 +491,7 @@ func xxxAPIsigner(conf *music.Config) func(w http.ResponseWriter, r *http.Reques
 		}()
 
 		decoder := json.NewDecoder(r.Body)
-		var sp music.SignerPost
+		var sp SignerPost
 		err = decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIsigner: error decoding signer post:",
@@ -548,14 +547,14 @@ func xxxAPIsigner(conf *music.Config) func(w http.ResponseWriter, r *http.Reques
 			}
 
 		case "login":
-			err, resp.Msg = mdb.SignerLogin(dbsigner, &music.CliConf, music.TokVip)
+			err, resp.Msg = mdb.SignerLogin(dbsigner, &CliConf, TokVip)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
 			}
 
 		case "logout":
-			err, resp.Msg = mdb.SignerLogout(dbsigner, &music.CliConf, music.TokVip)
+			err, resp.Msg = mdb.SignerLogout(dbsigner, &CliConf, TokVip)
 			if err != nil {
 				resp.Error = true
 				resp.ErrorMsg = err.Error()
@@ -578,11 +577,11 @@ func xxxAPIsigner(conf *music.Config) func(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func xxxAPIsignergroup(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APIsignergroup(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		var resp = music.SignerGroupResponse{
+		var resp = SignerGroupResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -611,7 +610,7 @@ func xxxAPIsignergroup(conf *music.Config) func(w http.ResponseWriter, r *http.R
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
-		var sgp music.SignerGroupPost
+		var sgp SignerGroupPost
 		err = decoder.Decode(&sgp)
 		if err != nil {
 			log.Println("APIsignergroup: error decoding signergroup post:",
@@ -655,22 +654,22 @@ func xxxAPIsignergroup(conf *music.Config) func(w http.ResponseWriter, r *http.R
 	}
 }
 
-func xxxAPIprocess(conf *music.Config) func(w http.ResponseWriter, r *http.Request) {
+func APIprocess(conf *Config) func(w http.ResponseWriter, r *http.Request) {
 	mdb := conf.Internal.MusicDB
-	var check music.EngineCheck
+	var check EngineCheck
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("APIprocess: received /process request from %s.\n",
 			r.RemoteAddr)
 
 		decoder := json.NewDecoder(r.Body)
-		var pp music.ProcessPost
+		var pp ProcessPost
 		err := decoder.Decode(&pp)
 		if err != nil {
 			log.Println("APIprocess: error decoding process post:", err)
 		}
 
-		var resp = music.ProcessResponse{
+		var resp = ProcessResponse{
 			Time:   time.Now(),
 			Client: r.RemoteAddr,
 		}
@@ -712,12 +711,97 @@ func xxxAPIprocess(conf *music.Config) func(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func xxxAPIshow(conf *music.Config, router *mux.Router) func(w http.ResponseWriter, r *http.Request) {
+func APIbeat(mconf *Config) func(w http.ResponseWriter, r *http.Request) {
+	if mconf.Internal.HeartbeatQ == nil {
+		log.Println("APIbeat: HeartbeatQ channel is not set. Cannot forward heartbeats. This is a fatal error.")
+		os.Exit(1)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp := BeatResponse{
+			Time: time.Now(),
+			Msg:  "Hi there!",
+		}
+		log.Printf("APIbeat: received /beat request from %s.\n", r.RemoteAddr)
+
+		decoder := json.NewDecoder(r.Body)
+		var bp BeatPost
+		err := decoder.Decode(&bp)
+		if err != nil {
+			log.Println("APIbeat: error decoding beat post:", err)
+		}
+
+		switch bp.Type {
+		case "BEAT", "FULLBEAT":
+			resp.Msg = "OK"
+			mconf.Internal.HeartbeatQ <- Heartbeat{
+				Name:  bp.Name,
+				Type:  bp.Type,
+				Time:  time.Now(),
+				Zones: bp.Zones,
+			}
+
+		default:
+			resp.Error = true
+			resp.ErrorMsg = fmt.Sprintf("Unknown heartbeat type: %s", bp.Type)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			log.Printf("Error from json.NewEncoder: %v\n", err)
+		}
+	}
+}
+
+func APIhello(mconf *Config) func(w http.ResponseWriter, r *http.Request) {
+	if mconf.Internal.HeartbeatQ == nil {
+		log.Println("APIhello: HeartbeatQ channel is not set. Cannot forward heartbeats. This is a fatal error.")
+		os.Exit(1)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp := HelloResponse{
+			Time: time.Now(),
+			Msg:  "Hi there!",
+		}
+		log.Printf("APIhello: received /hello request from %s.\n", r.RemoteAddr)
+
+		decoder := json.NewDecoder(r.Body)
+		var hp HelloPost
+		err := decoder.Decode(&hp)
+		if err != nil {
+			log.Println("APIhello: error decoding hello post:", err)
+		}
+
+		switch hp.Type {
+		case "HELLO":
+			mconf.Internal.HeartbeatQ <- Heartbeat{
+				Name:  hp.Name,
+				Type:  "HELLO",
+				Time:  time.Now(),
+				Zones: hp.Zones,
+			}
+
+		default:
+			resp.Error = true
+			resp.ErrorMsg = fmt.Sprintf("Unknown hello type: %s", hp.Type)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			log.Printf("Error from json.NewEncoder: %v\n", err)
+		}
+	}
+}
+
+func APIshow(conf *Config, router *mux.Router) func(w http.ResponseWriter, r *http.Request) {
 	address := viper.GetString("services.apiserver.api")
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		decoder := json.NewDecoder(r.Body)
-		var sp music.ShowPost
+		var sp ShowPost
 		err := decoder.Decode(&sp)
 		if err != nil {
 			log.Println("APIshow: error decoding show post:", err)
@@ -726,7 +810,7 @@ func xxxAPIshow(conf *music.Config, router *mux.Router) func(w http.ResponseWrit
 		log.Printf("APIshow: received /show request (command: %s) from %s.\n",
 			sp.Command, r.RemoteAddr)
 
-		var resp = music.ShowResponse{
+		var resp = ShowResponse{
 			Status: 101,
 		}
 
@@ -754,7 +838,7 @@ func xxxAPIshow(conf *music.Config, router *mux.Router) func(w http.ResponseWrit
 
 		case "updaters":
 			resp.Message = "Defined updaters"
-			resp.Updaters = music.ListUpdaters()
+			resp.Updaters = ListUpdaters()
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -763,45 +847,4 @@ func xxxAPIshow(conf *music.Config, router *mux.Router) func(w http.ResponseWrit
 			log.Printf("Error from Encoder: %v\n", err)
 		}
 	}
-}
-
-// This is the sidecar-to-sidecar sync API router.
-func MusicSetupRouter(tconf *tdns.Config, mconf *music.Config) *mux.Router {
-	r := mux.NewRouter().StrictSlash(true)
-	r.HandleFunc("/", music.HomeLink)
-
-	sr := r.PathPrefix("/api/v1").Headers("X-API-Key", viper.GetString("apiserver.apikey")).Subrouter()
-
-	sr.HandleFunc("/ping", tdns.APIping(tconf, tconf.AppName, tconf.AppVersion, tconf.ServerBootTime)).Methods("POST")
-	sr.HandleFunc("/beat", music.APIbeat(mconf)).Methods("POST")
-	sr.HandleFunc("/hello", music.APIhello(mconf)).Methods("POST")
-	// TODO: send NOTIFY(DNSKEY) here:
-	// sr.HandleFunc("/notify", music.APInotify(mconf, r)).Methods("POST")
-	return r
-}
-
-// This is the sidecar-to-sidecar sync API dispatcher.
-func MusicAPIdispatcher(tconf *tdns.Config, mconf *music.Config, done <-chan struct{}) error {
-	router := MusicSetupRouter(tconf, mconf)
-	addresses := viper.GetString("music.sidecar.syncapi.addresses")
-	certFile := viper.GetString("apiserver.certFile")
-	keyFile := viper.GetString("apiserver.keyFile")
-	if len(addresses) == 0 {
-		log.Println("MusicAPIdispatcher: no addresses to listen on. Not starting.")
-		return nil
-	}
-	if certFile == "" || keyFile == "" {
-		log.Println("MusicAPIdispatcher: certFile or keyFile not set. Not starting.")
-		return nil
-	}
-
-	for idx, address := range addresses {
-		log.Printf("Starting API dispatcher #%d. Listening on %s\n", idx, address)
-		go func(address string) {
-			log.Fatal(http.ListenAndServeTLS(address, certFile, keyFile, router))
-		}(string(address))
-
-		log.Println("API dispatcher: unclear how to stop the http server nicely.")
-	}
-	return nil
 }

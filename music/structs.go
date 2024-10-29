@@ -1,6 +1,4 @@
-//
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
-//
 package music
 
 import (
@@ -17,12 +15,12 @@ type CliConfig struct {
 }
 
 type DBUpdate struct {
-	Type  string
-	Zone  string
-	Key   string
-	Value string
-	SignerNsNames	map[string][]string	// used in INSERT-ZONE-NS
-	SignerDNSKEYs	map[string][]string	// used in INSERT-ZONE-DNSKEYS
+	Type          string
+	Zone          string
+	Key           string
+	Value         string
+	SignerNsNames map[string][]string // used in INSERT-ZONE-NS
+	SignerDNSKEYs map[string][]string // used in INSERT-ZONE-DNSKEYS
 }
 
 type EngineCheck struct {
@@ -123,4 +121,11 @@ type SignerOpResult struct {
 	RRs      []dns.RR
 	Error    error
 	Response string
+}
+
+type Heartbeat struct {
+	Name  string
+	Type  string
+	Time  time.Time
+	Zones []string
 }

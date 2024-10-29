@@ -33,6 +33,9 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 	var syncitem tdns.MultiSignerSyncRequest
 	syncQ := mconf.Internal.MultiSignerSyncQ
 
+	var beatitem Heartbeat
+	beatQ := mconf.Internal.HeartbeatQ
+
 	if !viper.GetBool("syncengine.active") {
 		log.Printf("MusicSyncEngine is NOT active. No detection of of communication with other music-sidecars will be done.")
 		for {
@@ -85,6 +88,14 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 			switch cmd {
 			case "RESET-MSIGNER-GROUP":
 				log.Printf("MusicSyncEngine: Zone %s MSIGNER RRset has changed. Resetting MSIGNER group.", zonename)
+				log.Printf("MusicSyncEngine: Removed MSIGNER RRs:\n")
+				for _, rr := range syncitem.MsignerSyncStatus.MsignerRemoves {
+					log.Printf("  %s", rr.String())
+				}
+				log.Printf("MusicSyncEngine: Added MSIGNER RRs:\n")
+				for _, rr := range syncitem.MsignerSyncStatus.MsignerAdds {
+					log.Printf("  %s", rr.String())
+				}
 
 			case "SYNC-DNSKEY-RRSET":
 				log.Printf("MusicSyncEngine: Zone %s DNSKEY RRset has changed. Should send NOTIFY(DNSKEY) to other sidecars.", zonename)
@@ -93,6 +104,19 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 				log.Printf("MusicSyncEngine: Unknown command: %s in request: %+v", cmd, syncitem)
 			}
 			ReportProgress()
+
+		case beatitem = <-beatQ:
+			log.Printf("MusicSyncEngine: Received heartbeat from %s", beatitem.Name)
+			switch beatitem.Type {
+			case "HELLO":
+				log.Printf("MusicSyncEngine: Received initial hello from %s", beatitem.Name)
+			case "BEAT":
+				log.Printf("MusicSyncEngine: Received heartbeat from %s", beatitem.Name)
+			case "FULLBEAT":
+				log.Printf("MusicSyncEngine: Received full heartbeat from %s", beatitem.Name)
+			default:
+				log.Printf("MusicSyncEngine: Unknown heartbeat type: %s in beat from %s", beatitem.Type, beatitem.Name)
+			}
 
 		case <-HBticker.C:
 			log.Printf("MusicSyncEngine: Heartbeat ticker. Contacting other known music-sidecars.")

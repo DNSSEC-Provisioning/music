@@ -97,6 +97,7 @@ type InternalConf struct {
 	DdnsUpdate       chan SignerOp
 	Processes        map[string]FSM
 	MultiSignerSyncQ chan tdns.MultiSignerSyncRequest
+	HeartbeatQ       chan Heartbeat
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile, appMode string, safemode bool) error {

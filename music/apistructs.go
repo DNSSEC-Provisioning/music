@@ -1,6 +1,4 @@
-//
 // Johan Stenstam, johan.stenstam@internetstiftelsen.se
-//
 package music
 
 import (
@@ -23,14 +21,14 @@ type APIresponse struct {
 }
 
 type ShowPost struct {
-	Command	string
+	Command string
 }
 
 type ShowResponse struct {
-	Status  	int
-	Message		string
-	ApiData		[]string
-	Updaters	map[string]bool
+	Status   int
+	Message  string
+	ApiData  []string
+	Updaters map[string]bool
 }
 
 type ShowAPIresponse struct {
@@ -62,20 +60,20 @@ type PingResponse struct {
 
 type TestPost struct {
 	Command string
-	Updater	string
-	Signer	string
-	Zone	string
-	Qname	string
-	RRtype	string
-	Count	int
+	Updater string
+	Signer  string
+	Zone    string
+	Qname   string
+	RRtype  string
+	Count   int
 }
 
 type TestResponse struct {
-	Time      	time.Time
-	Client		string
-	Msg		string
-	Error		bool
-	ErrorMsg	string
+	Time     time.Time
+	Client   string
+	Msg      string
+	Error    bool
+	ErrorMsg string
 }
 
 type ZonePost struct {
@@ -102,16 +100,16 @@ type ZoneResponse struct {
 	Client   string
 	Error    bool
 	ErrorMsg string
-	Msg    string
-	Zones  map[string]Zone
-	RRsets map[string][]string // map[signer][]DNSRecords
-	RRset  []string            // broken
+	Msg      string
+	Zones    map[string]Zone
+	RRsets   map[string][]string // map[signer][]DNSRecords
+	RRset    []string            // broken
 }
 
 type SignerPost struct {
-	Command         string
-	Signer		Signer
-	SignerGroup	string
+	Command     string
+	Signer      Signer
+	SignerGroup string
 }
 
 type SignerResponse struct {
@@ -133,14 +131,14 @@ type SignerGroupResponse struct {
 	Time         time.Time
 	Status       int
 	Client       string
-	Error	     bool
+	Error        bool
 	ErrorMsg     string
-	Msg	     string
+	Msg          string
 	SignerGroups map[string]SignerGroup
 }
 
 type Api struct {
-     	Name	   string
+	Name       string
 	Client     *http.Client
 	BaseUrl    string
 	apiKey     string
@@ -173,4 +171,32 @@ type ProcessResponse struct {
 type Process struct {
 	Name string
 	Desc string
+}
+
+type BeatPost struct {
+	Type  string
+	Name  string
+	Zones []string
+}
+
+type BeatResponse struct {
+	Time     time.Time
+	Client   string
+	Msg      string
+	Error    bool
+	ErrorMsg string
+}
+
+type HelloPost struct {
+	Type  string
+	Name  string
+	Zones []string
+}
+
+type HelloResponse struct {
+	Time     time.Time
+	Client   string
+	Msg      string
+	Error    bool
+	ErrorMsg string
 }
