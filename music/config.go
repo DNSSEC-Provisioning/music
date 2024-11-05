@@ -54,7 +54,7 @@ type ApiServerConf struct {
 }
 
 type FSMEngineConf struct {
-	Active    bool `validate:"required"`
+	Active    *bool `validate:"required"`
 	Intervals IntervalsConf
 }
 
@@ -225,7 +225,7 @@ func LoadMusicConfig(mconf *Config, appMode string, safemode bool) error {
 		if tdns.Globals.Debug {
 			fmt.Printf("*** LoadMusicConfig: sidecar config merged from \"%s\"\n", cfgfile)
 		}
-		err = loadSidecarConfig(mconf)
+		err = LoadSidecarConfig(mconf)
 		if err != nil {
 			log.Printf("Error loading sidecar config: %v", err)
 			return err
@@ -269,7 +269,7 @@ func LoadMusicConfig(mconf *Config, appMode string, safemode bool) error {
 	return nil
 }
 
-func loadSidecarConfig(mconf *Config) error {
+func LoadSidecarConfig(mconf *Config) error {
 	log.Printf("loadSidecarConfig: enter")
 	mconf.Sidecar.Identity = viper.GetString("music.sidecar.identity")
 	if mconf.Sidecar.Identity == "" {
@@ -356,6 +356,9 @@ ns1.%s IN A   192.0.2.1
 		return fmt.Errorf("failed to read zone data: %v", err)
 	}
 
+	// Make the zone available
+	zd.Ready = true
+
 	log.Printf("LoadSidecarConfig: sending PING command to sidecar '%s'", mconf.Sidecar.Identity)
 	zd.KeyDB.UpdateQ <- tdns.UpdateRequest{
 		Cmd: "PING",
@@ -382,9 +385,13 @@ ns1.%s IN A   192.0.2.1
 		log.Printf("TLSA RR: %s", tlsarr.String())
 	} else {
 		log.Printf("loadSidecarConfig: Error: TLSA: %v", tlsarr_rrset)
-		return fmt.Errorf("Error loading zone %s from data", zd.ZoneName)
+		// return fmt.Errorf("Error loading zone %s from data", zd.ZoneName)
 	}
 
 	tdns.Zones.Set(zd.ZoneName, zd)
+
+	for _, zone := range tdns.Zones.Keys() {
+		log.Printf("LoadSidecarConfig: zone: %s", zone)
+	}
 	return nil
 }

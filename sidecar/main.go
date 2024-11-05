@@ -82,11 +82,11 @@ func main() {
 	var tconf tdns.Config
 	var mconf music.Config
 
-	tconf.AppMode = "sidecar"
+	tconf.AppMode, tdns.Globals.AppMode = "sidecar", "sidecar"
 	tconf.ServerBootTime = time.Now()
-	tconf.AppVersion = appVersion
-	tconf.AppName = appName
-	tconf.AppDate = appDate
+	tconf.AppVersion, tdns.Globals.AppVersion = appVersion, appVersion
+	tconf.AppName, tdns.Globals.AppName = appName, appName
+	tconf.AppDate, tdns.Globals.AppDate = appDate, appDate
 	// The agent is not a mode of operation, an agent should not be able to run as a server by just starting it with the wrong arguments.
 	// flag.StringVar(&appMode, "mode", "agent", "Mode of operation: server | agent | scanner")
 
@@ -107,7 +107,7 @@ func main() {
 	}
 
 	// These are set here to enable various config reload functions to reload from the correct files.
-	tconf.Internal.CfgFile = music.DefaultTdnsCfgFile
+	tconf.Internal.CfgFile = music.DefaultSidecarTdnsCfgFile
 
 	switch mconf.Zones.Config {
 	case "":
@@ -118,7 +118,7 @@ func main() {
 
 	err := tdns.ParseConfig(&tconf, false) // false = !reload, initial config
 	if err != nil {
-		log.Fatalf("Error parsing TDNS config %s: %v", music.DefaultTdnsCfgFile, err)
+		log.Fatalf("Error parsing TDNS config %s: %v", music.DefaultSidecarTdnsCfgFile, err)
 	}
 	kdb := tconf.Internal.KeyDB
 	kdb.UpdateQ = make(chan tdns.UpdateRequest, 10)
@@ -137,6 +137,7 @@ func main() {
 		log.Fatalf("Error setting up logging: %v", err)
 	}
 	fmt.Printf("Logging to file: %s\n", logfile)
+	log.Printf("Test of logging options.")
 
 	fmt.Printf("TDNS Multi-Signer Agent version %s starting.\n", appVersion)
 

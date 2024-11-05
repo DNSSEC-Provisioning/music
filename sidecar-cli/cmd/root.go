@@ -43,8 +43,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		fmt.Sprintf("config file (default is %s)", DefaultCfgFile))
 
-	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
-	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
+//	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
+//	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
+	rootCmd.PersistentFlags().BoolVarP(&tdns.Globals.Verbose, "verbose", "v", false, "Verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&tdns.Globals.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&showheaders, "headers", "H", false, "Show column headers on output")
 	rootCmd.PersistentFlags().StringVarP(&zonename, "zone", "z", "", "name of zone")
 	rootCmd.PersistentFlags().StringVarP(&signername, "signer", "s", "", "name of signer")
@@ -57,17 +59,17 @@ func initConfig() {
 	var conf tdns.Config
 	var mconf music.Config
 
-	viper.SetConfigFile(music.DefaultTdnsCfgFile)
+	viper.SetConfigFile(music.DefaultSidecarTdnsCfgFile)
 	if err := viper.ReadInConfig(); err == nil {
 		if cliconf.Verbose {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())
 		}
 		err = viper.Unmarshal(&conf)
 		if err != nil {
-			log.Fatalf("Error unmarshalling TDNS config %s: %v", music.DefaultTdnsCfgFile, err)
+			log.Fatalf("Error unmarshalling TDNS config %s: %v", music.DefaultSidecarTdnsCfgFile, err)
 		}
 	} else {
-		log.Fatalf("Error parsing TDNS config %s: %v", music.DefaultTdnsCfgFile, err)
+		log.Fatalf("Error parsing TDNS config %s: %v", music.DefaultSidecarTdnsCfgFile, err)
 	}
 
 	// Load MUSIC config; note that this must be after the TDNS config has been parsed and use viper.MergeConfig()
