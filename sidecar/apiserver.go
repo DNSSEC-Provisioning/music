@@ -782,6 +782,8 @@ func MusicSetupRouter(tconf *tdns.Config, mconf *music.Config) *mux.Router {
 
 // This is the sidecar-to-sidecar sync API dispatcher.
 func MusicAPIdispatcher(tconf *tdns.Config, mconf *music.Config, done <-chan struct{}) error {
+	log.Printf("MusicAPIdispatcher: starting with sidecar ID %s", mconf.Internal.SidecarId)
+
 	router := MusicSetupRouter(tconf, mconf)
 	addresses := viper.GetString("music.sidecar.syncapi.addresses")
 	certFile := viper.GetString("apiserver.certFile")

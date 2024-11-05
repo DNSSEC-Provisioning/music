@@ -4,12 +4,17 @@
 package music
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	tdns "github.com/johanix/tdns/tdns"
+	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 	// "github.com/DNSSEC-Provisioning/music/music"
 	// "github.com/DNSSEC-Provisioning/music/signer"
@@ -26,6 +31,14 @@ type Config struct {
 	Internal  InternalConf
 	FSMEngine FSMEngineConf
 	Zones     ZonesConf
+	Sidecar   SidecarConf
+}
+
+type SidecarConf struct {
+	Identity string
+	Port     uint16
+	Cert     string
+	Key      string
 }
 
 type ZonesConf struct {
@@ -98,6 +111,9 @@ type InternalConf struct {
 	Processes        map[string]FSM
 	MultiSignerSyncQ chan tdns.MultiSignerSyncRequest
 	HeartbeatQ       chan Heartbeat
+	SidecarId        string
+	UpdateQ          chan tdns.UpdateRequest
+	KeyDB            *tdns.KeyDB
 }
 
 func ValidateConfig(v *viper.Viper, cfgfile, appMode string, safemode bool) error {
@@ -165,7 +181,7 @@ func LoadMusicConfig(mconf *Config, appMode string, safemode bool) error {
 	}
 
 	if Globals.Debug {
-		fmt.Printf("LoadMusicConfig: reloading config from \"%s\". Safemode: %v\n", cfgfile, safemode)
+		fmt.Printf("*** LoadMusicConfig: reloading config from \"%s\". Safemode: %v\n", cfgfile, safemode)
 	}
 	if safemode {
 		tmpviper := viper.New()
@@ -197,8 +213,28 @@ func LoadMusicConfig(mconf *Config, appMode string, safemode bool) error {
 	switch appMode {
 	case "server":
 		err = viper.ReadInConfig()
-	case "sidecar", "sidecar-cli":
+		if tdns.Globals.Debug {
+			fmt.Printf("*** LoadMusicConfig: server config merged from \"%s\"\n", cfgfile)
+		}
+	case "sidecar":
 		err = viper.MergeInConfig()
+		if err != nil {
+			log.Printf("Error from viper.MergeInConfig: %v", err)
+			return err
+		}
+		if tdns.Globals.Debug {
+			fmt.Printf("*** LoadMusicConfig: sidecar config merged from \"%s\"\n", cfgfile)
+		}
+		err = loadSidecarConfig(mconf)
+		if err != nil {
+			log.Printf("Error loading sidecar config: %v", err)
+			return err
+		}
+	case "sidecar-cli":
+		err = viper.MergeInConfig()
+		if tdns.Globals.Debug {
+			fmt.Printf("*** LoadMusicConfig: sidecar-cli config merged from \"%s\"\n", cfgfile)
+		}
 	default:
 		log.Fatalf("Unknown app mode: %s", appMode)
 	}
@@ -230,5 +266,125 @@ func LoadMusicConfig(mconf *Config, appMode string, safemode bool) error {
 	CliConf.Verbose = viper.GetBool("common.verbose")
 	CliConf.Debug = viper.GetBool("common.debug")
 
+	return nil
+}
+
+func loadSidecarConfig(mconf *Config) error {
+	log.Printf("loadSidecarConfig: enter")
+	mconf.Sidecar.Identity = viper.GetString("music.sidecar.identity")
+	if mconf.Sidecar.Identity == "" {
+		return errors.New("LoadMusicConfig: sidecar identity not set in config file")
+	}
+	mconf.Sidecar.Identity = dns.Fqdn(mconf.Sidecar.Identity)
+	mconf.Sidecar.Port = uint16(viper.GetInt("music.sidecar.port"))
+	if mconf.Sidecar.Port == 0 {
+		return errors.New("LoadMusicConfig: sidecar port not set in config file")
+	}
+
+	certFile := viper.GetString("music.sidecar.cert")
+	keyFile := viper.GetString("music.sidecar.key")
+
+	if certFile == "" || keyFile == "" {
+		return errors.New("LoadMusicConfig: cert or key file not set in config file")
+	}
+
+	certPEM, err := os.ReadFile(certFile)
+	if err != nil {
+		return fmt.Errorf("LoadMusicConfig: error reading cert file: %v", err)
+	}
+
+	keyPEM, err := os.ReadFile(keyFile)
+	if err != nil {
+		return fmt.Errorf("LoadMusicConfig: error reading key file: %v", err)
+	}
+
+	mconf.Sidecar.Cert = string(certPEM)
+	mconf.Sidecar.Key = string(keyPEM)
+
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	// Parse the certificate
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse certificate: %v", err)
+	}
+
+	// Extract the CN from the certificate
+	certCN := cert.Subject.CommonName
+
+	// Compare the CN with the expected CN
+	if certCN != mconf.Sidecar.Identity {
+		return fmt.Errorf("Error: Sidecar certificate CN '%s' does not match sidecar identity '%s'", certCN, mconf.Internal.SidecarId)
+	}
+
+	log.Printf("LoadSidecarConfig: cert CN '%s' matches sidecar identity '%s'", certCN, mconf.Internal.SidecarId)
+
+	// Create a fake zone for the sidecar identity just to be able to
+	// to use to generate the TLSA.
+	tmpl := `
+$ORIGIN %s
+$TTL 86400
+%s    IN SOA ns1.%s hostmaster.%s (
+          2021010101 ; serial
+          3600       ; refresh (1 hour)
+          1800       ; retry (30 minutes)
+          1209600    ; expire (2 weeks)
+          86400      ; minimum (1 day)
+          )
+%s     IN NS  ns1.%s
+ns1.%s IN A   192.0.2.1
+`
+	zonedatastr := strings.ReplaceAll(tmpl, "%s", mconf.Sidecar.Identity)
+
+	// log.Printf("loadSidecarConfig: template zone data:\n%s\n", zonedatastr)
+
+	zd := &tdns.ZoneData{
+		ZoneName:  mconf.Sidecar.Identity,
+		ZoneStore: tdns.MapZone,
+		Logger:    log.Default(),
+		ZoneType:  tdns.Primary,
+		Options:   nil,
+		KeyDB:     mconf.Internal.KeyDB,
+	}
+
+	log.Printf("LoadSidecarConfig: reading zone data for sidecar identity '%s'", mconf.Sidecar.Identity)
+	_, _, err = zd.ReadZoneData(zonedatastr, false)
+	if err != nil {
+		return fmt.Errorf("failed to read zone data: %v", err)
+	}
+
+	log.Printf("LoadSidecarConfig: sending PING command to sidecar '%s'", mconf.Sidecar.Identity)
+	zd.KeyDB.UpdateQ <- tdns.UpdateRequest{
+		Cmd: "PING",
+	}
+
+	log.Printf("LoadSidecarConfig: publishing TLSA RR for sidecar identity '%s'", mconf.Sidecar.Identity)
+
+	err = zd.PublishTLSARR(string(certPEM), mconf.Sidecar.Port)
+	if err != nil {
+		return fmt.Errorf("failed to publish TLSA RR: %v", err)
+	}
+
+	log.Printf("Successfully published TLSA RR for sidecar identity '%s'\n", mconf.Sidecar.Identity)
+
+	apex, _ := zd.Data.Get(zd.ZoneName)
+	if err != nil {
+		return fmt.Errorf("ReadZoneData: Error: failed to get zone apex %s: %v", zd.ZoneName, err)
+	}
+
+	tlsarr_rrset := apex.RRtypes.GetOnlyRRSet(dns.TypeTLSA)
+	var tlsarr *dns.TLSA
+	if len(tlsarr_rrset.RRs) > 0 {
+		tlsarr = tlsarr_rrset.RRs[0].(*dns.TLSA)
+		log.Printf("TLSA RR: %s", tlsarr.String())
+	} else {
+		log.Printf("loadSidecarConfig: Error: TLSA: %v", tlsarr_rrset)
+		return fmt.Errorf("Error loading zone %s from data", zd.ZoneName)
+	}
+
+	tdns.Zones.Set(zd.ZoneName, zd)
 	return nil
 }

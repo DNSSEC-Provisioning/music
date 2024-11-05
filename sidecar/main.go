@@ -78,84 +78,6 @@ func mainloop(conf *tdns.Config, mconf *music.Config, appMode string) {
 	fmt.Println("mainloop: leaving signal dispatcher")
 }
 
-func LoadMusicConfig(mconf *music.Config, appMode string, safemode bool) error {
-	var cfgfile string
-	switch appMode {
-	case "server":
-		cfgfile = music.DefaultCfgFile
-	case "sidecar":
-		cfgfile = music.DefaultSidecarCfgFile
-	default:
-		log.Fatalf("Unknown app mode: %s", appMode)
-	}
-
-	fmt.Printf("LoadConfig: reloading config from \"%s\". Safemode: %v\n", cfgfile, safemode)
-	if safemode {
-		tmpviper := viper.New()
-		tmpviper.SetConfigFile(cfgfile)
-
-		var err error
-		switch appMode {
-		case "server":
-			err = tmpviper.ReadInConfig()
-		case "sidecar":
-			err = tmpviper.MergeInConfig()
-		default:
-			log.Fatalf("Unknown app mode: %s", appMode)
-		}
-		if err != nil {
-			return err
-		}
-
-		err = music.ValidateConfig(tmpviper, cfgfile, appMode, true) // will not terminate on error
-		if err != nil {
-			return err
-		}
-		fmt.Printf("LoadConfig: safe config validation succeeded, no errors. Now reloading.\n")
-	}
-
-	viper.SetConfigFile(cfgfile)
-
-	var err error
-	switch appMode {
-	case "server":
-		err = viper.ReadInConfig()
-	case "sidecar":
-		err = viper.MergeInConfig()
-	default:
-		log.Fatalf("Unknown app mode: %s", appMode)
-	}
-	if err != nil {
-		log.Fatalf("Could not load config (%s)", err)
-	}
-
-	err = music.ValidateConfig(nil, cfgfile, appMode, false) // will terminate on error
-	if err != nil {
-		return err
-	}
-
-	music.TokVip = viper.New()
-	var tokenfile string
-	if viper.GetString("common.tokenfile") != "" {
-		tokenfile = viper.GetString("common.tokenfile")
-	}
-
-	music.TokVip.SetConfigFile(tokenfile)
-	err = music.TokVip.ReadInConfig()
-	if err != nil {
-		log.Printf("Error from tokvip.ReadInConfig: %v\n", err)
-	} else {
-		if music.CliConf.Verbose {
-			fmt.Println("Using token store file:", music.TokVip.ConfigFileUsed())
-		}
-	}
-
-	music.CliConf.Verbose = viper.GetBool("common.verbose")
-	music.CliConf.Debug = viper.GetBool("common.debug")
-
-	return nil
-}
-
 func main() {
 	var tconf tdns.Config
 	var mconf music.Config
@@ -198,11 +120,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error parsing TDNS config %s: %v", music.DefaultTdnsCfgFile, err)
 	}
+	kdb := tconf.Internal.KeyDB
+	kdb.UpdateQ = make(chan tdns.UpdateRequest, 10)
+
+	tconf.Internal.UpdateQ = kdb.UpdateQ
+	mconf.Internal.UpdateQ = kdb.UpdateQ
+	mconf.Internal.KeyDB = kdb
 
 	// Load MUSIC config; note that this must be after the TDNS config has been parsed and use viper.MergeConfig()
 	music.LoadMusicConfig(&mconf, tconf.AppMode, false) // on initial startup a config error should cause an abort.
-
-	kdb := tconf.Internal.KeyDB
+	//	mconf.Internal = music.InternalConf{}
 
 	logfile := viper.GetString("log.file")
 	err = tdns.SetupLogging(logfile)
@@ -219,6 +146,8 @@ func main() {
 	tconf.Internal.BumpZoneCh = make(chan tdns.BumperData, 10)
 	tconf.Internal.DelegationSyncQ = make(chan tdns.DelegationSyncRequest, 10)
 	tconf.Internal.MultiSignerSyncQ = make(chan tdns.MultiSignerSyncRequest, 10)
+
+	mconf.Internal.HeartbeatQ = make(chan music.Heartbeat, 10)
 	go tdns.RefreshEngine(&tconf, stopch, appMode)
 
 	//	conf.Internal.ValidatorCh = make(chan tdns.ValidatorRequest, 10)
@@ -227,7 +156,6 @@ func main() {
 	tconf.Internal.NotifyQ = make(chan tdns.NotifyRequest, 10)
 	go tdns.Notifier(tconf.Internal.NotifyQ)
 
-	mconf.Internal.HeartbeatQ = make(chan music.Heartbeat, 10)
 	mconf.Internal.MultiSignerSyncQ = tconf.Internal.MultiSignerSyncQ
 	// The MusicSyncEngine is started here to ensure that it is running before we start parsing zones.
 	go music.MusicSyncEngine(&mconf, stopch)
@@ -242,12 +170,11 @@ func main() {
 	tconf.Internal.APIStopCh = apistopper
 	// sidecar mgmt API:
 	go APIdispatcher(&tconf, &mconf, apistopper)
-
 	// sidecar-to-sidecar sync API:
+
 	go MusicAPIdispatcher(&tconf, &mconf, apistopper)
 
 	tconf.Internal.ScannerQ = make(chan tdns.ScanRequest, 5)
-	tconf.Internal.UpdateQ = kdb.UpdateQ
 	tconf.Internal.DnsUpdateQ = make(chan tdns.DnsUpdateRequest, 100)
 	tconf.Internal.DnsNotifyQ = make(chan tdns.DnsNotifyRequest, 100)
 	tconf.Internal.AuthQueryQ = make(chan tdns.AuthQueryRequest, 100)
@@ -260,9 +187,6 @@ func main() {
 	go tdns.DnsEngine(&tconf)
 	go kdb.DelegationSyncher(tconf.Internal.DelegationSyncQ, tconf.Internal.NotifyQ)
 	// go tdns.ResignerEngine(conf.Internal.ResignQ, make(chan struct{}))
-
-	// MUSIC stuff
-	mconf.Internal = music.InternalConf{}
 
 	mconf.Internal.EngineCheck = make(chan music.EngineCheck, 100)
 

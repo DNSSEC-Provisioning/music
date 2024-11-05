@@ -5,16 +5,24 @@
 package music
 
 import (
+	"bytes"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"time"
 
 	//	"github.com/DNSSEC-Provisioning/music/music"
 	tdns "github.com/johanix/tdns/tdns"
+	"github.com/miekg/dns"
 	"github.com/spf13/viper"
 )
 
 type Sidecar struct {
-	Name       string
+	Identity   string
 	Addresses  []string
 	Port       uint16
 	LastHB     time.Time
@@ -23,11 +31,42 @@ type Sidecar struct {
 	Zones      []string
 }
 
-func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
-	// mdb := mconf.Internal.MusicDB
-	// var err error
+type SidecarHelloPost struct {
+	SidecarId string
+	Addresses []string
+	Port      uint16
+	TLSA      dns.TLSA
+}
 
-	var sidecars map[string]Sidecar
+type SidecarHelloResponse struct {
+	Status string
+}
+
+type SidecarBeatPost struct {
+	Name        string
+	Type        string
+	SharedZones []string
+}
+
+type SidecarBeatResponse struct {
+	Status string
+}
+
+func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
+	sidecarId := mconf.Sidecar.Identity
+
+	// sidecars is a map of known "remote" sidecars that we
+	// have received HELLO messages from.
+	sidecars := map[string]*Sidecar{}
+
+	// wannabe_sidecars is a map of sidecars that we have received
+	// a HELLO message from, but have not yet verified that they are
+	// correct
+	wannabe_sidecars := map[string]*Sidecar{}
+
+	// zones is a map of zones and the remote sidecars that share them with us
+	zones := map[string][]*Sidecar{}
+
 	var missing []string
 	var zonename string
 	var syncitem tdns.MultiSignerSyncRequest
@@ -47,6 +86,18 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 		}
 	}
 
+	// hello_eval_interval is the interval between evaluations of
+	// whether a claimed remote sidecar really shares any zones with us
+	hello_eval_interval := viper.GetInt("syncengine.intervals.helloeval")
+	if hello_eval_interval > 1800 {
+		hello_eval_interval = 1800
+	}
+	if hello_eval_interval < 300 {
+		hello_eval_interval = 300
+	}
+	viper.Set("syncengine.intervals.helloeval", hello_eval_interval)
+
+	// hbinterval is the interval between the outgoing heartbeat messages
 	hbinterval := viper.GetInt("syncengine.intervals.heartbeat")
 	if hbinterval > 1800 {
 		hbinterval = 1800
@@ -56,6 +107,8 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 	}
 	viper.Set("syncengine.intervals.heartbeat", 15)
 
+	// fullhbinterval is the interval between the outgoing full heartbeat messages
+	// NOTE: unclear if we need this, or if it is useful
 	fullhbinterval := viper.GetInt("syncengine.intervals.fullheartbeat")
 	if fullhbinterval > 3600 {
 		fullhbinterval = 3600
@@ -67,6 +120,7 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 
 	log.Printf("Starting MusicSyncEngine (heartbeat will run once every %d seconds)", hbinterval)
 
+	HelloEvalTicker := time.NewTicker(time.Duration(hello_eval_interval) * time.Second)
 	HBticker := time.NewTicker(time.Duration(hbinterval) * time.Second)
 	fullHBticker := time.NewTicker(time.Duration(fullhbinterval) * time.Second)
 
@@ -92,6 +146,12 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 				for _, rr := range syncitem.MsignerSyncStatus.MsignerRemoves {
 					log.Printf("  %s", rr.String())
 				}
+
+				err := MaybeSendHello(sidecarId, sidecars, wannabe_sidecars, syncitem, zones, zonename)
+				if err != nil {
+					log.Printf("MusicSyncEngine: Error sending HELLO message: %v", err)
+				}
+
 				log.Printf("MusicSyncEngine: Added MSIGNER RRs:\n")
 				for _, rr := range syncitem.MsignerSyncStatus.MsignerAdds {
 					log.Printf("  %s", rr.String())
@@ -126,6 +186,14 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 			log.Printf("MusicSyncEngine: Full Heartbeat ticker. Contacting other known music-sidecars with complete zone lists.")
 			ReportProgress()
 
+		case <-HelloEvalTicker.C:
+			log.Printf("MusicSyncEngine: Hello evaluation ticker. Evaluating sidecars that claim to share zones with us.")
+			err := EvaluateSidecarHello(sidecars, wannabe_sidecars, zones)
+			if err != nil {
+				log.Printf("MusicSyncEngine: Hello evaluation ticker. Error evaluating sidecars: %v", err)
+			}
+			ReportProgress()
+
 		case <-stopch:
 			HBticker.Stop()
 			fullHBticker.Stop()
@@ -133,4 +201,114 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 			return
 		}
 	}
+}
+
+func MaybeSendHello(sidecarId string, sidecars, wannabe_sidecars map[string]*Sidecar, syncitem tdns.MultiSignerSyncRequest, zones map[string][]*Sidecar, zonename string) error {
+
+	for _, remoteSidecarRR := range syncitem.MsignerSyncStatus.MsignerAdds {
+		if prr, ok := remoteSidecarRR.(*dns.PrivateRR); ok {
+			if msrr, ok := prr.Data.(*tdns.MSIGNER); ok {
+				remoteSidecar := msrr.Target
+				if remoteSidecar == sidecarId {
+					// we don't need to send a hello to ourselves
+					continue
+				}
+				if _, exists := sidecars[remoteSidecar]; !exists {
+					sidecars[remoteSidecar] = &Sidecar{
+						Identity: remoteSidecar,
+					}
+				}
+				// Schedule sending an HELLO message to the new sidecar
+				log.Printf("MaybeSendHello: Scheduling HELLO message to sidecar %s", remoteSidecar)
+				// Add code to send HELLO message here
+				continue
+			}
+			log.Printf("MaybeSendHello: Unknown RR type in MSIGNER RRset: %s", remoteSidecarRR.String())
+		}
+	}
+
+	return nil
+}
+
+func EvaluateSidecarHello(sidecars, wannabe_sidecars map[string]*Sidecar, zones map[string][]*Sidecar) error {
+
+	// for each sidecar in wannabe_sidecars, check if it is already in sidecars
+	// if it is, add it to sidecars and remove it from wannabe_sidecars
+	// if it is not, check whether it should be
+
+	for _, sidecar := range wannabe_sidecars {
+		if _, ok := sidecars[sidecar.Identity]; ok {
+			// already in sidecars
+			delete(wannabe_sidecars, sidecar.Identity)
+		}
+	}
+
+	return nil
+}
+
+func (s *Sidecar) SendHello() error {
+	// Create the SidecarHelloPost struct
+	helloPost := SidecarHelloPost{
+		SidecarId: s.Identity,
+		Addresses: s.Addresses,
+		Port:      s.Port,
+	}
+
+	// Encode the struct as JSON
+	jsonData, err := json.Marshal(helloPost)
+	if err != nil {
+		return fmt.Errorf("failed to marshal SidecarHelloPost: %v", err)
+	}
+
+	// Lookup the TLSA record for the target sidecar
+	tlsarrset, err := tdns.LookupTLSA(s.Identity)
+	if err != nil {
+		return fmt.Errorf("failed to lookup TLSA record: %v", err)
+	}
+
+	// Use the TLSA record to authenticate the remote end securely
+	// (This is a simplified example, in a real implementation you would need to configure the TLS client with the TLSA record)
+	tlsConfig := &tls.Config{
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			for _, rawCert := range rawCerts {
+				cert, err := x509.ParseCertificate(rawCert)
+				if err != nil {
+					return fmt.Errorf("failed to parse certificate: %v", err)
+				}
+				if cert.Subject.CommonName != s.Identity {
+					return fmt.Errorf("unexpected certificate common name (should have been %s)", s.Identity)
+				}
+
+				err = tdns.VerifyCertAgainstTLSA(tlsarrset, rawCert)
+				if err != nil {
+					return fmt.Errorf("failed to verify certificate against TLSA record: %v", err)
+				}
+			}
+			return nil
+		},
+	}
+
+	// Create the HTTPS client
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	// Send the HTTPS POST request
+	url := fmt.Sprintf("https://%s:%d/hello", s.Identity, s.Port)
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to send HTTPS POST request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Print the response to stdout
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %v", err)
+	}
+	fmt.Printf("Received response: %s\n", string(body))
+
+	return nil
 }
