@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 
@@ -335,18 +336,34 @@ $TTL 86400
           86400      ; minimum (1 day)
           )
 %s     IN NS  ns1.%s
-ns1.%s IN A   192.0.2.1
 `
 	zonedatastr := strings.ReplaceAll(tmpl, "%s", mconf.Sidecar.Identity)
 
-	// log.Printf("loadSidecarConfig: template zone data:\n%s\n", zonedatastr)
+	for _, ns := range viper.GetStringSlice("dnsengine.addresses") {
+		ip, port, err := net.SplitHostPort(ns)
+		if err != nil {
+			return fmt.Errorf("LoadSidecarConfig: error splitting host and port: %v", err)
+		}
+		if port == "53" {
+			if strings.Contains(ip, ":") {
+				zonedatastr += fmt.Sprintf("ns1.%s IN AAAA %s\n", mconf.Sidecar.Identity, ip)
+			} else {
+				zonedatastr += fmt.Sprintf("ns1.%s IN A %s\n", mconf.Sidecar.Identity, ip)
+			}
+		}
+	}
+
+	var opts = map[tdns.ZoneOption]bool{
+		tdns.OptAllowUpdates: true,
+		tdns.OptMultiSigner:  true,
+	}
 
 	zd := &tdns.ZoneData{
 		ZoneName:  mconf.Sidecar.Identity,
 		ZoneStore: tdns.MapZone,
 		Logger:    log.Default(),
 		ZoneType:  tdns.Primary,
-		Options:   nil,
+		Options:   opts,
 		KeyDB:     mconf.Internal.KeyDB,
 	}
 
