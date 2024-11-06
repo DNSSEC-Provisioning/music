@@ -162,10 +162,19 @@ func main() {
 	go music.MusicSyncEngine(&mconf, stopch)
 
 	// ParseZones will read zone configs from the file specified in tconf.Internal.ZonesCfgFile
-	_, err = tdns.ParseZones(&tconf, tconf.Internal.RefreshZoneCh, false) // false = !reload, initial config
+	all_zones, err := tdns.ParseZones(&tconf, tconf.Internal.RefreshZoneCh, false) // false = !reload, initial config
 	if err != nil {
 		log.Fatalf("Error parsing zones: %v", err)
 	}
+
+	//	go func() {
+	//		time.Sleep(5 * time.Second)
+	err = music.LoadSidecarConfig(&mconf, all_zones)
+	if err != nil {
+		fmt.Printf("Error loading sidecar config: %v", err)
+		log.Fatalf("Error loading sidecar config: %v", err)
+	}
+	//	}()
 
 	apistopper := make(chan struct{}) //
 	tconf.Internal.APIStopCh = apistopper
