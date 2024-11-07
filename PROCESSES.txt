@@ -6,7 +6,7 @@ draft-wisser-dnssec-automation-02 and different to the first
 implementation done (multi-signer-controller). There are several
 observations to be made regarding the adaptions:
 
-1. The draft is writter from the POV of a zone being under the control
+1. The draft is written from the POV of a zone being under the control
    of a "multi signer group" and then a signer typically joins the
    group or leaves the group. Once the changes needed to deal with the
    new set of signers is complete the process is done and an end state
@@ -47,7 +47,7 @@ observations to be made regarding the adaptions:
    It would obviously be convenient to simply prohibit such
    events. But in reality, working with current software, it is clear
    that the signers now operate under their own local signing policies
-   that are not subject to the needs of an external multi signer
+   that are not subject to the needs of an external multi-signer
    controller.
 
    Our current thinking is therefore that the possibility of such
@@ -67,15 +67,17 @@ observations to be made regarding the adaptions:
    FSMState{} for a zone by looking up the zone "state" from the DB in
    the {FSM}.States map.
 
-   The FSMState{} is very simplisitc and the only part used at present
+   The FSMState{} is very simplistic and the only part used at present
    is the "Next" field which is a map[string]FSMTransition{} with each
    possible "next" state as keys in the map.
 
-   The FSMTransistion has two func (z *Zone) bool, called "criteria"
-   and "action" as the most important parts. Criteria is executed when
-   stepping the FSM (automatically or manually). If "criteria" returns
-   true then the zone transitions to the next state and the "action"
-   is executed.
+   The FSMTransition has three func (z *Zone) bool, called "PreCondition"
+   "Action" and "PostCondition", as the most important parts. PreCondition
+   is executed when stepping the FSM (automatically or manually). If PreCondition 
+   returns true then the zone transitions to the next state and the "Action"
+   is executed. After the transition, the PostCondition is executed to verify
+   that the transition had the expected consequences. Otherwise a rollback
+   should take place.
 
    At present it would be possible to more or less collapse the
    FSMState{} struct to nothing and only keep the FSMTransition{} as
@@ -152,7 +154,7 @@ PROCESS #1: A Signer joins the Multi-Signer group. No ZSK rollovers occur.
 
    }
 
-PROCESS #1: A Signer joins the Multi-Signer group. A ZSK rollover occurs.
+PROCESS #1B: A Signer joins the Multi-Signer group. A ZSK rollover occurs.
 
    1.   Confirm that the incoming Signer meets the prerequisites.
 
@@ -229,7 +231,8 @@ PROCESS #2: A signer leaves the Multi-Signer group
             there is a difference publish CSYNC record with NS and A
             and AAAA bit set on remaining signers.
 
-       Zone state: CSYNC-PUBLISHED *OR* (unlikely) skip to DELEGATION-NS-SYNCHED (below)
+       Zone state: CSYNC-PUBLISHED *OR* (unlikely) skip to
+       DELEGATION-NS-SYNCHED (below)
 
        3.   HOLD: Wait for Parent to publish NS RRSET.
 
@@ -246,8 +249,8 @@ PROCESS #2: A signer leaves the Multi-Signer group
        6.   ACTION: Stop the exiting Signer from answering
        	    queries. (This is out of scope of MUSIC)
 
-       7.   ACTION: Calculate CDS/CDNSKEY Records for KSKs/CSKs published by the
-            remaining Signers.
+       7.   ACTION: Calculate CDS/CDNSKEY Records for KSKs/CSKs published
+            by the remaining Signers.
 
        Zone state: CDS-KNOWN
 
