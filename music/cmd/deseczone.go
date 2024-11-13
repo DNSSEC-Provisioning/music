@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"fmt"
@@ -29,11 +29,11 @@ var desecZoneAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a zone to be served by deSEC (note that the zone will be initially empty)",
 	Run: func(cmd *cobra.Command, args []string) {
-		if zonename == "" {
+		if Zonename == "" {
 			fmt.Printf("Cannot add a zone without a name. Use '-z'\n")
 			os.Exit(1)
 		}
-		_, err := music.DesecAddZone(&cliconf, zonename, tokvip)
+		_, err := music.DesecAddZone(&cliconf, Zonename, tokvip)
 		if err != nil {
 			fmt.Printf("Error from DesecAddZone: %v\n", err)
 		}
@@ -45,11 +45,11 @@ var desecZoneDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a zone from the deSEC service",
 	Run: func(cmd *cobra.Command, args []string) {
-		if zonename == "" {
+		if Zonename == "" {
 			fmt.Printf("Cannot delete a zone without a name. Use '-z'\n")
 			os.Exit(1)
 		}
-		err := music.DesecDeleteZone(&cliconf, zonename, tokvip)
+		err := music.DesecDeleteZone(&cliconf, Zonename, tokvip)
 		if err != nil {
 			fmt.Printf("Error from DesecDeleteZone: %v\n", err)
 		}
@@ -61,7 +61,7 @@ var desecZoneListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List one or all zones served by deSEC",
 	Run: func(cmd *cobra.Command, args []string) {
-		zl, err := music.DesecListZone(&cliconf, zonename, tokvip)
+		zl, err := music.DesecListZone(&cliconf, Zonename, tokvip)
 		if err != nil {
 			fmt.Printf("Error from DesecListZone: %v\n", err)
 		}
@@ -80,6 +80,6 @@ var desecZoneListCmd = &cobra.Command{
 }
 
 func init() {
-	desecCmd.AddCommand(desecZoneCmd)
+	DesecCmd.AddCommand(desecZoneCmd)
 	desecZoneCmd.AddCommand(desecZoneAddCmd, desecZoneDeleteCmd, desecZoneListCmd)
 }

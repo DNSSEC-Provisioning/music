@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var desecCmd = &cobra.Command{
+var DesecCmd = &cobra.Command{
 	Use:   "desec",
 	Short: "commands to talk directly to the deSEC API, without involving musicd",
 	Long: `The 'desec' commands (login, logout, zone add, zone list, zone delete, etc)
@@ -60,6 +60,6 @@ var desecLogoutCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(desecCmd)
-	desecCmd.AddCommand(desecLoginCmd, desecLogoutCmd)
+//	rootCmd.AddCommand(desecCmd)
+	DesecCmd.AddCommand(desecLoginCmd, desecLogoutCmd)
 }

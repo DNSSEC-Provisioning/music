@@ -1,7 +1,7 @@
 /*
- * Johan Stenstam, johan.stenstam@internetstiftelsen.se
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -24,9 +24,9 @@ import (
 var fsmname, fsmnextstate, ownername, rrtype, fromsigner, tosigner, zonetype string
 var metakey, metavalue, fsmmode string
 
-var zoneCmd = &cobra.Command{
+var ZoneCmd = &cobra.Command{
 	Use:   "zone",
-	Short: "Zone commands",
+	Short: "MUSIC Zone commands",
 	Run: func(cmd *cobra.Command, args []string) {
 	},
 }
@@ -35,14 +35,14 @@ var statusZoneCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Get status of a zone according to MuSiC",
 	Run: func(cmd *cobra.Command, arg []string) {
-		zonename = dns.Fqdn(zonename)
+		Zonename = dns.Fqdn(Zonename)
 		data := music.ZonePost{
 			Command: "status",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		if len(zr.Zones) > 0 {
 			PrintZones(zr.Zones, true, "")
@@ -54,7 +54,7 @@ var addZoneCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new zone to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		zonename = dns.Fqdn(zonename)
+		Zonename = dns.Fqdn(Zonename)
 		if zonetype == "" {
 			zonetype = "normal"
 		}
@@ -64,13 +64,13 @@ var addZoneCmd = &cobra.Command{
 		data := music.ZonePost{
 			Command: "add",
 			Zone: music.Zone{
-				Name:     zonename,
+				Name:     Zonename,
 				ZoneType: zonetype,
 				FSMMode:  fsmmode,
 			},
-			SignerGroup: sgroupname, // may be unspecified
+			SignerGroup: Sgroupname, // may be unspecified
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
@@ -79,11 +79,11 @@ var updateZoneCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update information about an existing zone",
 	Run: func(cmd *cobra.Command, args []string) {
-		zonename = dns.Fqdn(zonename)
+		Zonename = dns.Fqdn(Zonename)
 		data := music.ZonePost{
 			Command: "update",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
 		}
 
@@ -93,7 +93,7 @@ var updateZoneCmd = &cobra.Command{
 		if fsmmode != "" {
 			data.Zone.FSMMode = fsmmode
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
@@ -102,12 +102,12 @@ var zoneJoinGroupCmd = &cobra.Command{
 	Use:   "join",
 	Short: "Join a zone to a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		zone := dns.Fqdn(zonename)
+		zone := dns.Fqdn(Zonename)
 		if zone == "." {
 			log.Fatalf("ZoneJoinGroup: zone not specified. Terminating.\n")
 		}
 
-		if sgroupname == "" {
+		if Sgroupname == "" {
 			log.Fatalf("ZoneJoinGroup: signer group not specified. Terminating.\n")
 		}
 
@@ -116,7 +116,7 @@ var zoneJoinGroupCmd = &cobra.Command{
 			Zone: music.Zone{
 				Name: zone,
 			},
-			SignerGroup: sgroupname,
+			SignerGroup: Sgroupname,
 		}
 		zr := SendZoneCommand(zone, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
@@ -127,23 +127,23 @@ var zoneLeaveGroupCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Remove a zone from a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		zonename := dns.Fqdn(zonename)
-		if zonename == "" {
+		Zonename := dns.Fqdn(Zonename)
+		if Zonename == "" {
 			log.Fatalf("ZoneLeaveGroup: zone not specified. Terminating.\n")
 		}
 
-		if sgroupname == "" {
+		if Sgroupname == "" {
 			log.Fatalf("ZoneLeaveGroup: signer group not specified. Terminating.\n")
 		}
 
 		data := music.ZonePost{
 			Command: "leave",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
-			SignerGroup: sgroupname,
+			SignerGroup: Sgroupname,
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
@@ -152,14 +152,14 @@ var deleteZoneCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a zone from MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		zonename = dns.Fqdn(zonename)
+		Zonename = dns.Fqdn(Zonename)
 		data := music.ZonePost{
 			Command: "delete",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 	},
 }
@@ -168,7 +168,7 @@ var zoneMetaCmd = &cobra.Command{
 	Use:   "meta",
 	Short: "Add or update metadata for zone",
 	Run: func(cmd *cobra.Command, args []string) {
-		zone := dns.Fqdn(zonename)
+		zone := dns.Fqdn(Zonename)
 		if zone == "" {
 			log.Fatalf("ZoneMeta: zone not specified. Terminating.\n")
 		}
@@ -212,14 +212,14 @@ transition. At each stage the current state is presented and manual
 transition may be initiated with the 'music-cli zone step -z {zone}'
 command.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// failure, _ := ZoneFsm(dns.Fqdn(zonename), fsmname)
+		// failure, _ := ZoneFsm(dns.Fqdn(Zonename), fsmname)
 
 		fmt.Println(
 			`NOTE: It is not up to a zone to enter a multi signer process (or not), it is
 up to the signer group. This command is only here for development and debugging
 reasons and will disappear.`)
 
-		zone := dns.Fqdn(zonename)
+		zone := dns.Fqdn(Zonename)
 		if zone == "." {
 			log.Fatalf("ZoneFsm: zone not specified. Terminating.\n")
 		}
@@ -228,7 +228,7 @@ reasons and will disappear.`)
 			log.Fatalf("ZoneFsm: FSM not specified. Terminating.\n")
 		}
 
-		if signername == "" {
+		if Signername == "" {
 			log.Fatalf("ZoneFsm: FSM signer not specified. Terminating.\n")
 		}
 
@@ -238,7 +238,7 @@ reasons and will disappear.`)
 				Name: zone,
 			},
 			FSM:       fsmname,
-			FSMSigner: signername,
+			FSMSigner: Signername,
 		}
 		zr := SendZoneCommand(zone, data)
 		if zr.Error {
@@ -251,9 +251,9 @@ var zoneStepFsmCmd = &cobra.Command{
 	Use:   "step-fsm",
 	Short: "Try to make the zone transition from one state to the next in the FSM",
 	Run: func(cmd *cobra.Command, args []string) {
-		// failure, _, zm := ZoneStepFsm(dns.Fqdn(zonename))
+		// failure, _, zm := ZoneStepFsm(dns.Fqdn(Zonename))
 
-		zone := dns.Fqdn(zonename)
+		zone := dns.Fqdn(Zonename)
 		if zone == "." {
 			log.Fatalf("ZoneStepFsm: zone not specified. Terminating.\n")
 		}
@@ -301,7 +301,7 @@ var zoneGetRRsetsCmd = &cobra.Command{
 	Use:   "get-rrsets",
 	Short: "Retrieve an rrset from the signers in the signer group for this zone",
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, errmsg, rrsets := ZoneGetRRsets(dns.Fqdn(zonename), dns.Fqdn(ownername),
+		failure, errmsg, rrsets := ZoneGetRRsets(dns.Fqdn(Zonename), dns.Fqdn(ownername),
 			rrtype)
 		if failure {
 			fmt.Printf("Error: %s\n", errmsg)
@@ -315,8 +315,8 @@ var zoneListRRsetCmd = &cobra.Command{
 	Use:   "list-rrset",
 	Short: "Retrieve an rrset from the db for one signer in the signer group for this zone (debug)",
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, errmsg, rrset := ZoneListRRset(dns.Fqdn(zonename),
-			dns.Fqdn(ownername), rrtype, signername)
+		failure, errmsg, rrset := ZoneListRRset(dns.Fqdn(Zonename),
+			dns.Fqdn(ownername), rrtype, Signername)
 		if failure {
 			fmt.Printf("Error: %s\n", errmsg)
 		} else {
@@ -329,8 +329,8 @@ var zoneCopyRRsetCmd = &cobra.Command{
 	Use:   "copy-rrset",
 	Short: "Copy an rrset from one signer in the signer group to another",
 	Run: func(cmd *cobra.Command, args []string) {
-		failure, errmsg, rrset := ZoneCopyRRset(dns.Fqdn(zonename),
-			dns.Fqdn(ownername), rrtype, signername)
+		failure, errmsg, rrset := ZoneCopyRRset(dns.Fqdn(Zonename),
+			dns.Fqdn(ownername), rrtype, Signername)
 		if failure {
 			fmt.Printf("Error: %s\n", errmsg)
 		} else {
@@ -343,16 +343,16 @@ var listZonesCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all zones known to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		if zonename == "" {
-			zonename = "zone-name-not-set.se." // must have something, not used
+		if Zonename == "" {
+			Zonename = "zone-name-not-set.se." // must have something, not used
 		}
 		data := music.ZonePost{
 			Command: "list",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		PrintZones(zr.Zones, true, "")
 	},
@@ -362,32 +362,32 @@ var listBlockedZonesCmd = &cobra.Command{
 	Use:   "blocked",
 	Short: "List zones that are blocked for some reason",
 	Run: func(cmd *cobra.Command, args []string) {
-		if zonename == "" {
-			zonename = "zone-name-not-set.se." // must have something, not used
+		if Zonename == "" {
+			Zonename = "zone-name-not-set.se." // must have something, not used
 		}
 		data := music.ZonePost{
 			Command: "list",
 			Zone: music.Zone{
-				Name: zonename,
+				Name: Zonename,
 			},
 		}
-		zr := SendZoneCommand(zonename, data)
+		zr := SendZoneCommand(Zonename, data)
 		PrintZoneResponse(zr.Error, zr.ErrorMsg, zr.Msg)
 		PrintZones(zr.Zones, false, "blocked")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(zoneCmd)
-	zoneCmd.AddCommand(addZoneCmd, updateZoneCmd, deleteZoneCmd, listZonesCmd,
+//	rootCmd.AddCommand(zoneCmd)
+	ZoneCmd.AddCommand(addZoneCmd, updateZoneCmd, deleteZoneCmd, listZonesCmd,
 		zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
 		zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
 		zoneCopyRRsetCmd, zoneMetaCmd, statusZoneCmd)
 	listZonesCmd.AddCommand(listBlockedZonesCmd)
 
-	zoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
+	ZoneCmd.PersistentFlags().StringVarP(&zonetype, "type", "t", "",
 		"type of zone, 'normal' or 'debug'")
-	zoneCmd.PersistentFlags().StringVarP(&fsmmode, "fsmmode", "", "manual",
+	ZoneCmd.PersistentFlags().StringVarP(&fsmmode, "fsmmode", "", "manual",
 		"FSM mode ('auto' or 'manual')")
 	zoneFsmCmd.Flags().StringVarP(&fsmname, "fsm", "f", "",
 		"name of finite state machine to attach zone to")
@@ -397,9 +397,9 @@ func init() {
 		"name of signer to copy from")
 	zoneCopyRRsetCmd.Flags().StringVarP(&tosigner, "to", "", "",
 		"name of signer to copy to")
-	zoneCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "",
+	ZoneCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "",
 		"DNS owner name (FQDN) of RRset")
-	zoneCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "",
+	ZoneCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "",
 		"RRtype of RRset")
 	zoneMetaCmd.Flags().StringVarP(&metakey, "metakey", "", "",
 		"Metadata key (known keys:'parentaddr')")
@@ -410,11 +410,11 @@ func init() {
 	zoneMetaCmd.MarkFlagRequired("metavalue")
 }
 
-func SendZoneCommand(zonename string, data music.ZonePost) music.ZoneResponse {
+func SendZoneCommand(Zonename string, data music.ZonePost) music.ZoneResponse {
 	// IsDomainName() is too liberal, we need a stricter test.
-	if _, ok := dns.IsDomainName(zonename); !ok {
+	if _, ok := dns.IsDomainName(Zonename); !ok {
 		log.Fatalf("SendZoneCommand: Error: '%s' is not a legal domain name. Terminating.",
-			zonename)
+			Zonename)
 	}
 
 	bytebuf := new(bytes.Buffer)
@@ -490,7 +490,7 @@ func ZoneListRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
 		},
 		Owner:  owner,
 		RRtype: strings.ToUpper(rrtype),
-		Signer: signername,
+		Signer: Signername,
 	}
 
 	bytebuf := new(bytes.Buffer)
@@ -531,7 +531,7 @@ func ZoneCopyRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
 		},
 		Owner:      owner,
 		RRtype:     strings.ToUpper(rrtype),
-		Signer:     signername,
+		Signer:     Signername,
 		FromSigner: fromsigner,
 		ToSigner:   tosigner,
 	}
@@ -577,7 +577,7 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 		var out []string
 		var zone music.Zone
 
-		if cliconf.Verbose || showheaders {
+		if cliconf.Verbose || Showheaders {
 			// out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
 			if showall {
 				out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)")
@@ -588,13 +588,13 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 			}
 		}
 
-		zonenames := make([]string, 0, len(zm))
+		Zonenames := make([]string, 0, len(zm))
 		for k := range zm {
-			zonenames = append(zonenames, k)
+			Zonenames = append(Zonenames, k)
 		}
-		sort.Strings(zonenames)
+		sort.Strings(Zonenames)
 
-		for _, zn := range zonenames {
+		for _, zn := range Zonenames {
 			modebits := ""
 			zone = zm[zn]
 			zname := zn

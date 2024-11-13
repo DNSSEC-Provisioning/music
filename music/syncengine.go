@@ -142,7 +142,7 @@ func MusicSyncEngine(mconf *Config, stopch chan struct{}) {
 			switch cmd {
 			case "RESET-MSIGNER-GROUP":
 				log.Printf("MusicSyncEngine: Zone %s MSIGNER RRset has changed. Resetting MSIGNER group.", zonename)
-				log.Printf("MusicSyncEngine: Removed MSIGNER RRs:\n")
+				// log.Printf("MusicSyncEngine: Removed MSIGNER RRs:\n")
 				for _, rr := range syncitem.MsignerSyncStatus.MsignerRemoves {
 					log.Printf("  %s", rr.String())
 				}

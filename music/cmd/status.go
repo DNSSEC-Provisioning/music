@@ -1,7 +1,7 @@
 /*
-* Rog Murray, roger.murray@internetstiftelsen.se
+ * Copyright (c) 2024 Rog Murray, roger.murray@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"fmt"

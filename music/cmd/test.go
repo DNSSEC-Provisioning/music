@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 
 var testcount int
 
-var testCmd = &cobra.Command{
+var TestCmd = &cobra.Command{
 	Use:   "test",
 	Short: "send API requests to MUSICD that are intended for debugging purposes",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -34,11 +34,11 @@ var testDnsQueryCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("dnsquery called")
 
-		zone := dns.Fqdn(zonename)
+		zone := dns.Fqdn(Zonename)
 
 		data := music.TestPost{
 			Command: "dnsquery",
-			Signer:  signername,
+			Signer:  Signername,
 			Qname:   dns.Fqdn(ownername),
 			RRtype:  rrtype,
 			Count:   testcount,
@@ -61,19 +61,19 @@ var testDnsUpdateCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(testCmd)
-	testCmd.AddCommand(testDnsQueryCmd, testDnsUpdateCmd)
+//	rootCmd.AddCommand(testCmd)
+	TestCmd.AddCommand(testDnsQueryCmd, testDnsUpdateCmd)
 
-	testCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "", "DNS owner name (FQDN)")
-	testCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "", "DNS RRtype")
-	// testCmd.PersistentFlags().StringVarP(&signername, "signer", "s", "", "MUSIC signer")
-	testCmd.PersistentFlags().IntVarP(&testcount, "count", "c", 1, "Test count")
+	TestCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "", "DNS owner name (FQDN)")
+	TestCmd.PersistentFlags().StringVarP(&rrtype, "rrtype", "r", "", "DNS RRtype")
+	// testCmd.PersistentFlags().StringVarP(&Signername, "signer", "s", "", "MUSIC signer")
+	TestCmd.PersistentFlags().IntVarP(&testcount, "count", "c", 1, "Test count")
 }
 
 func SendTestCommand(zone string, data music.TestPost) (music.TestResponse, error) {
 	// IsDomainName() is too liberal, we need a stricter test.
-	if _, ok := dns.IsDomainName(zonename); !ok {
-		log.Fatalf("SendZoneCommand: Error: Zone '%s' is not a legal domain name. Terminating.\n", zonename)
+	if _, ok := dns.IsDomainName(Zonename); !ok {
+		log.Fatalf("SendZoneCommand: Error: Zone '%s' is not a legal domain name. Terminating.\n", Zonename)
 	}
 
 	bytebuf := new(bytes.Buffer)

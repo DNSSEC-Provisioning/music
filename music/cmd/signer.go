@@ -1,7 +1,7 @@
 /*
- * Johan Stenstam, johan.stenstam@internetstiftelsen.se
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ var signermethod, signerauth, signeraddress, signerport string
 var signernotcp, signernotsig bool
 
 // signerCmd represents the signer command
-var signerCmd = &cobra.Command{
+var SignerCmd = &cobra.Command{
 	Use:   "signer",
 	Short: "Signer commands",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -50,7 +50,7 @@ var addSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "add",
 			Signer: music.Signer{
-				Name:   signername,
+				Name:   Signername,
 				Method: strings.ToLower(signermethod),
 				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
 				Auth:    authdata,
@@ -59,7 +59,7 @@ var addSignerCmd = &cobra.Command{
 				UseTcp:  !signernotcp,
 				UseTSIG: !signernotsig,
 			},
-			SignerGroup: sgroupname, // may be unspecified
+			SignerGroup: Sgroupname, // may be unspecified
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
 	},
@@ -72,7 +72,7 @@ var updateSignerCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update existing signer",
 	Run: func(cmd *cobra.Command, args []string) {
-		if signername == "" {
+		if Signername == "" {
 			log.Fatalf("Error: signer to update not specified. Terminating.\n")
 		}
 
@@ -84,7 +84,7 @@ var updateSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "update",
 			Signer: music.Signer{
-				Name:    signername,
+				Name:    Signername,
 				Address: signeraddress,
 				Method:  strings.ToLower(signermethod),
 				// Auth:    signerauth, // Issue #28: music.AuthDataTmp(signerauth),
@@ -102,19 +102,19 @@ var joinGroupCmd = &cobra.Command{
 	Use:   "join",
 	Short: "Join a signer to a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		if signername == "" {
+		if Signername == "" {
 			log.Fatalf("SignerJoinGroup: signer not specified. Terminating.\n")
 		}
 
-		if sgroupname == "" {
+		if Sgroupname == "" {
 			log.Fatalf("SignerJoinGroup: signer group not specified. Terminating.\n")
 		}
 
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "join",
 			Signer: music.Signer{
-				Name:        signername,
-				SignerGroup: sgroupname,
+				Name:        Signername,
+				SignerGroup: Sgroupname,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -125,19 +125,19 @@ var leaveGroupCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "Remove a signer from a signer group",
 	Run: func(cmd *cobra.Command, args []string) {
-		if signername == "" {
+		if Signername == "" {
 			log.Fatalf("SignerLeaveGroup: signer not specified. Terminating.\n")
 		}
 
-		if sgroupname == "" {
+		if Sgroupname == "" {
 			log.Fatalf("SignerLeaveGroup: signer group not specified. Terminating.\n")
 		}
 
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "leave",
 			Signer: music.Signer{
-				Name:        signername,
-				SignerGroup: sgroupname,
+				Name:        Signername,
+				SignerGroup: Sgroupname,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -151,7 +151,7 @@ var deleteSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "delete",
 			Signer: music.Signer{
-				Name: signername,
+				Name: Signername,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -177,7 +177,7 @@ var loginSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "login",
 			Signer: music.Signer{
-				Name: signername,
+				Name: Signername,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -191,7 +191,7 @@ var logoutSignerCmd = &cobra.Command{
 		sr := SendSignerCmd(music.SignerPost{
 			Command: "logout",
 			Signer: music.Signer{
-				Name: signername,
+				Name: Signername,
 			},
 		})
 		PrintSignerResponse(sr.Error, sr.ErrorMsg, sr.Msg)
@@ -199,20 +199,20 @@ var logoutSignerCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(signerCmd)
-	signerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
+//	rootCmd.AddCommand(signerCmd)
+	SignerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
 		joinGroupCmd, leaveGroupCmd, loginSignerCmd, logoutSignerCmd)
 
-	signerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
+	SignerCmd.PersistentFlags().StringVarP(&signermethod, "method", "m", "",
 		"update method (ddns|rlddns|desec-api|rldesec-api...)")
-	signerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
+	SignerCmd.PersistentFlags().StringVarP(&signerauth, "auth", "", "",
 		fmt.Sprintf("authdata for signer:\nDDNS: algname:key.name:secret\ndeSEC: ?"))
-	signerCmd.PersistentFlags().StringVarP(&signeraddress, "address", "", "",
+	SignerCmd.PersistentFlags().StringVarP(&signeraddress, "address", "", "",
 		"IP address of signer")
-	signerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",
+	SignerCmd.PersistentFlags().StringVarP(&signerport, "port", "p", "53",
 		"Port of signer")
-	signerCmd.PersistentFlags().BoolVarP(&signernotcp, "notcp", "", false, "Don't use TCP (use UDP), debug")
-	signerCmd.PersistentFlags().BoolVarP(&signernotsig, "notsig", "", false, "Don't use TSIG, debug")
+	SignerCmd.PersistentFlags().BoolVarP(&signernotcp, "notcp", "", false, "Don't use TCP (use UDP), debug")
+	SignerCmd.PersistentFlags().BoolVarP(&signernotsig, "notsig", "", false, "Don't use TSIG, debug")
 }
 
 func SendSignerCmd(data music.SignerPost) music.SignerResponse {
@@ -250,7 +250,7 @@ func PrintSignerResponse(iserr bool, errormsg, msg string) {
 func PrintSigners(sr music.SignerResponse) {
 	if len(sr.Signers) != 0 {
 		var out []string
-		if cliconf.Verbose || showheaders {
+		if cliconf.Verbose || Showheaders {
 			out = append(out, "Signer|Method|Address|Port|SignerGroups")
 		}
 

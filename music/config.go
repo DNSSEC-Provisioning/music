@@ -322,96 +322,56 @@ func LoadSidecarConfig(mconf *Config, all_zones []string) error {
 
 	log.Printf("LoadSidecarConfig: cert CN '%s' matches sidecar identity '%s'", certCN, mconf.Sidecar.Identity)
 
-	// Create a fake zone for the sidecar identity just to be able to
-	// to use to generate the TLSA.
-	//	tmpl := `
-	//$ORIGIN %s
-	//$TTL 86400
-	//%s    IN SOA ns1.%s hostmaster.%s (
-	//          2021010101 ; serial
-	//          3600       ; refresh (1 hour)
-	//          1800       ; retry (30 minutes)
-	//          1209600    ; expire (2 weeks)
-	//          86400      ; minimum (1 day)
-	//          )
-	//%s     IN NS  ns1.%s
-	//`
-	//	zonedatastr := strings.ReplaceAll(tmpl, "%s", mconf.Sidecar.Identity)
+	ur := tdns.UpdateRequest{
+		Cmd:      "DEFERRED-UPDATE",
+		ZoneName: mconf.Sidecar.Identity,
+		PreCondition: func() bool {
+			_, ok := tdns.Zones.Get(mconf.Sidecar.Identity)
+			if !ok {
+				log.Printf("LoadSidecarConfig: zone data for sidecar identity '%s' still not found", mconf.Sidecar.Identity)
+			}
+			return ok
+		},
+		Action: func() error {
+			zd, ok := tdns.Zones.Get(mconf.Sidecar.Identity)
+			if !ok {
+				return fmt.Errorf("LoadSidecarConfig: Action: zone data for sidecar identity '%s' still not found", mconf.Sidecar.Identity)
+			}
+			zd.Options[tdns.OptAllowUpdates] = true
 
-	// zonedatastr := ""
-	// port := viper.GetString("music.sidecar.port")
-	// for _, addr := range viper.GetStringSlice("music.sidecar.addresses") {
-	// 	if port == "53" {
-	// 		if strings.Contains(ip, ":") {
-	// 			zonedatastr += fmt.Sprintf("ns1.%s IN AAAA %s\n", mconf.Sidecar.Identity, ip)
-	// 		} else {
-	// 			zonedatastr += fmt.Sprintf("ns1.%s IN A %s\n", mconf.Sidecar.Identity, ip)
-	// 		}
-	// 	}
-	// }
+			log.Printf("LoadSidecarConfig: sending PING command to sidecar '%s'", mconf.Sidecar.Identity)
+			zd.KeyDB.UpdateQ <- tdns.UpdateRequest{
+				Cmd: "PING",
+			}
 
-	zd, ok := tdns.Zones.Get(mconf.Sidecar.Identity)
-	if !ok {
-		log.Printf("LoadSidecarConfig: zone data for sidecar identity '%s' not found", mconf.Sidecar.Identity)
-		log.Printf("LoadSidecarConfig: known zones are: %v", tdns.Zones.Keys())
-		return fmt.Errorf("LoadSidecarConfig: failed to get zone data for sidecar identity '%s'", mconf.Sidecar.Identity)
+			log.Printf("LoadSidecarConfig: publishing TLSA RR for sidecar identity '%s'", mconf.Sidecar.Identity)
+
+			err = zd.PublishTLSARR(string(certPEM), mconf.Sidecar.Port)
+			if err != nil {
+				return fmt.Errorf("LoadSidecarConfig: failed to publish TLSA RR: %v", err)
+			}
+
+			log.Printf("LoadSidecarConfig: Successfully published TLSA RR for sidecar identity '%s'\n", mconf.Sidecar.Identity)
+
+			apex, _ := zd.Data.Get(zd.ZoneName)
+			if err != nil {
+				return fmt.Errorf("LoadSidecarConfig: Error: failed to get zone apex %s: %v", zd.ZoneName, err)
+			}
+
+			tlsarr_rrset := apex.RRtypes.GetOnlyRRSet(dns.TypeTLSA)
+			var tlsarr *dns.TLSA
+			if len(tlsarr_rrset.RRs) > 0 {
+				tlsarr = tlsarr_rrset.RRs[0].(*dns.TLSA)
+				log.Printf("LoadSidecarConfig: TLSA RR: %s", tlsarr.String())
+			} else {
+				log.Printf("LoadSidecarConfig: Error: TLSA: %v", tlsarr_rrset)
+				return fmt.Errorf("LoadSidecarConfig: Error: TLSA: %v", tlsarr_rrset)
+			}
+			return nil
+		},
 	}
 
-	//	var opts = map[tdns.ZoneOption]bool{
-	//		tdns.OptAllowUpdates: true,
-	//		tdns.OptMultiSigner:  true,
-	//	}
-
-	zd.Options[tdns.OptAllowUpdates] = true
-
-	//	zd := &tdns.ZoneData{
-	//		ZoneName:  mconf.Sidecar.Identity,
-	//		ZoneStore: tdns.MapZone,
-	//		Logger:    log.Default(),
-	//		ZoneType:  tdns.Primary,
-	//		Options:   opts,
-	//		KeyDB:     mconf.Internal.KeyDB,
-	//	}
-
-	// log.Printf("LoadSidecarConfig: reading zone data for sidecar identity '%s'", mconf.Sidecar.Identity)
-	// _, _, err = zd.ReadZoneData(zonedatastr, false)
-	// if err != nil {
-	// 	return fmt.Errorf("LoadSidecarConfig: failed to read zone data: %v", err)
-	// }
-
-	// Make the zone available
-	// zd.Ready = true
-
-	log.Printf("LoadSidecarConfig: sending PING command to sidecar '%s'", mconf.Sidecar.Identity)
-	zd.KeyDB.UpdateQ <- tdns.UpdateRequest{
-		Cmd: "PING",
-	}
-
-	log.Printf("LoadSidecarConfig: publishing TLSA RR for sidecar identity '%s'", mconf.Sidecar.Identity)
-
-	err = zd.PublishTLSARR(string(certPEM), mconf.Sidecar.Port)
-	if err != nil {
-		return fmt.Errorf("LoadSidecarConfig: failed to publish TLSA RR: %v", err)
-	}
-
-	log.Printf("LoadSidecarConfig: Successfully published TLSA RR for sidecar identity '%s'\n", mconf.Sidecar.Identity)
-
-	apex, _ := zd.Data.Get(zd.ZoneName)
-	if err != nil {
-		return fmt.Errorf("LoadSidecarConfig: Error: failed to get zone apex %s: %v", zd.ZoneName, err)
-	}
-
-	tlsarr_rrset := apex.RRtypes.GetOnlyRRSet(dns.TypeTLSA)
-	var tlsarr *dns.TLSA
-	if len(tlsarr_rrset.RRs) > 0 {
-		tlsarr = tlsarr_rrset.RRs[0].(*dns.TLSA)
-		log.Printf("LoadSidecarConfig: TLSA RR: %s", tlsarr.String())
-	} else {
-		log.Printf("LoadSidecarConfig: Error: TLSA: %v", tlsarr_rrset)
-		// return fmt.Errorf("Error loading zone %s from data", zd.ZoneName)
-	}
-
-	// tdns.Zones.Set(zd.ZoneName, zd)
+	mconf.Internal.UpdateQ <- ur
 
 	return nil
 }

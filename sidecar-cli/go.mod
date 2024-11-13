@@ -6,6 +6,7 @@ toolchain go1.23.2
 
 replace (
 	github.com/DNSSEC-Provisioning/music/music => ../music
+	github.com/DNSSEC-Provisioning/music/music/cmd => ../music/mcmd
 	github.com/johanix/tdns/libcli => ../../tdns/libcli
 	github.com/johanix/tdns/tdns => ../../tdns/tdns
 )

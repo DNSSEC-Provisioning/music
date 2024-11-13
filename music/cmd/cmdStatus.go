@@ -1,7 +1,7 @@
 /*
-* Rog Murray, roger.murray@internetstiftelsen.se
+ * Copyright (c) 2022 Rog Murray, roger.murray@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"fmt"
@@ -10,14 +10,14 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(statusCmd)
-	statusCmd.AddCommand(statusZonesCmd)
-	statusCmd.AddCommand(statusSignerCmd)
-	statusCmd.AddCommand(statusSignerGroupCmd)
-	statusCmd.AddCommand(statusAllCmd)
+//	rootCmd.AddCommand(statusCmd)
+	StatusCmd.AddCommand(statusZonesCmd)
+	StatusCmd.AddCommand(statusSignerCmd)
+	StatusCmd.AddCommand(statusSignerGroupCmd)
+	StatusCmd.AddCommand(statusAllCmd)
 }
 
-var statusCmd = &cobra.Command{
+var StatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current status of MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {

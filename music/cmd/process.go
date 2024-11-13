@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 var processname string
 
 // processCmd represents the process command
-var processCmd = &cobra.Command{
+var ProcessCmd = &cobra.Command{
 	Use:   "process",
 	Short: "list or visualize the defined processes",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -71,8 +71,8 @@ var processGraphCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(processCmd)
-	processCmd.AddCommand(processListCmd, processCheckCmd, processGraphCmd)
+//	rootCmd.AddCommand(processCmd)
+	ProcessCmd.AddCommand(processListCmd, processCheckCmd, processGraphCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"github.com/DNSSEC-Provisioning/music/music"

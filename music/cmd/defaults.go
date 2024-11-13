@@ -1,7 +1,7 @@
 /*
  * Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 const (
 	// DefaultCfgFile   = "/etc/music/music-cli.yaml"

@@ -1,7 +1,7 @@
 /*
- * Johan Stenstam, johan.stenstam@internetstiftelsen.se
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -15,9 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var sgroupname string
-
-var signerGroupCmd = &cobra.Command{
+var SignerGroupCmd = &cobra.Command{
 	Use:   "signergroup",
 	Short: "Signer group commands",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -28,9 +26,9 @@ var addSignerGroupCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add a new signer group to MuSiC",
 	Run: func(cmd *cobra.Command, args []string) {
-		sgr := SendSignerGroupCmd(sgroupname, music.SignerGroupPost{
+		sgr := SendSignerGroupCmd(Sgroupname, music.SignerGroupPost{
 			Command: "add",
-			Name:    sgroupname,
+			Name:    Sgroupname,
 		})
 		if sgr.Msg != "" {
 			fmt.Printf("%s\n", sgr.Msg)
@@ -44,10 +42,10 @@ var deleteSignerGroupCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		data := music.SignerGroupPost{
 			Command: "delete",
-			Name:    sgroupname,
+			Name:    Sgroupname,
 		}
 
-		sgr := SendSignerGroupCmd(sgroupname, data)
+		sgr := SendSignerGroupCmd(Sgroupname, data)
 		if sgr.Msg != "" {
 			fmt.Printf("%s\n", sgr.Msg)
 		}
@@ -66,8 +64,8 @@ var listSignerGroupsCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(signerGroupCmd)
-	signerGroupCmd.AddCommand(addSignerGroupCmd, deleteSignerGroupCmd, listSignerGroupsCmd)
+//	rootCmd.AddCommand(signerGroupCmd)
+	SignerGroupCmd.AddCommand(addSignerGroupCmd, deleteSignerGroupCmd, listSignerGroupsCmd)
 }
 
 func SendSignerGroupCmd(group string, data music.SignerGroupPost) music.SignerGroupResponse {
@@ -98,7 +96,7 @@ func SendSignerGroupCmd(group string, data music.SignerGroupPost) music.SignerGr
 func PrintSignerGroups(sgr music.SignerGroupResponse) {
 	if len(sgr.SignerGroups) > 0 {
 		var out []string
-		if cliconf.Verbose || showheaders {
+		if cliconf.Verbose || Showheaders {
 			out = append(out, "Group|Locked|Signers|# Zones|# Proc Zones|Current Process|PendingAddition|PendingRemoval")
 		}
 

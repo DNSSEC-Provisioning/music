@@ -1,7 +1,7 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
-package cmd
+package mcmd
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var showCmd = &cobra.Command{
+var ShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "A brief description of your command",
 }
@@ -43,8 +43,8 @@ var showApiCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(showCmd)
-	showCmd.AddCommand(showApiCmd, showUpdatersCmd)
+//	rootCmd.AddCommand(showCmd)
+	ShowCmd.AddCommand(showApiCmd, showUpdatersCmd)
 }
 
 func SendShowCommand(data music.ShowPost) music.ShowResponse {
