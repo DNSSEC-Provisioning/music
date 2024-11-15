@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Johan Stenstam, johani@johani.org
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
 package main
@@ -14,14 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/DNSSEC-Provisioning/music/fsm"
 	"github.com/DNSSEC-Provisioning/music/music"
 	tdns "github.com/johanix/tdns/tdns"
-	// "github.com/orcaman/concurrent-map/v2"
 )
 
 // yes, this must be global
@@ -236,11 +234,9 @@ func main() {
 	var done = make(chan struct{}, 1)
 
 	// XXX: From musicd.
-	go dbUpdater(&mconf)
-	// go MusicAPIdispatcher(&mconf)
+	go music.DbUpdater(&mconf)
 	go music.DeSECmgr(&mconf, done)
 	go music.DdnsMgr(&mconf, done)
-	//go FSMEngine(&mconf, done)
 	go music.FSMEngine(&mconf, done)
 
 	mainloop(&tconf, &mconf, appMode)

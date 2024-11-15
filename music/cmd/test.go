@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"log"
 
+	tdns "github.com/johanix/tdns/tdns"
 	"github.com/miekg/dns"
 	"github.com/spf13/cobra"
+
 	// "github.com/ryanuber/columnize"
 
 	// "github.com/go-playground/validator/v10"
@@ -61,7 +63,6 @@ var testDnsUpdateCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(testCmd)
 	TestCmd.AddCommand(testDnsQueryCmd, testDnsUpdateCmd)
 
 	TestCmd.PersistentFlags().StringVarP(&ownername, "owner", "o", "", "DNS owner name (FQDN)")
@@ -83,7 +84,7 @@ func SendTestCommand(zone string, data music.TestPost) (music.TestResponse, erro
 		log.Fatalf("SendTestCommand: Error from APIpost:", err)
 
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 

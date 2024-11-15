@@ -1,25 +1,25 @@
 /*
- *
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 
-package main
+package music
 
 import (
 	"log"
 	"time"
 
+	//	"github.com/mattn/go-sqlite3"
 	"github.com/mattn/go-sqlite3"
-
-	"github.com/DNSSEC-Provisioning/music/music"
+	// _ "github.com/mattn/go-sqlite3"
 )
 
-func dbUpdater(conf *music.Config) {
+func DbUpdater(conf *Config) {
 
 	log.Printf("dbUpdater: Starting DB Update Service.")
 
 	mdb := conf.Internal.MusicDB
 
-	dbupdateC := make(chan music.DBUpdate, 5)
+	dbupdateC := make(chan DBUpdate, 5)
 	mdb.UpdateC = dbupdateC
 
 	const ZSMsql = `INSERT OR REPLACE INTO metadata (zone, key, time, value)
@@ -29,8 +29,8 @@ func dbUpdater(conf *music.Config) {
 
 	ticker := time.NewTicker(2 * time.Second)
 
-	queue := []music.DBUpdate{}
-	var update music.DBUpdate
+	queue := []DBUpdate{}
+	var update DBUpdate
 
 	RunDBQueue := func() {
 		for {
@@ -51,7 +51,7 @@ func dbUpdater(conf *music.Config) {
 			case "STOPREASON":
 				_, err := tx.Exec(ZSMsql, u.Zone, u.Key, u.Value)
 				if err != nil {
-					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+					if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.Code == sqlite3.ErrLocked {
 						// database is locked by other connection
 						log.Printf("RunDBQueue: UPDATE db locked. will try again. queue: %d",
 							len(queue))
@@ -65,7 +65,7 @@ func dbUpdater(conf *music.Config) {
 				}
 				_, err = tx.Exec(DSsql, u.Zone)
 				if err != nil {
-					if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+					if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.Code == sqlite3.ErrLocked {
 						// database is locked by other connection
 						log.Printf("RunDBQueue: UPDATE db locked. will try again. queue: %d",
 							len(queue))
@@ -83,7 +83,7 @@ func dbUpdater(conf *music.Config) {
 					for _, ns := range sl {
 						_, err := tx.Exec(IZNS, u.Zone, ns, s)
 						if err != nil {
-							if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+							if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.Code == sqlite3.ErrLocked {
 								// database is locked by other connection
 								log.Printf("RunDBQueue: INSERT-ZONE-NS db locked. will try again. queue: %d",
 									len(queue))
@@ -105,7 +105,7 @@ func dbUpdater(conf *music.Config) {
 					for _, ns := range sl {
 						_, err := tx.Exec(IZNS, u.Zone, ns, s)
 						if err != nil {
-							if err.(sqlite3.Error).Code == sqlite3.ErrLocked {
+							if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.Code == sqlite3.ErrLocked {
 								// database is locked by other connection
 								log.Printf("RunDBQueue: INSERT-ZONE-NS db locked. will try again. queue: %d",
 									len(queue))

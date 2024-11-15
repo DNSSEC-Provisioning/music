@@ -10,6 +10,7 @@ import (
 	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
+	tdns "github.com/johanix/tdns/tdns"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,7 @@ var showApiCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(showCmd)
+	//	rootCmd.AddCommand(showCmd)
 	ShowCmd.AddCommand(showApiCmd, showUpdatersCmd)
 }
 
@@ -56,7 +57,7 @@ func SendShowCommand(data music.ShowPost) music.ShowResponse {
 		log.Fatalf("SendShowCommand: Error from api.Post: %v", err)
 
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Println()
 		fmt.Printf("SendShowCommand Status: %d\n", status)
 	}

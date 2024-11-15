@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/DNSSEC-Provisioning/music/music"
+	tdns "github.com/johanix/tdns/tdns"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -199,7 +200,7 @@ var logoutSignerCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(signerCmd)
+	//	rootCmd.AddCommand(signerCmd)
 	SignerCmd.AddCommand(addSignerCmd, updateSignerCmd, deleteSignerCmd, listSignersCmd,
 		joinGroupCmd, leaveGroupCmd, loginSignerCmd, logoutSignerCmd)
 
@@ -224,7 +225,7 @@ func SendSignerCmd(data music.SignerPost) music.SignerResponse {
 	if err != nil {
 		log.Fatalf("Error from api.Post: %v", err)
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -250,7 +251,7 @@ func PrintSignerResponse(iserr bool, errormsg, msg string) {
 func PrintSigners(sr music.SignerResponse) {
 	if len(sr.Signers) != 0 {
 		var out []string
-		if cliconf.Verbose || Showheaders {
+		if tdns.Globals.Verbose || Showheaders {
 			out = append(out, "Signer|Method|Address|Port|SignerGroups")
 		}
 

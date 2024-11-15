@@ -1,7 +1,7 @@
 /*
  * Stolen from my labstuff.
  */
-package main
+package music
 
 import (
        "fmt"

@@ -19,8 +19,8 @@ import (
 	// "github.com/DNSSEC-Provisioning/music/signer"
 )
 
-var cfgFile string
-var verbose bool
+// var cfgFile string
+// var verbose bool
 
 type Config struct {
 	ApiServer ApiServerConf

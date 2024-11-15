@@ -10,6 +10,7 @@ import (
 	"log"
 
 	"github.com/DNSSEC-Provisioning/music/music"
+	tdns "github.com/johanix/tdns/tdns"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -64,7 +65,7 @@ var listSignerGroupsCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(signerGroupCmd)
+	//	rootCmd.AddCommand(signerGroupCmd)
 	SignerGroupCmd.AddCommand(addSignerGroupCmd, deleteSignerGroupCmd, listSignerGroupsCmd)
 }
 
@@ -80,7 +81,7 @@ func SendSignerGroupCmd(group string, data music.SignerGroupPost) music.SignerGr
 	if err != nil {
 		log.Fatalf("SendSignerGroupCmd: Error from APIpost: %v\n", err)
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -96,7 +97,7 @@ func SendSignerGroupCmd(group string, data music.SignerGroupPost) music.SignerGr
 func PrintSignerGroups(sgr music.SignerGroupResponse) {
 	if len(sgr.SignerGroups) > 0 {
 		var out []string
-		if cliconf.Verbose || Showheaders {
+		if tdns.Globals.Verbose || Showheaders {
 			out = append(out, "Group|Locked|Signers|# Zones|# Proc Zones|Current Process|PendingAddition|PendingRemoval")
 		}
 

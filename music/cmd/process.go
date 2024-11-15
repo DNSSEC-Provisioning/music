@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 
+	tdns "github.com/johanix/tdns/tdns"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 
@@ -71,7 +72,7 @@ var processGraphCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(processCmd)
+	//	rootCmd.AddCommand(processCmd)
 	ProcessCmd.AddCommand(processListCmd, processCheckCmd, processGraphCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
@@ -95,7 +96,7 @@ func SendProcess(data music.ProcessPost) (music.ProcessResponse, error) {
 		log.Println("Error from api.Post:", err)
 		return pr, err
 	}
-	if cliconf.Verbose {
+	if tdns.Globals.Verbose {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -134,7 +135,7 @@ func ListProcesses() error {
 		log.Println("Error from Api Post:", err)
 		return err
 	}
-	if cliconf.Verbose {
+	if tdns.Globals.Verbose {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -145,7 +146,7 @@ func ListProcesses() error {
 	}
 
 	var out []string
-	//	if cliconf.Verbose {
+	//	if tdns.Globals.Verbose {
 	//		out = append(out, "Process|Description")
 	//	}
 	for _, p := range pr.Processes {
@@ -176,7 +177,7 @@ func GraphProcess() error {
 		log.Println("Error from Api Post:", err)
 		return err
 	}
-	if cliconf.Verbose {
+	if tdns.Globals.Verbose {
 		fmt.Printf("Status: %d\n", status)
 	}
 

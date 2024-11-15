@@ -13,4 +13,5 @@ musicd/musicd
 music.db
 notes.txt
 version.go
+*/version.go
 sidecar/music-sidecar

@@ -5,7 +5,7 @@ CONFIG:=music-cli.yaml
 # VERSION=$(shell cat ./VERSION)
 # GOFLAGS:=-ldflags "-X app.version=$(VERSION)-$(COMMIT) -v"
 
-GO:=CGO_ENABLED=0 go
+GO:=CGO_ENABLED=1 go
 
 include ../utils/Makefile.common
 

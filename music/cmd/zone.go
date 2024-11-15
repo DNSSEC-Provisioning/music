@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	tdns "github.com/johanix/tdns/tdns"
 	"github.com/miekg/dns"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -291,7 +292,7 @@ var zoneStepFsmCmd = &cobra.Command{
 		if zr.Error {
 			fmt.Printf("Error: %s\n", zr.ErrorMsg)
 		}
-		if cliconf.Verbose {
+		if tdns.Globals.Verbose {
 			PrintZones(zm, true, "")
 		}
 	},
@@ -378,7 +379,7 @@ var listBlockedZonesCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(zoneCmd)
+	//	rootCmd.AddCommand(zoneCmd)
 	ZoneCmd.AddCommand(addZoneCmd, updateZoneCmd, deleteZoneCmd, listZonesCmd,
 		zoneJoinGroupCmd, zoneLeaveGroupCmd, zoneFsmCmd,
 		zoneStepFsmCmd, zoneGetRRsetsCmd, zoneListRRsetCmd,
@@ -424,7 +425,7 @@ func SendZoneCommand(Zonename string, data music.ZonePost) music.ZoneResponse {
 		log.Fatalf("SendZoneCommand: Error from api.Post: %v", err)
 
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Println()
 		fmt.Printf("SendZoneCommand Status: %d\n", status)
 	}
@@ -460,7 +461,7 @@ func ZoneGetRRsets(zone, owner, rrtype string) (bool, string, map[string][]strin
 		log.Println("Error from APIpost:", err)
 		return true, err.Error(), map[string][]string{}
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -501,7 +502,7 @@ func ZoneListRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
 		log.Println("Error from APIpost:", err)
 		return true, err.Error(), []string{}
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -544,7 +545,7 @@ func ZoneCopyRRset(zone, owner, rrtype, signer string) (bool, string, []string) 
 		log.Println("Error from APIpost:", err)
 		return true, err.Error(), []string{}
 	}
-	if cliconf.Debug {
+	if tdns.Globals.Debug {
 		fmt.Printf("Status: %d\n", status)
 	}
 
@@ -577,7 +578,7 @@ func PrintZones(zm map[string]music.Zone, showall bool, fsmstatus string) {
 		var out []string
 		var zone music.Zone
 
-		if cliconf.Verbose || Showheaders {
+		if tdns.Globals.Verbose || Showheaders {
 			// out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)|ZSK State")
 			if showall {
 				out = append(out, "Zone|SignerGroup|Process|State|Timestamp|Next State(s)")
@@ -659,7 +660,7 @@ func PrintRRset(rrset []string) {
 	var out []string
 	var row string
 
-	if cliconf.Verbose {
+	if tdns.Globals.Verbose {
 		out = append(out, fmt.Sprintf("Owner|Class|Type|Rdata"))
 	}
 

@@ -1,7 +1,9 @@
 PROG:=sidecar-cli
 
 GOFLAGS:=-ldflags "-X app.version=$(VERSION)-$(COMMIT) -v"
-GO:=CGO_ENABLED=0 go
+
+# There is now sqlite in ../music/ so we need CGO=1, unfortunately.
+GO:=CGO_ENABLED=1 go
 
 include ../utils/Makefile.common
 

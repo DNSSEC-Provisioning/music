@@ -15,32 +15,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// var cfgFile, signername string
-// var showheaders bool
-
-// var tokvip *viper.Viper
-// var cliconf = music.CliConfig{}
-// var api *music.Api
-
-// var validate *validator.Validate
-
-func xxxinit() {
-//	cobra.OnInitialize(initConfig, initApi)
-
-//	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
-//		fmt.Sprintf("config file (default is %s)", mcmd.DefaultCfgFile))
-
-//	rootCmd.PersistentFlags().BoolVarP(&cliconf.Verbose, "verbose", "v", false, "Verbose output")
-//	rootCmd.PersistentFlags().BoolVarP(&cliconf.Debug, "debug", "d", false, "Debugging output")
-//	rootCmd.PersistentFlags().BoolVarP(&tdns.Globals.Verbose, "verbose", "v", false, "Verbose output")
-//	rootCmd.PersistentFlags().BoolVarP(&tdns.Globals.Debug, "debug", "d", false, "Debugging output")
-//	rootCmd.PersistentFlags().BoolVarP(&mcmd.Showheaders, "headers", "H", false, "Show column headers on output")
-//	rootCmd.PersistentFlags().StringVarP(&mcmd.Zonename, "zone", "z", "", "name of zone")
-//	rootCmd.PersistentFlags().StringVarP(&mcmd.Signername, "signer", "s", "", "name of signer")
-//	rootCmd.PersistentFlags().StringVarP(&mcmd.Sgroupname, "group", "g", "", "name of signer group")
-
-}
-
 // initConfig reads in config file and ENV variables if set.
 func InitConfig() {
 	var conf tdns.Config
@@ -48,7 +22,7 @@ func InitConfig() {
 
 	viper.SetConfigFile(music.DefaultSidecarTdnsCfgFile)
 	if err := viper.ReadInConfig(); err == nil {
-		if cliconf.Verbose {
+		if tdns.Globals.Verbose {
 			fmt.Println("Using config file:", viper.ConfigFileUsed())
 		}
 		err = viper.Unmarshal(&conf)
@@ -61,7 +35,7 @@ func InitConfig() {
 
 	// Load MUSIC config; note that this must be after the TDNS config has been parsed and use viper.MergeConfig()
 	if err := music.LoadMusicConfig(&mconf, "sidecar-cli", false); err == nil {
-		if cliconf.Verbose {
+		if tdns.Globals.Verbose {
 			fmt.Println("Using MUSIC config file:", music.DefaultSidecarCfgFile)
 		}
 		err = viper.Unmarshal(&mconf)
@@ -82,7 +56,7 @@ func InitConfig() {
 
 	// If a config file is found, read it in.
 	//	if err := viper.MergeInConfig(); err == nil {
-	//		if cliconf.Verbose {
+	//		if tdns.Globals.Verbose {
 	//			fmt.Println("Using config file:", viper.ConfigFileUsed())
 	//		}
 	//	}
@@ -101,7 +75,7 @@ func InitApi() {
 	//rootcafile := viper.GetString("cli.sidecar.cacert")
 
 	//	api = music.NewClient("musicd", baseurl, apikey, authmethod, rootcafile,
-	//		cliconf.Verbose, cliconf.Debug)
+	//		tdns.Globals.Verbose, cliconf.Debug)
 
 	tdns.Globals.Api = tdns.NewClient("tdnsd", baseurl, apikey, authmethod, "insecure", tdns.Globals.Verbose, tdns.Globals.Debug)
 

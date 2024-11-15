@@ -49,10 +49,10 @@ var desecLogoutCmd = &cobra.Command{
 	Short: "Logout from the deSEC API and delete stored tokens",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		tok := tokvip.GetString("token")
+		tok := music.TokVip.GetString("token")
 		fmt.Printf("About to log out with token %s\n", tok)
 
-		err := music.DesecLogout(&cliconf, tokvip)
+		err := music.DesecLogout(&music.CliConf, music.TokVip)
 		if err != nil {
 			fmt.Printf("Warning: error from desec logout: %v\n", err)
 		}
@@ -60,6 +60,5 @@ var desecLogoutCmd = &cobra.Command{
 }
 
 func init() {
-//	rootCmd.AddCommand(desecCmd)
 	DesecCmd.AddCommand(desecLoginCmd, desecLogoutCmd)
 }
